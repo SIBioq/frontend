@@ -473,6 +473,12 @@ export function ProtocolForm({
             <Label id="send-method-label" className="text-sm sm:text-base">
               ¿Cómo recibe el informe? *
             </Label>
+            {sendMethods.length === 0 && (
+              // La lista viene del servidor: mientras carga —o si falló— el
+              // recuadro quedaría vacío y sin explicación. El desplegable que
+              // había antes al menos mostraba su placeholder.
+              <p className="mt-2 text-xs text-gray-500">Cargando los métodos de envío…</p>
+            )}
             <div className="mt-2">
               <StatusButtonGroup
                 labelId="send-method-label"
