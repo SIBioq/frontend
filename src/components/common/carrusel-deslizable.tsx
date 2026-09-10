@@ -4,11 +4,7 @@ import type React from "react"
 import { useCallback, useEffect, useRef } from "react"
 
 import { cn } from "@/lib/utils"
-
-/** Si el sistema pidió menos movimiento, no se anima nada. */
-const menosMovimiento = () =>
-  typeof window !== "undefined" &&
-  window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true
+import { menosMovimiento } from "@/lib/menos-movimiento"
 
 /**
  * Una pista de paneles que se recorre deslizando.

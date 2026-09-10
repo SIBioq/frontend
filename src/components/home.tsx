@@ -109,6 +109,13 @@ interface MesDisponible {
  * está bien para operar, pero deja el mes que cerró sin ningún lado donde
  * mirarse. Esto contesta esa otra pregunta.
  */
+interface PromedioPorDia {
+  /** `null` si el mes todavía no empezó. */
+  promedio: number | null
+  pacientes: number
+  dias: number
+}
+
 interface EstadisticasDelMes {
   anio: number
   mes: number
@@ -127,6 +134,18 @@ interface EstadisticasDelMes {
   arca: { billed: number; pending: number; failed: number }
   obras_sociales: Array<{ insurance_id: number | null; name: string; protocols: number }>
   pacientes_por_dia: Array<{ date: string; patients_served: number }>
+  /**
+   * Pacientes por día, en promedio, de este mes y del anterior.
+   *
+   * `promedio` en `null` es «todavía no pasó ningún día», que NO es lo mismo
+   * que cero —cero se lee como «no vino nadie»—. `dias` es el divisor y se
+   * muestra: sin él, «3,2 por día» de un mes que va por el día 4 se lee como
+   * si fuera el mes entero.
+   */
+  promedio_de_pacientes_por_dia: {
+    mes: PromedioPorDia
+    mes_anterior: PromedioPorDia
+  }
   caja_por_dia: Array<{ date: string; collected: string }>
   meses_disponibles: MesDisponible[]
   /** Todo lo que la pantalla muestra como número, del mes. Ver
@@ -280,6 +299,56 @@ const NOMBRES_DE_MES = [
 ]
 
 const nombreDelMes = (m: MesDisponible) => `${NOMBRES_DE_MES[m.mes - 1]} ${m.anio}`
+
+/**
+ * Una línea de la tarjeta de promedios: el rótulo y el número.
+ *
+ * Muestra siempre el divisor («sobre 10 días»). Sin eso, «3,2 por día» de un
+ * mes que va por el día 4 se lee como si fuera el mes entero, y ahí el número
+ * miente más de lo que informa.
+ *
+ * `null` es «todavía no pasó ningún día», que no es cero: cero se lee como «no
+ * vino nadie».
+ */
+function FilaDePromedio({
+  etiqueta,
+  dato,
+  destacada = false,
+}: {
+  etiqueta: string
+  dato: { promedio: number | null; pacientes?: number; dias: number } | null
+  destacada?: boolean
+}) {
+  const promedio = dato?.promedio
+
+  const texto = (() => {
+    if (promedio === null || promedio === undefined) return "—"
+    // Redondeado a un decimal, un mes con muy pocos pacientes da 0 — y 0 se
+    // lee como «no vino nadie», que es otra cosa. Pasa sólo con volúmenes
+    // mínimos (una base recién puesta en marcha), pero ahí es justo donde el
+    // número equivocado se cree.
+    if (promedio === 0 && (dato?.pacientes ?? 0) > 0) return "<0,1"
+    return promedio.toLocaleString("es-AR", { maximumFractionDigits: 1 })
+  })()
+
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className={`min-w-0 truncate text-xs ${destacada ? "font-medium text-slate-900" : "text-slate-600"}`}>
+        {etiqueta}
+      </dt>
+      <dd className="shrink-0 text-right">
+        <span className={`text-sm font-semibold ${destacada ? "text-[#204983]" : "text-slate-800"}`}>
+          {texto}
+        </span>
+        {dato && dato.dias > 0 && (
+          <span className="ml-1 text-[11px] text-slate-400">
+            /día · {dato.dias}d
+          </span>
+        )}
+      </dd>
+    </div>
+  )
+}
 
 const esMesActual = (anio: number, mes: number) => {
   const hoy = new Date()
@@ -454,6 +523,33 @@ export default function Home() {
       new Date(`${iso}T00:00:00`).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" })
     return `${fmt(activeWeek[0].date)} – ${fmt(activeWeek[activeWeek.length - 1].date)}`
   })()
+  /**
+   * El promedio de la semana que se está mirando.
+   *
+   * Divide por los días que YA PASARON de esa fila, no por siete: la semana en
+   * curso está a medio andar y dividirla por siete la dejaría siempre peor que
+   * las cerradas. Es el mismo criterio con el que el backend calcula el del mes
+   * —ver `_promedio_de_pacientes_por_dia`—, y por eso los tres números de la
+   * tarjeta se pueden comparar entre sí.
+   *
+   * Se toma la fila entera, con los días del mes vecino incluidos: es lo que se
+   * está viendo en pantalla y lo que dice el rótulo del rango.
+   */
+  const promedioDeLaSemana = (() => {
+    const transcurridos = activeWeek.filter((c) => c.dato)
+    if (transcurridos.length === 0) return null
+    const pacientes = transcurridos.reduce(
+      (acc, c) => acc + (c.dato?.patients_served ?? 0), 0,
+    )
+    return { promedio: pacientes / transcurridos.length, pacientes, dias: transcurridos.length }
+  })()
+
+  const promediosDelMes = mesData?.promedio_de_pacientes_por_dia
+  const mesAnteriorVisible: MesDisponible =
+    mesVisible.mes === 1
+      ? { anio: mesVisible.anio - 1, mes: 12 }
+      : { anio: mesVisible.anio, mes: mesVisible.mes - 1 }
+
   // El día abierto en el detalle de caja. null = ninguno.
   const [cajaDelDia, setCajaDelDia] = useState<string | null>(null)
 
@@ -802,10 +898,62 @@ export default function Home() {
                 )}
               </span>
             </div>
-            <span className="hidden text-xs text-slate-500 sm:inline">
-              {weekIndex === semanaEnCurso ? "Semana en curso" : `Semana ${weekIndex + 1} de ${weeks.length}`}
-              {weekRangeLabel ? ` · ${weekRangeLabel}` : ""}
-            </span>
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="hidden text-xs text-slate-500 sm:inline">
+                {weekIndex === semanaEnCurso ? "Semana en curso" : `Semana ${weekIndex + 1} de ${weeks.length}`}
+                {weekRangeLabel ? ` · ${weekRangeLabel}` : ""}
+              </span>
+              {/* PROMEDIOS POR DÍA
+                  =================
+                  El gráfico muestra una semana a la vez y una semana sola no
+                  dice si viene bien o mal. Acá están los tres números que le
+                  dan escala: la semana que se está mirando, el mes y el
+                  anterior.
+
+                  Va en hover y no fijo en la tarjeta porque no es lo que se
+                  mira todos los días: el gráfico ya cuenta la historia, esto
+                  contesta la pregunta que aparece después.
+
+                  `group-focus-within` además del hover: con teclado se llega
+                  con Tab y se abre igual. */}
+              <div className="group relative">
+                <button
+                  type="button"
+                  aria-describedby="promedios-por-dia"
+                  className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 transition hover:border-[#204983]/40 hover:bg-[#204983]/5 hover:text-[#204983] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#204983]/40"
+                >
+                  <TrendingUp className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Promedios</span>
+                </button>
+                <div
+                  id="promedios-por-dia"
+                  role="tooltip"
+                  className="pointer-events-none absolute right-0 top-full z-30 mt-1 w-64 rounded-lg border border-slate-200 bg-white p-3 text-left opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+                >
+                  <p className="mb-2 text-xs font-semibold text-slate-900">
+                    Pacientes por día
+                  </p>
+                  <dl className="space-y-1.5">
+                    <FilaDePromedio
+                      etiqueta={weekRangeLabel ? `Semana ${weekRangeLabel}` : "Esta semana"}
+                      dato={promedioDeLaSemana}
+                      destacada
+                    />
+                    <FilaDePromedio
+                      etiqueta={nombreDelMes(mesVisible)}
+                      dato={promediosDelMes?.mes ?? null}
+                    />
+                    <FilaDePromedio
+                      etiqueta={nombreDelMes(mesAnteriorVisible)}
+                      dato={promediosDelMes?.mes_anterior ?? null}
+                    />
+                  </dl>
+                  <p className="mt-2 border-t border-slate-100 pt-2 text-[11px] leading-snug text-slate-500">
+                    Sobre los días transcurridos, contando los de cero.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="mb-3 flex items-center justify-center gap-1.5">
             {/* Los puntitos van en el orden del mes: el primero es la semana

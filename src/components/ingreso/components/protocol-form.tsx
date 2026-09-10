@@ -5,6 +5,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   CircleX,
+  Mail,
+  MessageCircle,
+  Store,
   User,
   Stethoscope,
   Building,
@@ -30,6 +33,7 @@ import { BillingEntitySelect } from "@/components/configuration/components/billi
 import { AnalysisSearch } from "./analysis-search"
 import { AnalysisTable } from "./analysis-table"
 import { TRAJO_ORDEN_OPTIONS, type TrajoOrdenStatus } from "@/lib/protocol-order"
+import { getSendMethodAction } from "@/lib/status-styles"
 import { SelectorDeCuenta } from "@/components/common/forma-de-pago"
 import type {
   Patient,
@@ -43,8 +47,24 @@ import type {
 } from "../../../types"
 
 type CreationPreauthStatus = Exclude<PreauthStatus, "not_required">
-type StatusOption<T extends string> = { value: T; label: string; description: string }
-type StatusTone = "complete" | "partial" | "missing"
+type StatusTone = "complete" | "partial" | "missing" | "neutral"
+type StatusOption<T extends string> = {
+  value: T
+  label: string
+  description: string
+  /**
+   * El color. Sin esto sale del valor, que es lo que sirve para orden médica y
+   * preautorización: ahí cada opción significa «está bien / falta algo / no
+   * está» y el verde-ámbar-rojo ES la información.
+   *
+   * El método de envío no tiene nada de eso: mandar por mail no está «mejor»
+   * que retirar en el mostrador. Pintarlo con la misma escala inventaría una
+   * jerarquía que no existe y le sacaría fuerza al rojo de donde sí importa.
+   * Por eso va en `neutral`.
+   */
+  tone?: StatusTone
+  icon?: typeof CheckCircle2
+}
 
 const PREAUTH_OPTIONS: Array<StatusOption<CreationPreauthStatus>> = [
   {
@@ -86,12 +106,32 @@ const toneClasses: Record<StatusTone, { selected: string; unselected: string; ic
     unselected: "border-gray-200 bg-white text-gray-700 hover:border-red-300 hover:bg-red-50/60",
     icon: "text-red-600",
   },
+  neutral: {
+    selected: "border-[#204983] bg-[#204983]/10 text-[#1a3a68] ring-2 ring-[#204983]/25",
+    unselected: "border-gray-200 bg-white text-gray-700 hover:border-[#204983]/40 hover:bg-[#204983]/5",
+    icon: "text-[#204983]",
+  },
 }
 
-const statusIcons = {
+const statusIcons: Record<StatusTone, typeof CheckCircle2> = {
   complete: CheckCircle2,
   partial: AlertTriangle,
   missing: CircleX,
+  neutral: Send,
+}
+
+/** El ícono del método de envío, por lo que hay que hacer con el informe. */
+const iconoDelEnvio = (nombre: string) => {
+  switch (getSendMethodAction(nombre)) {
+    case "whatsapp":
+      return MessageCircle
+    case "email":
+      return Mail
+    case "print":
+      return Store
+    default:
+      return Send
+  }
 }
 
 function StatusButtonGroup<T extends string>({
@@ -134,8 +174,8 @@ function StatusButtonGroup<T extends string>({
       onKeyDown={handleKeyDown}
     >
       {options.map((option, optionIndex) => {
-        const tone = getStatusTone(option.value)
-        const Icon = statusIcons[tone]
+        const tone = option.tone ?? getStatusTone(option.value)
+        const Icon = option.icon ?? statusIcons[tone]
         const isSelected = value === option.value
         const descriptionId = `${labelId}-${option.value}-description`
 
@@ -186,6 +226,13 @@ interface ProtocolFormProps {
   doctors: Doctor[]
   insurances: Insurance[]
   sendMethods: SendMethod[]
+  /**
+   * Con qué médico y qué obra social vino este paciente la última vez.
+   *
+   * Sólo para que aparezcan primeros en sus combos. No se eligen solos: ver el
+   * comentario en cada combobox.
+   */
+  idsDeLaUltimaVez?: { medico: number | null; obraSocial: number | null }
   selectedAnalyses: SelectedAnalysis[]
   selectedDoctor: Doctor | null
   selectedInsurance: Insurance | null
@@ -239,6 +286,7 @@ export function ProtocolForm({
   doctors,
   insurances,
   sendMethods,
+  idsDeLaUltimaVez,
   selectedAnalyses,
   selectedDoctor,
   selectedInsurance,
@@ -300,12 +348,23 @@ export function ProtocolForm({
   const removeUnplanned = (index: number) =>
     onUnplannedTransactionsChange(unplannedTransactions.filter((_, i) => i !== index))
 
-  // "Total" completa el efectivo con lo que falta para cubrir la cuenta. Es lo
-  // que pasa en el mostrador: el resto se paga en mano.
-  const handleFillTotal = () => {
-    const falta = Math.max(0, totals.patientOwes - porTransferencia)
-    onPagoEfectivoChange(falta.toFixed(2))
-  }
+  /**
+   * «Total» completa ESA forma con lo que falta para cubrir la cuenta.
+   *
+   * Cada una descuenta lo que ya está cargado en la otra, así que sirven en
+   * cualquier orden y también para el pago partido: se escribe lo que dejó en
+   * efectivo, se aprieta Total en transferencia y queda el resto.
+   *
+   * Los dos botones existen porque las dos formas se usan solas. Con el botón
+   * en efectivo nada más, el que transfería todo tenía que leer el total de la
+   * pantalla y volver a tipearlo abajo — y un número tipeado a mano contra un
+   * extracto es exactamente el que después no cierra.
+   */
+  const completarConEfectivo = () =>
+    onPagoEfectivoChange(Math.max(0, totals.patientOwes - porTransferencia).toFixed(2))
+
+  const completarConTransferencia = () =>
+    onPagoTransferenciaChange(Math.max(0, totals.patientOwes - enEfectivo).toFixed(2))
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -331,6 +390,7 @@ export function ProtocolForm({
           </div>
           <MedicoCombobox
             medicos={doctors}
+            idDeLaUltimaVez={idsDeLaUltimaVez?.medico ?? null}
             selectedMedico={selectedDoctor}
             onMedicoSelect={onDoctorSelect}
             onShowCreateMedico={onShowCreateMedico}
@@ -349,6 +409,7 @@ export function ProtocolForm({
             <div className="sm:flex-grow">
               <ObraSocialCombobox
                 obrasSociales={insurances}
+                idDeLaUltimaVez={idsDeLaUltimaVez?.obraSocial ?? null}
                 selectedObraSocial={selectedInsurance}
                 onObraSocialSelect={onInsuranceSelect}
                 onShowCreateObraSocial={onShowCreateObraSocial}
@@ -400,30 +461,52 @@ export function ProtocolForm({
           )}
         </div>
 
-        {/* Send Method Selection */}
+        {/* MÉTODO DE ENVÍO: BOTONES, NO UN DESPLEGABLE
+            ============================================
+            Es obligatorio, son tres opciones y no cambia nunca de cantidad. Un
+            desplegable esconde las tres detrás de un click y no muestra cuál
+            está elegida hasta abrirlo — al lado de «Orden médica» y
+            «Condiciones de la obra social», que sí se ven de un vistazo, era el
+            único dato del formulario que había que ir a buscar.
+
+            Se arma con lo que devuelve el servidor y no con una lista fija acá:
+            los métodos son filas de `SendMethod` y un laboratorio puede tener
+            otros. El ícono sale del nombre por `getSendMethodAction`, que es la
+            misma función que usa el diálogo de informes para saber qué botón
+            resaltar: si mañana se agrega uno que no reconoce, cae en el sobre
+            genérico y sigue funcionando. */}
         <div className="space-y-2 sm:space-y-3">
           <div className="flex items-center gap-2">
             <Send className="h-4 w-4 sm:h-5 sm:w-5 text-[#204983]" />
             <h3 className="text-base sm:text-lg font-semibold text-[#204983]">Método de Envío</h3>
           </div>
-          <Select
-            value={selectedSendMethod?.id.toString() || ""}
-            onValueChange={(value) => {
-              const method = sendMethods.find((m) => m.id.toString() === value)
-              onSendMethodSelect(method || null)
-            }}
-          >
-            <SelectTrigger className="h-9 sm:h-10">
-              <SelectValue placeholder="Seleccionar método" />
-            </SelectTrigger>
-            <SelectContent>
-              {sendMethods.map((method) => (
-                <SelectItem key={method.id} value={method.id.toString()}>
-                  {method.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <Label id="send-method-label" className="text-sm sm:text-base">
+              ¿Cómo recibe el informe? *
+            </Label>
+            {sendMethods.length === 0 && (
+              // La lista viene del servidor: mientras carga —o si falló— el
+              // recuadro quedaría vacío y sin explicación. El desplegable que
+              // había antes al menos mostraba su placeholder.
+              <p className="mt-2 text-xs text-gray-500">Cargando los métodos de envío…</p>
+            )}
+            <div className="mt-2">
+              <StatusButtonGroup
+                labelId="send-method-label"
+                options={sendMethods.map((method) => ({
+                  value: method.id.toString(),
+                  label: method.name,
+                  description: method.description || "",
+                  tone: "neutral" as const,
+                  icon: iconoDelEnvio(method.name),
+                }))}
+                value={selectedSendMethod?.id.toString() ?? ""}
+                onChange={(value) =>
+                  onSendMethodSelect(sendMethods.find((m) => m.id.toString() === value) || null)
+                }
+              />
+            </div>
+          </div>
         </div>
 
         {shouldShowOrder && (
@@ -451,73 +534,33 @@ export function ProtocolForm({
           </div>
         )}
 
-        {(shouldShowPreauth || shouldChargeMaterial || shouldChargeDerivacion) && (
+        {/* Acá queda lo que hay que DECIDIR antes de cargar los análisis. Lo que
+            hay que COBRAR bajó al final, junto al coseguro. */}
+        {shouldShowPreauth && (
           <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-[#204983]" />
               <h3 className="text-base sm:text-lg font-semibold text-[#204983]">Condiciones de la obra social</h3>
             </div>
             <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 space-y-3">
-              {shouldShowPreauth && (
-                <div className="space-y-2">
-                  <Label id="preauth-status-label" className="text-sm sm:text-base">
-                    Estado de la preautorización *
-                  </Label>
-                  <StatusButtonGroup
-                    labelId="preauth-status-label"
-                    options={PREAUTH_OPTIONS}
-                    value={preauthStatus === "not_required" ? "" : preauthStatus}
-                    onChange={onPreauthStatusChange}
-                  />
-                  <p className="text-xs text-blue-800">
-                    Marcá en la tabla qué análisis cubre la OOSS. Los no cubiertos se cobran particular y no vuelven
-                    incompleta la preautorización.
+              <div className="space-y-2">
+                <Label id="preauth-status-label" className="text-sm sm:text-base">
+                  Estado de la preautorización *
+                </Label>
+                <StatusButtonGroup
+                  labelId="preauth-status-label"
+                  options={PREAUTH_OPTIONS}
+                  value={preauthStatus === "not_required" ? "" : preauthStatus}
+                  onChange={onPreauthStatusChange}
+                />
+                <p className="text-xs text-blue-800">
+                  Marcá en la tabla qué análisis cubre la OOSS. Los no cubiertos se cobran particular y no vuelven
+                  incompleta la preautorización.
+                </p>
+                {preauthStatus && (
+                  <p className="text-xs text-gray-600">
+                    {PREAUTH_OPTIONS.find((option) => option.value === preauthStatus)?.description}
                   </p>
-                  {preauthStatus && (
-                    <p className="text-xs text-gray-600">
-                      {PREAUTH_OPTIONS.find((option) => option.value === preauthStatus)?.description}
-                    </p>
-                  )}
-                </div>
-              )}
-              <div className="grid gap-3 sm:grid-cols-2">
-                {shouldChargeMaterial && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="material-descartable-protocol">Material descartable</Label>
-                    <Input
-                      id="material-descartable-protocol"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={extraAmounts.material_descartable_amount}
-                      onChange={(event) =>
-                        onExtraAmountsChange({
-                          ...extraAmounts,
-                          material_descartable_amount: event.target.value,
-                        })
-                      }
-                      className="bg-white"
-                    />
-                  </div>
-                )}
-                {shouldChargeDerivacion && (
-                  <div className="space-y-1.5">
-                    <Label htmlFor="derivacion-protocol">Derivación</Label>
-                    <Input
-                      id="derivacion-protocol"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={extraAmounts.derivacion_amount}
-                      onChange={(event) =>
-                        onExtraAmountsChange({
-                          ...extraAmounts,
-                          derivacion_amount: event.target.value,
-                        })
-                      }
-                      className="bg-white"
-                    />
-                  </div>
                 )}
               </div>
             </div>
@@ -543,35 +586,94 @@ export function ProtocolForm({
           quoteById={quoteById}
         />
 
-        {/* EL COSEGURO VA DESPUÉS DE LOS ANÁLISIS, NO ANTES.
-            El monto lo informa la obra social al autorizar, así que recién se
-            sabe cuando ya está claro qué análisis autorizó y cuáles no.
-            Pedirlo arriba, antes de cargar un solo análisis, era pedir un
-            número que en ese momento nadie tiene. */}
-        {shouldChargeCoseguro && (
+        {/* TODOS LOS COBROS DE LA OBRA SOCIAL VAN DESPUÉS DE LOS ANÁLISIS
+            ==============================================================
+            El coseguro ya estaba acá por una razón: el monto lo informa la obra
+            social al autorizar, así que recién se sabe cuando está claro qué
+            análisis autorizó y cuáles no. Pedirlo arriba era pedir un número
+            que en ese momento nadie tiene.
+
+            El material descartable y la derivación estaban arriba, mezclados
+            con la preautorización. Son lo mismo que el coseguro —plata que se
+            le suma al paciente— y se revisan en el mismo momento: cuando ya
+            está la lista y se va a cobrar. Repartidos entre dos partes de la
+            pantalla, el de arriba se completaba a ciegas o se olvidaba.
+
+            Arriba queda lo que hay que DECIDIR para poder cargar; acá abajo,
+            todo lo que hay que COBRAR. */}
+        {(shouldChargeCoseguro || shouldChargeMaterial || shouldChargeDerivacion) && (
           <div className="space-y-2 sm:space-y-3">
             <div className="flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-[#204983] sm:h-5 sm:w-5" />
-              <h3 className="text-base font-semibold text-[#204983] sm:text-lg">Coseguro</h3>
+              <h3 className="text-base font-semibold text-[#204983] sm:text-lg">
+                Cobros de la obra social
+              </h3>
             </div>
-            <div className="space-y-1.5 rounded-lg border border-blue-100 bg-blue-50 p-3">
-              <Label htmlFor="coseguro-protocol">
-                Monto informado por la obra social al autorizar
-              </Label>
-              <Input
-                id="coseguro-protocol"
-                type="number"
-                min="0"
-                step="0.01"
-                value={coseguroAmount}
-                onChange={(event) => onCoseguroChange(event.target.value)}
-                placeholder="0.00"
-                className="max-w-xs bg-white"
-              />
-              <p className="text-xs text-blue-800">
-                Se suma a lo que paga el paciente. Si todavía no lo sabés, dejalo
-                vacío y se carga después.
-              </p>
+            <div className="space-y-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
+              {shouldChargeCoseguro && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="coseguro-protocol">
+                    Coseguro — monto informado por la obra social al autorizar
+                  </Label>
+                  <Input
+                    id="coseguro-protocol"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={coseguroAmount}
+                    onChange={(event) => onCoseguroChange(event.target.value)}
+                    placeholder="0.00"
+                    className="max-w-xs bg-white"
+                  />
+                  <p className="text-xs text-blue-800">
+                    Se suma a lo que paga el paciente. Si todavía no lo sabés, dejalo
+                    vacío y se carga después.
+                  </p>
+                </div>
+              )}
+
+              {(shouldChargeMaterial || shouldChargeDerivacion) && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {shouldChargeMaterial && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="material-descartable-protocol">Material descartable</Label>
+                      <Input
+                        id="material-descartable-protocol"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={extraAmounts.material_descartable_amount}
+                        onChange={(event) =>
+                          onExtraAmountsChange({
+                            ...extraAmounts,
+                            material_descartable_amount: event.target.value,
+                          })
+                        }
+                        className="bg-white"
+                      />
+                    </div>
+                  )}
+                  {shouldChargeDerivacion && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="derivacion-protocol">Derivación</Label>
+                      <Input
+                        id="derivacion-protocol"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={extraAmounts.derivacion_amount}
+                        onChange={(event) =>
+                          onExtraAmountsChange({
+                            ...extraAmounts,
+                            derivacion_amount: event.target.value,
+                          })
+                        }
+                        className="bg-white"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -733,7 +835,7 @@ export function ProtocolForm({
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={handleFillTotal}
+                        onClick={completarConEfectivo}
                         className="h-10 px-3 whitespace-nowrap bg-transparent"
                         title="Completar en efectivo lo que falta"
                       >
@@ -747,16 +849,28 @@ export function ProtocolForm({
                       <Landmark className="h-3.5 w-3.5 text-sky-600" />
                       Transferencia
                     </Label>
-                    <Input
-                      id="pagoTransferencia"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={pagoTransferencia}
-                      onChange={(e) => onPagoTransferenciaChange(e.target.value)}
-                      className="h-10"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="pagoTransferencia"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={pagoTransferencia}
+                        onChange={(e) => onPagoTransferenciaChange(e.target.value)}
+                        className="h-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={completarConTransferencia}
+                        className="h-10 px-3 whitespace-nowrap bg-transparent"
+                        title="Completar por transferencia lo que falta"
+                      >
+                        Total
+                      </Button>
+                    </div>
 
                     {/* La cuenta aparece recién cuando hay algo transferido:
                         antes es una pregunta sobre plata que no entró. */}
