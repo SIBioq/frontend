@@ -61,11 +61,10 @@ import type { ArcaPayload } from "./dialogs"
 import { ProtocolHistoryDialog } from "./dialogs/protocol-history-dialog"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
 import { useAuth } from "@/contexts/auth-context"
-import { getProtocolStatusStyleByName, getSendMethodAction } from "@/lib/status-styles"
+import { getProtocolStatusStyleByName } from "@/lib/status-styles"
 import { seguirElWhatsApp } from "@/lib/seguimiento-de-whatsapp"
 import { TRAJO_ORDEN, normalizeTrajoOrden, type TrajoOrdenStatus } from "@/lib/protocol-order"
 import { AgregarAnalisisDialog } from "./dialogs/agregar-analisis-dialog"
-import { MarcarEnviadoDialog, type QueSeGenero } from "./dialogs/marcar-enviado-dialog"
 import { FormaDePagoDialog } from "./dialogs/forma-de-pago-dialog"
 
 interface ProtocolDetailResponse {
@@ -221,9 +220,6 @@ export function ProtocolCard({
   const [protocolDetails, setProtocolDetails] = useState<ReportProtocolDetail[]>([])
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [loadingAnalyses, setLoadingAnalyses] = useState(false)
-  // Qué se apretó (imprimir o descargar) mientras se pregunta si el paciente
-  // lo va a recibir. `null` = no hay nada preguntándose.
-  const [preguntaDeEntrega, setPreguntaDeEntrega] = useState<QueSeGenero | null>(null)
   const [isCancelling, setIsCancelling] = useState(false)
   const [isUncancelling, setIsUncancelling] = useState(false)
   const [isArcaBilling, setIsArcaBilling] = useState(false)
@@ -356,8 +352,8 @@ export function ProtocolCard({
     return false
   }
 
-  const executeSingleReportRequest = async (action: ReportAction, marcarComoEnviado?: boolean) => {
-    const { res } = await pedirEnvio(action, marcarComoEnviado)
+  const executeSingleReportRequest = async (action: ReportAction) => {
+    const { res } = await pedirEnvio(action)
     return res
   }
 
@@ -368,16 +364,16 @@ export function ProtocolCard({
    * quien apretó el botón, que es quien sabe si lo quiere mandar. Cancelar no
    * deja nada esperando.
    */
-  const pedirEnvio = async (action: ReportAction, marcarComoEnviado?: boolean) => {
+  const pedirEnvio = async (action: ReportAction) => {
     const reportRequest = getReportRequestOptions()
     const reportPayload = (reportRequest.body ?? {}) as Record<string, unknown>
 
+    // `mark_as_sent` no se manda nunca: el servidor entrega por defecto, que es
+    // lo que hace bajar o imprimir el informe. Mirarlo sin entregarlo es la
+    // vista previa (`action: "preview"`), que no marca nada.
     return pedirInforme(apiRequest, PROTOCOL_ENDPOINTS.REPORT(protocol.id), {
       action,
       type: reportType,
-      // Se manda solo cuando se preguntó. Omitirlo deja el comportamiento de
-      // siempre en el servidor, que es lo que usan el lote y la contingencia.
-      ...(marcarComoEnviado === undefined ? {} : { mark_as_sent: marcarComoEnviado }),
       ...reportPayload,
     })
   }
@@ -721,34 +717,6 @@ export function ProtocolCard({
     }
   }
 
-  /**
-   * ¿Hay que preguntar si el paciente lo va a recibir?
-   *
-   * Solo cuando el informe COMPLETO se genera por una vía que no es la que
-   * eligió el paciente. Si retira por mostrador, generar el informe ES
-   * entregarlo y no hay nada que preguntar; el resumen es el papel de
-   * facturación y nunca fue del paciente.
-   *
-   * Un cartel que aparece siempre se aprieta sin leer, y ahí deja de servir
-   * justo para el caso en que sí importaba.
-   */
-  /**
-   * El método de envío, venga de donde venga.
-   *
-   * El diálogo de reportes se abre desde dos lados: la página del protocolo,
-   * que ya tiene el detalle completo, y la fila de la lista, que no lo pide.
-   * Mirando solo el detalle, desde la lista el método era `undefined` y la
-   * pregunta no aparecía nunca — justo en el lugar donde más se usa.
-   */
-  const metodoDeEnvioDelPaciente =
-    protocolDetail?.send_method?.name ?? protocol.send_method?.name ?? ""
-
-  const hayQuePreguntarSiLoRecibe = () => {
-    if (reportType !== "full") return false
-    const metodo = getSendMethodAction(metodoDeEnvioDelPaciente)
-    return metodo === "whatsapp" || metodo === "email"
-  }
-
   const [isPreviewingReport, setIsPreviewingReport] = useState(false)
 
   /**
@@ -789,16 +757,12 @@ export function ProtocolCard({
     }
   }
 
-  const handleGenerateReport = async (marcarComoEnviado?: boolean) => {
+  const handleGenerateReport = async () => {
     if (!ensureCanPrintReports()) return
-    if (marcarComoEnviado === undefined && hayQuePreguntarSiLoRecibe()) {
-      setPreguntaDeEntrega("impresion")
-      return
-    }
     setIsGeneratingReport(true)
 
     try {
-      const response = await executeSingleReportRequest("download", marcarComoEnviado)
+      const response = await executeSingleReportRequest("download")
 
       if (response.ok) {
         const blob = await response.blob()
@@ -817,19 +781,12 @@ export function ProtocolCard({
           window.URL.revokeObjectURL(url)
         }, 30000)
 
-        toast.success(
-          marcarComoEnviado === false
-            ? "Informe listo. El protocolo sigue pendiente de envío."
-            : "Reporte listo para imprimir",
-          { duration: TOAST_DURATION },
-        )
+        toast.success("Reporte listo para imprimir", { duration: TOAST_DURATION })
         setReportDialogOpen(false)
-        // Marcar puede completar el protocolo. Sin refrescar, la pantalla sigue
-        // diciendo "Pendiente de envío" sobre algo que ya salió de la cola.
-        if (marcarComoEnviado !== false) {
-          await refreshProtocolDetail()
-          onUpdate()
-        }
+        // Entregar puede completar el protocolo. Sin refrescar, la pantalla
+        // sigue diciendo "Pendiente de envío" sobre algo que ya salió de la cola.
+        await refreshProtocolDetail()
+        onUpdate()
       } else {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(extractErrorMessage(errorData, "Error al generar el reporte"))
@@ -843,16 +800,12 @@ export function ProtocolCard({
     }
   }
 
-  const handleDownloadReport = async (marcarComoEnviado?: boolean) => {
+  const handleDownloadReport = async () => {
     if (!ensureCanPrintReports()) return
-    if (marcarComoEnviado === undefined && hayQuePreguntarSiLoRecibe()) {
-      setPreguntaDeEntrega("descarga")
-      return
-    }
     setIsDownloadingReport(true)
 
     try {
-      const response = await executeSingleReportRequest("download", marcarComoEnviado)
+      const response = await executeSingleReportRequest("download")
 
       if (response.ok) {
         const blob = await response.blob()
@@ -869,17 +822,10 @@ export function ProtocolCard({
         link.remove()
         window.URL.revokeObjectURL(url)
 
-        toast.success(
-          marcarComoEnviado === false
-            ? "Informe descargado. El protocolo sigue pendiente de envío."
-            : "Reporte descargado exitosamente",
-          { duration: TOAST_DURATION },
-        )
+        toast.success("Reporte descargado exitosamente", { duration: TOAST_DURATION })
         setReportDialogOpen(false)
-        if (marcarComoEnviado !== false) {
-          await refreshProtocolDetail()
-          onUpdate()
-        }
+        await refreshProtocolDetail()
+        onUpdate()
       } else {
         const errorData = await response.json().catch(() => ({}))
         throw new Error(extractErrorMessage(errorData, "Error al descargar el reporte"))
@@ -1852,22 +1798,6 @@ export function ProtocolCard({
         onAgregar={handleAgregarAnalisis}
       />
 
-      {/* La pregunta de si el paciente lo va a recibir. Se arma con el método
-          que tiene cargado el protocolo, que es el que hace que la respuesta
-          no sea obvia: si retira por mostrador ni siquiera aparece. */}
-      <MarcarEnviadoDialog
-        open={preguntaDeEntrega !== null}
-        onOpenChange={(abierto) => !abierto && setPreguntaDeEntrega(null)}
-        metodoDelPaciente={metodoDeEnvioDelPaciente}
-        queSeGenero={preguntaDeEntrega ?? "descarga"}
-        onElegir={(marcarComoEnviado) => {
-          const que = preguntaDeEntrega
-          setPreguntaDeEntrega(null)
-          if (que === "impresion") void handleGenerateReport(marcarComoEnviado)
-          else void handleDownloadReport(marcarComoEnviado)
-        }}
-      />
-
       <AuditDialog
         open={auditDialogOpen}
         onOpenChange={setAuditDialogOpen}
@@ -1912,9 +1842,6 @@ export function ProtocolCard({
         onDeselectAllAnalyses={handleDeselectAllReportAnalyses}
         customizationOpen={reportCustomizationOpen}
         onToggleCustomizationOpen={setReportCustomizationOpen}
-        // Envueltos a propósito: pasados pelados, el `onClick` de adentro les
-        // mete el evento del click como `marcarComoEnviado`, y con eso deja de
-        // ser `undefined` — no se pregunta nada y se manda un MouseEvent.
         onPreviewReport={() => handlePreviewReport()}
         onGenerateReport={() => handleGenerateReport()}
         onDownloadReport={() => handleDownloadReport()}

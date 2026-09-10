@@ -110,6 +110,8 @@ export const MEDICAL_ENDPOINTS = {
   INSURANCE_DETAIL: (id: number) => buildApiUrl(`/medicale/insurances/${id}/`),
   INSURANCE_AUDIT_TIMELINE: (id: number) => buildApiUrl(`/medicale/insurances/${id}/audit-timeline/`),
   INSURANCES_IMPORT: buildApiUrl("/medicale/insurances/importar-planilla/"),
+  /** Baja las obras sociales en la MISMA planilla que come el importador. */
+  INSURANCES_EXPORT: buildApiUrl("/medicale/insurances/exportar-planilla/"),
 } as const
 
 export const CATALOG_ENDPOINTS = {
@@ -119,6 +121,9 @@ export const CATALOG_ENDPOINTS = {
   ANALYSIS_DETAIL: (id: number) => buildApiUrl(`/catalog/analysis/${id}/`),
   ANALYSIS_AUDIT_TIMELINE: (id: number) => buildApiUrl(`/catalog/analysis/${id}/audit-timeline/`),
   ANALYSIS_IMPORT: buildApiUrl("/catalog/analysis/import-catalog/"),
+  /** Baja el catálogo (análisis + determinaciones + UB por nomenclador) en
+   *  el mismo Excel que come el importador. */
+  ANALYSIS_EXPORT: buildApiUrl("/catalog/analysis/export-catalog/"),
   DETERMINATIONS: buildApiUrl("/catalog/determination/"),
   /** Grupos de determinaciones cuya suma tiene que cerrar. */
   SUBMODULOS_CORROBORACION: buildApiUrl("/catalog/submodulo-corroboracion/"),
@@ -169,6 +174,13 @@ export const PROTOCOL_ENDPOINTS = {
   PROTOCOL_DETAIL_UPDATE: (protocolId: number, detailId: number) =>
     buildApiUrl(`/protocols/protocols/${protocolId}/details/${detailId}/`),
   SEND_METHODS: buildApiUrl("/protocols/send-methods/"),
+  /**
+   * Con qué médico y qué obra social vino este paciente la última vez.
+   * Devuelve `{doctor, insurance}` (ids o null). Sirve para ORDENAR el combo,
+   * no para elegir por nadie.
+   */
+  LO_DE_LA_ULTIMA_VEZ: (patientId: number) =>
+    buildApiUrl(`/protocols/protocols/lo-de-la-ultima-vez/?patient=${patientId}`),
   REPORT_BATCH: buildApiUrl("/protocols/protocols/report-batch/"),
   REGULARIZE_BALANCE: (id: number) => buildApiUrl(`/protocols/protocols/${id}/regularize-balance/`),
   UNCANCEL: (id: number) => buildApiUrl(`/protocols/protocols/${id}/uncancel/`),

@@ -49,19 +49,55 @@ export type FormulaCalculation = {
   missingCodes: string[]
 }
 
-const toFormulaNumber = (value?: string): number | null => {
+/** El número que hay adentro de lo que se escribió, tal cual se escribió. */
+const extraerNumero = (value?: string): string | null => {
   if (value === undefined || value === null) return null
   const normalized = String(value).trim().replace(",", ".")
   if (!normalized) return null
   const match = normalized.match(/-?\d+(?:\.\d+)?/)
-  if (!match) return null
-  const parsed = Number(match[0])
+  return match ? match[0] : null
+}
+
+const toFormulaNumber = (value?: string): number | null => {
+  const crudo = extraerNumero(value)
+  if (crudo === null) return null
+  const parsed = Number(crudo)
   return Number.isFinite(parsed) ? parsed : null
 }
 
-const formatFormulaNumber = (value: number): string => {
+const decimalesDe = (crudo: string): number => {
+  const punto = crudo.indexOf(".")
+  return punto === -1 ? 0 : crudo.length - punto - 1
+}
+
+/**
+ * LOS DECIMALES LOS PONEN LOS COMPONENTES, NO LA FÓRMULA
+ * ======================================================
+ * Antes toda fórmula salía con cuatro decimales fijos. Un índice calculado
+ * sobre dos valores de dos decimales terminaba informado como `0.8571`, que
+ * dice más precisión de la que se midió: los dos últimos dígitos los inventó la
+ * división.
+ *
+ * Ahora se toma el componente con más decimales de los que entraron en la
+ * cuenta —tres y dos dan tres— con un piso de dos, que es lo que se acostumbra
+ * leer en el informe cuando los componentes son enteros. El techo está para que
+ * un valor cargado con diez decimales no arrastre a la fórmula.
+ */
+const DECIMALES_MINIMOS = 2
+const DECIMALES_MAXIMOS = 6
+
+/** `"1.10"` -> `"1.1"`, `"3.00"` -> `"3"`. Un cero al final no es un dato. */
+const recortarCerosDeLaDerecha = (texto: string): string => {
+  if (!texto.includes(".")) return texto
+  const recortado = texto.replace(/0+$/, "").replace(/\.$/, "")
+  return recortado === "-0" ? "0" : recortado
+}
+
+const formatFormulaNumber = (value: number, decimalesDeLosComponentes: number[]): string => {
   if (!Number.isFinite(value)) return ""
-  return value.toFixed(4)
+  const pedidos = decimalesDeLosComponentes.length ? Math.max(...decimalesDeLosComponentes) : 0
+  const decimales = Math.min(Math.max(pedidos, DECIMALES_MINIMOS), DECIMALES_MAXIMOS)
+  return recortarCerosDeLaDerecha(value.toFixed(decimales))
 }
 
 const normalizeExpression = (formula: string): string => {
@@ -165,19 +201,24 @@ export const calculateFormulaValue = (
   })
 
   const missingCodes: string[] = []
+  const decimalesDeLosComponentes: number[] = []
   const codesByNumber = buildCodesByNumber(allResults, result.analysis.code)
   let expression = normalizeExpression(formula)
 
   expression = expression.replace(/\[([^\]]+)\]/g, (_match, rawCode: string) => {
     const code = resolveRelativeCode(rawCode.trim(), result.analysis.code, codesByNumber)
     const dependencyId = resultIdByCode.get(code)
-    const dependencyValue = dependencyId ? toFormulaNumber(values[dependencyId]?.value) : null
+    const crudo = dependencyId ? extraerNumero(values[dependencyId]?.value) : null
+    const dependencyValue = crudo === null ? null : toFormulaNumber(crudo)
 
-    if (dependencyValue === null) {
+    if (crudo === null || dependencyValue === null) {
       missingCodes.push(code)
       return "NaN"
     }
 
+    // Los decimales salen del texto que se cargó y no del número parseado:
+    // `Number("1.250")` ya perdió el tercero.
+    decimalesDeLosComponentes.push(decimalesDe(crudo))
     return String(dependencyValue)
   })
 
@@ -188,7 +229,7 @@ export const calculateFormulaValue = (
   const calculated = evaluateExpression(expression)
   if (calculated === null) return null
 
-  return { value: formatFormulaNumber(calculated), missingCodes: [] }
+  return { value: formatFormulaNumber(calculated, decimalesDeLosComponentes), missingCodes: [] }
 }
 
 export const applyFormulaCalculations = <T extends FormulaResult>(

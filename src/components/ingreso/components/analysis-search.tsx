@@ -33,6 +33,22 @@ interface PaginatedResponse<T> {
   results: T[]
 }
 
+/**
+ * EL DESPLEGABLE SE MIDE CONTRA LA PANTALLA, NO CONTRA SÍ MISMO
+ * ============================================================
+ * Un alto fijo funciona en el ingreso, que tiene toda la página abajo, y se
+ * desborda en el diálogo de agregar análisis a un protocolo: ahí el buscador
+ * cae cerca del medio de la pantalla y la lista se iba abajo del borde — los
+ * últimos resultados quedaban fuera de vista y sin forma de llegar.
+ *
+ * Así que el alto sale del espacio que hay debajo del campo en ese momento,
+ * acotado entre estos dos: menos que el mínimo no vale la pena mostrarlo, y
+ * más que el máximo tapa media pantalla sin necesidad.
+ */
+const ALTO_MINIMO_DEL_DESPLEGABLE = 176
+const ALTO_MAXIMO_DEL_DESPLEGABLE = 352
+const AIRE_CONTRA_EL_BORDE = 16
+
 export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisSearchProps) {
   // Un análisis con precio cargado pero la función deshabilitada se cobra
   // por UB: anunciarle el precio a quien lo elige sería mentirle.
@@ -49,6 +65,10 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
   const resultsRef = useRef<HTMLDivElement>(null)
+  // El campo, no el contenedor: el contenedor incluye al desplegable, así que
+  // medirlo a él haría que el alto dependiera del alto que acaba de fijarse.
+  const campoRef = useRef<HTMLDivElement>(null)
+  const [altoDelDesplegable, setAltoDelDesplegable] = useState(ALTO_MAXIMO_DEL_DESPLEGABLE)
 
   const loadMoreAnalyses = () => {
     if (nextUrl && !isLoadingMore) {
@@ -149,6 +169,29 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
       setIsLoadingMore(false)
     }
   }
+
+  useEffect(() => {
+    if (!showResults) return
+
+    const medir = () => {
+      const campo = campoRef.current?.getBoundingClientRect()
+      if (!campo) return
+      const espacioAbajo = window.innerHeight - campo.bottom - AIRE_CONTRA_EL_BORDE
+      setAltoDelDesplegable(
+        Math.max(ALTO_MINIMO_DEL_DESPLEGABLE, Math.min(ALTO_MAXIMO_DEL_DESPLEGABLE, espacioAbajo)),
+      )
+    }
+
+    medir()
+    window.addEventListener("resize", medir)
+    // `true` para agarrar también el scroll de un contenedor de adentro: el
+    // diálogo scrollea por su cuenta y el campo se mueve con él.
+    window.addEventListener("scroll", medir, true)
+    return () => {
+      window.removeEventListener("resize", medir)
+      window.removeEventListener("scroll", medir, true)
+    }
+  }, [showResults])
 
   useEffect(() => {
     setHighlightedIndex(0)
@@ -299,7 +342,7 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
 
   return (
     <div className="relative">
-      <div className="relative">
+      <div className="relative" ref={campoRef}>
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
         <Input
           placeholder="Buscar por nombre o código... (↑↓ para elegir, Enter agrega)"
@@ -308,7 +351,10 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
           onKeyDown={handleKeyDown}
           className="pl-10 border-gray-300 focus:border-[#204983] focus:ring-[#204983]"
           onFocus={() => searchTerm && setShowResults(true)}
-          onBlur={() => setTimeout(() => setShowResults(false), 200)}
+          // Cerrar al perder el foco, pero NO cuando el foco se va a la propia
+          // lista: eso lo frena el `onMouseDown` del desplegable, que impide el
+          // blur. Ver el comentario de ahí abajo.
+          onBlur={() => setShowResults(false)}
         />
         {isSearching && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -320,7 +366,21 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
       {showResults && orderedResults.length > 0 && (
         <div
           ref={resultsRef}
-          className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto"
+          // EL CLICK EN EL + NO TIENE QUE CERRAR LA LISTA ANTES DE LLEGAR
+          // ==============================================================
+          // Antes esto se resolvía con `onBlur` + `setTimeout(200)`: se cerraba
+          // la lista 200 ms después de perder el foco, esperando que el click
+          // llegara primero. Un click normal entra; uno en el que se aprieta y
+          // se suelta con calma —o el de un touchpad con la mano apoyada— tarda
+          // más que eso, y ahí el `+` se desmontaba entre el mousedown y el
+          // mouseup: el click no ocurría nunca y el botón parecía roto.
+          //
+          // `preventDefault` en el mousedown evita que el input pierda el foco,
+          // así no hay blur, no hay carrera y no hace falta adivinar cuánto
+          // tarda una persona en soltar el botón.
+          onMouseDown={(event) => event.preventDefault()}
+          style={{ maxHeight: altoDelDesplegable }}
+          className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-y-auto"
         >
           {orderedResults.map((analysis, index) => (
             <div
@@ -358,9 +418,11 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
                 )}
               </div>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleAddAnalysis(analysis)}
+                aria-label={`Agregar ${analysis.name}`}
                 className="shrink-0 border-[#204983] text-[#204983] hover:bg-[#204983] hover:text-white"
               >
                 <Plus className="h-4 w-4" />
@@ -382,7 +444,9 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
       )}
 
       {showResults && searchTerm && filteredResults.length === 0 && !isSearching && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+        <div
+          onMouseDown={(event) => event.preventDefault()}
+          className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
           <TestTube className="h-8 w-8 mx-auto mb-2 text-gray-300" />
           <p className="text-sm">No se encontraron análisis para "{searchTerm}"</p>
         </div>

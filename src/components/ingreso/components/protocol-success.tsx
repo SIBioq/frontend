@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { createPortal } from "react-dom"
 import { CheckIcon, X, User, FileText, Stethoscope, Building, Send, DollarSign, TestTube, ClipboardCheck, Undo2, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { menosMovimiento } from "@/lib/menos-movimiento"
 import { Button } from "../../ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../../ui/card"
 import { Badge } from "../../ui/badge"
@@ -22,10 +23,45 @@ interface ProtocolSuccessProps {
   /** Deshace (rollback) el protocolo recién creado y devuelve los datos al form. */
   onRollback?: () => void
   isRollingBack?: boolean
+  /**
+   * Desde dónde crece el verde, en coordenadas de la ventana.
+   *
+   * Es el centro del botón «Crear Protocolo», que un instante antes terminó de
+   * llenarse y se puso verde. El verde de acá es la continuación de ESE verde:
+   * si creciera desde el medio de la pantalla se leería como otra cosa que
+   * aparece encima, y no como el botón que se sigue expandiendo.
+   *
+   * Sin origen crece desde el centro, que es como salía antes.
+   */
+  origen?: { x: number; y: number } | null
 }
 
-export function ProtocolSuccess({ protocol, patient, doctor, insurance, sendMethod, onClose, onRollback, isRollingBack }: ProtocolSuccessProps) {
-  const [animationPhase, setAnimationPhase] = useState<"initial" | "expand" | "moveUp" | "showSummary">("initial")
+export function ProtocolSuccess({ protocol, patient, doctor, insurance, sendMethod, onClose, onRollback, isRollingBack, origen }: ProtocolSuccessProps) {
+  const sinMovimiento = useMemo(() => menosMovimiento(), [])
+  const [animationPhase, setAnimationPhase] = useState<"initial" | "expand" | "moveUp" | "showSummary">(
+    sinMovimiento ? "showSummary" : "initial",
+  )
+
+  /**
+   * El círculo verde y desde dónde se abre.
+   *
+   * El diámetro es dos veces la distancia del origen a la esquina más lejana:
+   * es lo mínimo que garantiza que, apretando el botón donde sea, el verde
+   * termine tapando la pantalla entera. Un valor fijo dejaría una esquina sin
+   * pintar en las pantallas anchas del laboratorio.
+   */
+  const revelado = useMemo(() => {
+    const ancho = typeof window === "undefined" ? 0 : window.innerWidth
+    const alto = typeof window === "undefined" ? 0 : window.innerHeight
+    const centro = origen ?? { x: ancho / 2, y: alto / 2 }
+    const esquinas = [
+      Math.hypot(centro.x, centro.y),
+      Math.hypot(ancho - centro.x, centro.y),
+      Math.hypot(centro.x, alto - centro.y),
+      Math.hypot(ancho - centro.x, alto - centro.y),
+    ]
+    return { centro, diametro: Math.max(...esquinas) * 2 }
+  }, [origen])
   const trajoOrdenInfo = getTrajoOrdenInfo(protocol.trajo_orden)
 
   const toNumber = (...values: Array<string | number | undefined | null>) => {
@@ -64,9 +100,10 @@ export function ProtocolSuccess({ protocol, patient, doctor, insurance, sendMeth
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = "hidden"
 
-    const timer1 = setTimeout(() => setAnimationPhase("expand"), 80)
-    const timer2 = setTimeout(() => setAnimationPhase("moveUp"), 600)
-    const timer3 = setTimeout(() => setAnimationPhase("showSummary"), 850)
+    // Con menos movimiento el resumen ya arrancó puesto: no hay nada que animar.
+    const timer1 = sinMovimiento ? undefined : setTimeout(() => setAnimationPhase("expand"), 30)
+    const timer2 = sinMovimiento ? undefined : setTimeout(() => setAnimationPhase("moveUp"), 560)
+    const timer3 = sinMovimiento ? undefined : setTimeout(() => setAnimationPhase("showSummary"), 780)
     // Si se puede deshacer, NO autocerramos: el usuario tiene que tener tiempo
     // de decidir si deshace el protocolo. Sin rollback, se mantiene el cierre
     // automático de siempre.
@@ -75,24 +112,33 @@ export function ProtocolSuccess({ protocol, patient, doctor, insurance, sendMeth
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
       document.body.style.overflow = prevOverflow
-      clearTimeout(timer1)
-      clearTimeout(timer2)
-      clearTimeout(timer3)
+      if (timer1) clearTimeout(timer1)
+      if (timer2) clearTimeout(timer2)
+      if (timer3) clearTimeout(timer3)
       if (closeTimer) clearTimeout(closeTimer)
     }
-  }, [onClose, handleKeyDown, onRollback])
+  }, [onClose, handleKeyDown, onRollback, sinMovimiento])
 
   const overlay = (
     <div className="fixed inset-0 z-[100] overflow-hidden">
-      {/* Fondo verde con reveal circular */}
+      {/* El verde sale del botón y se come la pantalla.
+          Se anima `transform` y no `width`/`height`: escalar lo resuelve la
+          GPU, redimensionar obliga a recalcular layout en cada cuadro y la
+          animación se entrecorta justo en las máquinas del mostrador. */}
       <div
         className={cn(
-          "absolute inset-0 bg-green-500 transition-all duration-700 ease-out",
-          animationPhase === "initial" && "scale-0 rounded-full",
-          animationPhase === "expand" && "scale-150",
-          (animationPhase === "moveUp" || animationPhase === "showSummary") && "scale-100",
+          "absolute rounded-full bg-green-500",
+          !sinMovimiento && "transition-transform duration-700 ease-out",
         )}
-        style={{ transformOrigin: "center center" }}
+        style={{
+          left: revelado.centro.x,
+          top: revelado.centro.y,
+          width: revelado.diametro,
+          height: revelado.diametro,
+          marginLeft: -revelado.diametro / 2,
+          marginTop: -revelado.diametro / 2,
+          transform: animationPhase === "initial" ? "scale(0)" : "scale(1)",
+        }}
       />
 
       {/* Botón cerrar */}

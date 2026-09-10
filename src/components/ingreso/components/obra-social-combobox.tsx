@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Check, ChevronsUpDown, Plus, Building } from "lucide-react"
 import { Button } from "../../ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../ui/command"
@@ -17,6 +17,15 @@ interface ObraSocialComboboxProps {
   selectedObraSocial: Insurance | null
   onObraSocialSelect: (obraSocial: Insurance | null) => void
   onShowCreateObraSocial: () => void
+  /**
+   * La obra social con la que este paciente vino la última vez: va primera.
+   *
+   * NO queda elegida. Un paciente se cambia de trabajo, pierde la cobertura o
+   * entra a otra, y el que la elige por él es el que después factura contra la
+   * obra social equivocada. Primera en la lista ahorra el scroll; elegida sola
+   * esconde una decisión que se toma mirando el carnet.
+   */
+  idDeLaUltimaVez?: number | null
 }
 
 interface PaginatedResponse<T> {
@@ -29,6 +38,7 @@ export function ObraSocialCombobox({
   selectedObraSocial,
   onObraSocialSelect,
   onShowCreateObraSocial,
+  idDeLaUltimaVez = null,
 }: ObraSocialComboboxProps) {
   const { apiRequest } = useApi()
   const [open, setOpen] = useState(false)
@@ -38,6 +48,13 @@ export function ObraSocialCombobox({
   const [hasMore, setHasMore] = useState(true)
   const [offset, setOffset] = useState(20)
   const { nbus } = useNbuOptions()
+
+  const obrasSocialesOrdenadas = useMemo(() => {
+    if (!idDeLaUltimaVez) return allObrasSociales
+    const primera = allObrasSociales.find((o) => o.id === idDeLaUltimaVez)
+    if (!primera) return allObrasSociales
+    return [primera, ...allObrasSociales.filter((o) => o.id !== idDeLaUltimaVez)]
+  }, [allObrasSociales, idDeLaUltimaVez])
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
@@ -126,7 +143,7 @@ export function ObraSocialCombobox({
               </div>
             </CommandEmpty>
             <CommandGroup>
-              {allObrasSociales.map((obraSocial, index) => {
+              {obrasSocialesOrdenadas.map((obraSocial, index) => {
                 const flags: string[] = []
                 if (obraSocial.charges_coseguro) flags.push("Coseguro")
                 if (obraSocial.charges_material_descartable) flags.push("Mat. desc.")
@@ -143,7 +160,7 @@ export function ObraSocialCombobox({
                       setOpen(false)
                     }}
                     ref={
-                      index === allObrasSociales.length - 5
+                      index === obrasSocialesOrdenadas.length - 5
                         ? (el: HTMLDivElement | null) => {
                             if (el) loadMoreObrasSociales()
                           }
@@ -161,6 +178,14 @@ export function ObraSocialCombobox({
                       <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium truncate">{obraSocial.name}</span>
+                          {obraSocial.id === idDeLaUltimaVez && (
+                            // El cartel dice POR QUÉ está arriba. Sin él el
+                            // orden parece arbitrario y quien atiende busca el
+                            // nombre a mano igual.
+                            <span className="rounded-full bg-[#204983]/10 px-2 py-0.5 text-[10px] font-medium text-[#204983]">
+                              La última vez
+                            </span>
+                          )}
                           {nbuName && (
                             <span className="text-[10px] font-mono text-[#204983] bg-[#204983]/10 rounded px-1.5 py-0.5">
                               {nbuName}
