@@ -168,9 +168,32 @@ function DateInput({
   )
 }
 
-function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+function Input({ className, type, onWheel, ...props }: React.ComponentProps<"input">) {
   if (type === "date") {
     return <DateInput className={className} {...props} />
+  }
+
+  /**
+   * LA RUEDA DEL MOUSE NO CAMBIA NÚMEROS
+   * ====================================
+   * Un `<input type="number">` con el foco puesto sube y baja su valor cuando
+   * se scrollea encima. Es comportamiento del navegador y nadie lo pide: se
+   * carga un monto, se scrollea para seguir llenando el formulario, el cursor
+   * pasa por arriba del campo que quedó enfocado y el número cambia solo. No
+   * hay aviso, no hay marca, y el que lo encuentra es el que factura.
+   *
+   * En un laboratorio eso son montos, coseguros y valores de UB. El error de
+   * carga que esto evita no se distingue de un dato bien cargado.
+   *
+   * Se resuelve sacándole el foco: sin foco, la rueda no le hace nada y la
+   * página scrollea normal. La otra salida —cancelar el evento— también frena
+   * el scroll de la página mientras el cursor esté encima, que es peor.
+   */
+  const alScrollear = (event: React.WheelEvent<HTMLInputElement>) => {
+    if (type === "number" && document.activeElement === event.currentTarget) {
+      event.currentTarget.blur()
+    }
+    onWheel?.(event)
   }
 
   return (
@@ -179,6 +202,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       data-slot="input"
       className={cn(inputBaseClassName, className)}
       {...props}
+      onWheel={alScrollear}
     />
   )
 }
