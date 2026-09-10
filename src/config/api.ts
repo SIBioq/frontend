@@ -110,6 +110,8 @@ export const MEDICAL_ENDPOINTS = {
   INSURANCE_DETAIL: (id: number) => buildApiUrl(`/medicale/insurances/${id}/`),
   INSURANCE_AUDIT_TIMELINE: (id: number) => buildApiUrl(`/medicale/insurances/${id}/audit-timeline/`),
   INSURANCES_IMPORT: buildApiUrl("/medicale/insurances/importar-planilla/"),
+  /** Baja las obras sociales en la MISMA planilla que come el importador. */
+  INSURANCES_EXPORT: buildApiUrl("/medicale/insurances/exportar-planilla/"),
 } as const
 
 export const CATALOG_ENDPOINTS = {
@@ -119,6 +121,9 @@ export const CATALOG_ENDPOINTS = {
   ANALYSIS_DETAIL: (id: number) => buildApiUrl(`/catalog/analysis/${id}/`),
   ANALYSIS_AUDIT_TIMELINE: (id: number) => buildApiUrl(`/catalog/analysis/${id}/audit-timeline/`),
   ANALYSIS_IMPORT: buildApiUrl("/catalog/analysis/import-catalog/"),
+  /** Baja el catálogo (análisis + determinaciones + UB por nomenclador) en
+   *  el mismo Excel que come el importador. */
+  ANALYSIS_EXPORT: buildApiUrl("/catalog/analysis/export-catalog/"),
   DETERMINATIONS: buildApiUrl("/catalog/determination/"),
   /** Grupos de determinaciones cuya suma tiene que cerrar. */
   SUBMODULOS_CORROBORACION: buildApiUrl("/catalog/submodulo-corroboracion/"),

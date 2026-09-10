@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { DataTable, type Column } from "@/components/common/data-table"
 import { AuditAvatars } from "@/components/common/audit-avatars"
-import { Loader2, Search, Plus, DollarSign, Upload } from "lucide-react"
+import { Loader2, Search, Plus, DollarSign, Upload, FileSpreadsheet } from "lucide-react"
 import { getNbuDisplayName } from "@/hooks/use-nbu-options"
 import type { ObraSocial } from "@/types"
 import { CreateObraSocialDialog } from "./components/create-obra-social-dialog"
@@ -24,6 +24,7 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useNbuOptions } from "@/hooks/use-nbu-options"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
+import { conLaFechaDeHoy, descargarRespuesta } from "@/lib/descargar-archivo"
 
 const PAGE_LIMIT = 20
 
@@ -43,6 +44,7 @@ export function ObrasSocialesManagement() {
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyObraSocial, setHistoryObraSocial] = useState<ObraSocial | null>(null)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const { nbus } = useNbuOptions()
 
   const buildUrl = useCallback(
@@ -208,6 +210,38 @@ export function ObrasSocialesManagement() {
     }
   }
 
+  /**
+   * Baja las obras sociales en la MISMA planilla que lee «Importar planilla».
+   *
+   * Las dos filas que el sistema guarda por obra social —la común y la de
+   * internación— vuelven a ser una sola con sus columnas pareadas, así el
+   * archivo se sube de vuelta sin editar nada. Es lo que hace que sirva para
+   * sacar una copia y para llevar la configuración a otra base.
+   */
+  const exportarPlanilla = async () => {
+    setIsExporting(true)
+    try {
+      const response = await apiRequest(MEDICAL_ENDPOINTS.INSURANCES_EXPORT, { timeout: 120000 })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        error("Error", {
+          description: formatApiError(errorData, "No se pudo exportar la planilla."),
+        })
+        return
+      }
+
+      await descargarRespuesta(response, conLaFechaDeHoy("obras_sociales"))
+      success("Listo", { description: "Las obras sociales se descargaron en Excel." })
+    } catch (errorCatch) {
+      error("Error", {
+        description: getErrorMessage(errorCatch, "No se pudo exportar la planilla."),
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
@@ -216,6 +250,19 @@ export function ObrasSocialesManagement() {
           <p className="text-sm text-gray-500">Gestiona las obras sociales del sistema</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={exportarPlanilla}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+            )}
+            Exportar planilla
+          </Button>
           <Button variant="outline" className="w-full sm:w-auto" onClick={() => setIsImportModalOpen(true)}>
             <Upload className="mr-2 h-4 w-4" />
             Importar planilla

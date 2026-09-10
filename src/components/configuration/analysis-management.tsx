@@ -18,6 +18,7 @@ import {
   TestTube,
   Plus,
   Download,
+  FileSpreadsheet,
   Pencil,
 } from "lucide-react"
 import { AnalysisDetailDialog } from "./components/analysis-detail-dialog"
@@ -28,6 +29,7 @@ import { ImportDataDialog } from "./components/import-data-dialog"
 import { AnalysisHistoryDialog } from "./components/analysis-history-dialog"
 import type { Analysis } from "@/types"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
+import { conLaFechaDeHoy, descargarRespuesta } from "@/lib/descargar-archivo"
 
 export function AnalysisManagement() {
   const { apiRequest } = useApi()
@@ -68,6 +70,7 @@ export function AnalysisManagement() {
   const [isEditAnalysisModalOpen, setIsEditAnalysisModalOpen] = useState(false)
   const [isDeleteAnalysisModalOpen, setIsDeleteAnalysisModalOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
   const [selectedAnalysisForHistory, setSelectedAnalysisForHistory] = useState<Analysis | null>(null)
   const [selectedAnalysis, setSelectedAnalysis] = useState<Analysis | null>(null)
@@ -185,6 +188,41 @@ export function AnalysisManagement() {
     setRefreshKey((prev) => prev + 1)
     fetchAnalyses(searchTerm, true, true)
     toastActions.success("Éxito", { description: "Análisis creado correctamente." })
+  }
+
+  /**
+   * Baja el catálogo entero en el mismo Excel que come el botón de importar.
+   *
+   * Son las dos hojas —análisis y determinaciones— con una columna de UB por
+   * nomenclador. Lo que sale de acá se vuelve a subir por «Importar Datos» sin
+   * editar nada: es el camino para sacar una copia, para trabajar el catálogo
+   * afuera y para llevarlo a otra base.
+   *
+   * El catálogo son ~1400 análisis: se le da aire al timeout, que por defecto
+   * está pensado para un JSON y no para armar un Excel.
+   */
+  const exportarCatalogo = async () => {
+    setIsExporting(true)
+    try {
+      const response = await apiRequest(CATALOG_ENDPOINTS.ANALYSIS_EXPORT, { timeout: 120000 })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        toastActions.error("Error", {
+          description: formatApiError(errorData, "No se pudo exportar el catálogo."),
+        })
+        return
+      }
+
+      await descargarRespuesta(response, conLaFechaDeHoy("catalogo_analisis"))
+      toastActions.success("Listo", { description: "El catálogo se descargó en Excel." })
+    } catch (err) {
+      toastActions.error("Error", {
+        description: getErrorMessage(err, "No se pudo exportar el catálogo."),
+      })
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleImportDataSuccess = () => {
@@ -310,6 +348,19 @@ export function AnalysisManagement() {
           </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            className="border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white bg-transparent w-full sm:w-auto"
+            onClick={exportarCatalogo}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+            )}
+            Exportar a Excel
+          </Button>
           <Button
             variant="outline"
             className="border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white bg-transparent w-full sm:w-auto"
