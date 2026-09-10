@@ -348,12 +348,23 @@ export function ProtocolForm({
   const removeUnplanned = (index: number) =>
     onUnplannedTransactionsChange(unplannedTransactions.filter((_, i) => i !== index))
 
-  // "Total" completa el efectivo con lo que falta para cubrir la cuenta. Es lo
-  // que pasa en el mostrador: el resto se paga en mano.
-  const handleFillTotal = () => {
-    const falta = Math.max(0, totals.patientOwes - porTransferencia)
-    onPagoEfectivoChange(falta.toFixed(2))
-  }
+  /**
+   * «Total» completa ESA forma con lo que falta para cubrir la cuenta.
+   *
+   * Cada una descuenta lo que ya está cargado en la otra, así que sirven en
+   * cualquier orden y también para el pago partido: se escribe lo que dejó en
+   * efectivo, se aprieta Total en transferencia y queda el resto.
+   *
+   * Los dos botones existen porque las dos formas se usan solas. Con el botón
+   * en efectivo nada más, el que transfería todo tenía que leer el total de la
+   * pantalla y volver a tipearlo abajo — y un número tipeado a mano contra un
+   * extracto es exactamente el que después no cierra.
+   */
+  const completarConEfectivo = () =>
+    onPagoEfectivoChange(Math.max(0, totals.patientOwes - porTransferencia).toFixed(2))
+
+  const completarConTransferencia = () =>
+    onPagoTransferenciaChange(Math.max(0, totals.patientOwes - enEfectivo).toFixed(2))
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -824,7 +835,7 @@ export function ProtocolForm({
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={handleFillTotal}
+                        onClick={completarConEfectivo}
                         className="h-10 px-3 whitespace-nowrap bg-transparent"
                         title="Completar en efectivo lo que falta"
                       >
@@ -838,16 +849,28 @@ export function ProtocolForm({
                       <Landmark className="h-3.5 w-3.5 text-sky-600" />
                       Transferencia
                     </Label>
-                    <Input
-                      id="pagoTransferencia"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="0.00"
-                      value={pagoTransferencia}
-                      onChange={(e) => onPagoTransferenciaChange(e.target.value)}
-                      className="h-10"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="pagoTransferencia"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="0.00"
+                        value={pagoTransferencia}
+                        onChange={(e) => onPagoTransferenciaChange(e.target.value)}
+                        className="h-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={completarConTransferencia}
+                        className="h-10 px-3 whitespace-nowrap bg-transparent"
+                        title="Completar por transferencia lo que falta"
+                      >
+                        Total
+                      </Button>
+                    </div>
 
                     {/* La cuenta aparece recién cuando hay algo transferido:
                         antes es una pregunta sobre plata que no entró. */}
