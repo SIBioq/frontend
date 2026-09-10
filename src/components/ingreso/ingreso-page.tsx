@@ -24,6 +24,8 @@ import {
   ACTO_BIOQUIMICO_INTERNACION, esActoDeIngreso, mismoCodigo,
 } from "@/lib/codigos-analisis"
 import { useEndpointProgress } from "@/hooks/use-endpoint-progress"
+import { menosMovimiento } from "@/lib/menos-movimiento"
+import { cn } from "@/lib/utils"
 import { useProtocolQuote } from "@/hooks/use-protocol-quote"
 import type {
   Analysis,
@@ -41,6 +43,27 @@ import type {
   UnplannedTransactionInput,
   QuoteDetail,
 } from "../../types"
+
+/**
+ * Cuánto se queda el botón lleno y verde antes de que arranque el resumen.
+ *
+ * Es el respiro que hace que se lea «terminó» y no «se colgó y apareció otra
+ * pantalla». Más corto no se registra; más largo se siente como una demora.
+ */
+const MS_DEL_BOTON_LLENO = 420
+
+/**
+ * Cuánto tarda el verde en taparlo todo (lo que dura la transición del reveal
+ * en `protocol-success`). Hasta que termine, el formulario NO se limpia.
+ *
+ * Si se limpiara antes, el botón verde —que es de donde sale el círculo— se
+ * desmontaría en el mismo cuadro en que el círculo todavía mide cero: se ve el
+ * formulario pelado un instante y después un punto verde creciendo de la nada.
+ * Justo el corte que la animación viene a sacar.
+ */
+const MS_DEL_REVELADO = 750
+
+const esperar = (ms: number) => new Promise<void>((listo) => setTimeout(listo, ms))
 
 // Todo lo que hace falta para reconstruir el formulario si el usuario deshace
 // un protocolo recién creado (botón "Deshacer" de la pantalla de éxito).
@@ -122,6 +145,33 @@ export default function IngresoPage() {
   } | null>(null)
   const [isRollingBack, setIsRollingBack] = useState(false)
   const createProgress = useEndpointProgress()
+
+  /**
+   * EL BOTÓN ES LA BARRA DE PROGRESO, Y AL LLENARSE SE VUELVE LA PANTALLA
+   * ====================================================================
+   * `idle` → azul, con su texto.
+   * `creando` → la barra se llena adentro del botón.
+   * `completo` → llena del todo, verde y sin texto. Se queda así un momento
+   *   —`MS_DEL_BOTON_LLENO`— antes de montar el resumen, que abre su verde
+   *   desde el centro de este mismo botón. Sin esa pausa el botón pasa de
+   *   celeste a tapado por el overlay en el mismo cuadro y no se llega a ver
+   *   que terminó: la animación cuenta que el protocolo se creó, así que el
+   *   final tiene que verse.
+   *
+   * Es estado propio y no `createProgress.isRunning` porque el hook se
+   * reinicia solo a los 350 ms; el botón tiene que quedarse verde hasta que el
+   * overlay lo tape.
+   */
+  const [faseDeCreacion, setFaseDeCreacion] = useState<"idle" | "creando" | "completo">("idle")
+  const botonDeCrear = useRef<HTMLButtonElement>(null)
+  /**
+   * El formulario se limpia con retraso (ver `MS_DEL_REVELADO`) y deshacer
+   * vuelve a llenarlo. Si alguien deshace antes de que corra esa limpieza, la
+   * limpieza le borraría lo que deshacer acaba de devolver — y ahí no hay nada
+   * que apretar para recuperarlo. La bandera la cancela.
+   */
+  const seDeshizoElProtocolo = useRef(false)
+  const [origenDelVerde, setOrigenDelVerde] = useState<{ x: number; y: number } | null>(null)
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -449,6 +499,7 @@ export default function IngresoPage() {
         return
       }
 
+      seDeshizoElProtocolo.current = true
       const s = successData.formSnapshot
       // La lista vuelve tal como estaba, con o sin ABI: si el usuario lo había
       // sacado, que el efecto del anónimo no se lo devuelva.
@@ -617,6 +668,8 @@ export default function IngresoPage() {
 
     try {
       createProgress.start()
+      setFaseDeCreacion("creando")
+      seDeshizoElProtocolo.current = false
       const enEfectivo = Number.parseFloat(pagoEfectivo) || 0
       const porTransferencia = Number.parseFloat(pagoTransferencia) || 0
       const totalValuePaid = enEfectivo + porTransferencia
@@ -703,6 +756,7 @@ export default function IngresoPage() {
         console.error("Protocol creation error:", errorData)
         toast.error("Error al crear el protocolo", { description: extractErrorMessage(errorData) })
         createProgress.finish()
+        setFaseDeCreacion("idle")
         return
       }
 
@@ -729,7 +783,16 @@ export default function IngresoPage() {
         }
       }
 
+      // La barra llega al final y el botón se pone verde. Se guarda dónde está
+      // ANTES de resetear el formulario: `handleReset` lo desmonta (deja de
+      // haber paciente) y después ya no hay rectángulo del que salir.
       createProgress.finish()
+      setFaseDeCreacion("completo")
+      const rect = botonDeCrear.current?.getBoundingClientRect()
+      setOrigenDelVerde(rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null)
+
+      await esperar(menosMovimiento() ? 0 : MS_DEL_BOTON_LLENO)
+
       setSuccessData({
         protocol: newProtocol,
         patient: patientForSuccess,
@@ -757,11 +820,15 @@ export default function IngresoPage() {
         },
       })
       toast.success("Protocolo creado exitosamente")
-      handleReset()
+
+      await esperar(menosMovimiento() ? 0 : MS_DEL_REVELADO)
+      setFaseDeCreacion("idle")
+      if (!seDeshizoElProtocolo.current) handleReset()
     } catch (error) {
       console.error("Error creating protocol:", error)
       toast.error("Error al crear el protocolo", { description: getErrorMessage(error, "No se pudo completar la operación.") })
       createProgress.finish()
+      setFaseDeCreacion("idle")
     }
   }
 
@@ -932,28 +999,59 @@ export default function IngresoPage() {
               `}
             >
               <Button
+                ref={botonDeCrear}
                 onClick={handleCreateProtocol}
-                disabled={!currentPatient || createProgress.isRunning}
-                className={`
-                  w-full h-12 sm:h-14 lg:h-16 text-white text-base sm:text-lg font-semibold 
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  relative overflow-hidden transition-all duration-300
-                  ${
-                    createProgress.isRunning
-                      ? "bg-gray-300 hover:bg-gray-300"
-                      : "bg-[#204983] hover:bg-[#2d5a9b]"
-                  }
-                `}
+                disabled={!currentPatient || faseDeCreacion !== "idle"}
+                aria-busy={faseDeCreacion === "creando"}
+                className={cn(
+                  "w-full h-12 sm:h-14 lg:h-16 text-white text-base sm:text-lg font-semibold",
+                  // Mientras crea el botón queda deshabilitado, pero NO apagado:
+                  // es la barra de progreso, y una barra al 50% de opacidad no
+                  // se lee. Deshabilitado acá sólo puede querer decir "está en
+                  // curso" — sin paciente este bloque ni se renderiza.
+                  "disabled:opacity-100 disabled:cursor-default",
+                  "relative overflow-hidden transition-colors duration-300",
+                  faseDeCreacion === "completo"
+                    ? "bg-green-500 hover:bg-green-500"
+                    : faseDeCreacion === "creando"
+                      // Azul aclarado y no gris: el texto del botón es blanco y
+                      // viaja por encima de la parte llena Y de la vacía, así
+                      // que las dos tienen que contrastar contra blanco. Sobre
+                      // el gris que había antes, "Creando protocolo..." casi no
+                      // se leía.
+                      ? "bg-[#3d6296] hover:bg-[#3d6296]"
+                      : "bg-[#204983] hover:bg-[#2d5a9b]",
+                )}
               >
+                {/* Lo que se llena. Al terminar se pone verde y queda al 100%:
+                    de ahí sale el verde que después ocupa toda la pantalla. */}
                 <div
-                  className="absolute inset-y-0 left-0 bg-[#204983] transition-[width] duration-150"
-                  style={{ width: `${createProgress.progress}%` }}
+                  className={cn(
+                    "absolute inset-y-0 left-0 ease-out",
+                    // Mientras avanza, la transición tiene que ser MÁS CORTA que
+                    // el cuadro que la mueve: el ancho lo reescribe un
+                    // `requestAnimationFrame` cada ~16 ms, y una transición
+                    // larga sobre eso deja la barra corriendo atrás del valor
+                    // real. Al llenarse ya no hay quien la mueva, así que ahí sí
+                    // conviene larga: es el salto al 100 y el pase a verde.
+                    faseDeCreacion === "completo"
+                      ? "bg-green-500 transition-[width,background-color] duration-300"
+                      : "bg-[#204983] transition-[width] duration-150",
+                  )}
+                  style={{ width: `${faseDeCreacion === "completo" ? 100 : createProgress.progress}%` }}
                 />
 
-                <div className="relative z-10 flex items-center justify-center">
+                {/* El texto se va cuando el botón se llena: el verde solo dice
+                    lo mismo y sin ruido. */}
+                <div
+                  className={cn(
+                    "relative z-10 flex items-center justify-center transition-opacity duration-200",
+                    faseDeCreacion === "completo" ? "opacity-0" : "opacity-100",
+                  )}
+                >
                   <FileText className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                   <span className="text-sm sm:text-base lg:text-lg">
-                    {createProgress.isRunning ? "Creando protocolo..." : isFormValid ? "Crear Protocolo" : "Revisar y crear protocolo"}
+                    {faseDeCreacion === "creando" ? "Creando protocolo..." : isFormValid ? "Crear Protocolo" : "Revisar y crear protocolo"}
                   </span>
                 </div>
               </Button>
@@ -996,6 +1094,7 @@ export default function IngresoPage() {
             onClose={() => setSuccessData(null)}
             onRollback={handleRollbackAndEdit}
             isRollingBack={isRollingBack}
+            origen={origenDelVerde}
           />
         )}
       </div>
