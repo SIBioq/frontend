@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Check, ChevronsUpDown, Plus, User } from "lucide-react"
 import { Button } from "../../ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../ui/command"
@@ -16,6 +16,14 @@ interface MedicoComboboxProps {
   selectedMedico: Medico | null
   onMedicoSelect: (medico: Medico | null) => void
   onShowCreateMedico: () => void
+  /**
+   * El médico con el que este paciente vino la última vez: va primero.
+   *
+   * Sube en la lista y lleva un cartel que dice de dónde salió. NO queda
+   * elegido: el paciente puede venir con otro médico, y elegir por él esconde
+   * una decisión que alguien tiene que tomar mirando la orden.
+   */
+  idDeLaUltimaVez?: number | null
 }
 
 interface PaginatedResponse<T> {
@@ -30,6 +38,7 @@ export function MedicoCombobox({
   selectedMedico,
   onMedicoSelect,
   onShowCreateMedico,
+  idDeLaUltimaVez = null,
 }: MedicoComboboxProps) {
   const { apiRequest } = useApi()
   const [open, setOpen] = useState(false)
@@ -95,6 +104,13 @@ export function MedicoCombobox({
     }
   }
 
+  const medicosOrdenados = useMemo(() => {
+    if (!idDeLaUltimaVez) return allMedicos
+    const primero = allMedicos.find((m) => m.id === idDeLaUltimaVez)
+    if (!primero) return allMedicos
+    return [primero, ...allMedicos.filter((m) => m.id !== idDeLaUltimaVez)]
+  }, [allMedicos, idDeLaUltimaVez])
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -125,7 +141,7 @@ export function MedicoCombobox({
               </div>
             </CommandEmpty>
             <CommandGroup>
-              {allMedicos.map((medico, index) => (
+              {medicosOrdenados.map((medico, index) => (
                 <CommandItem
                   key={medico.id}
                   value={`${medico.first_name} ${medico.last_name}`}
@@ -134,7 +150,7 @@ export function MedicoCombobox({
                     setOpen(false)
                   }}
                   ref={
-                    index === allMedicos.length - 5
+                    index === medicosOrdenados.length - 5
                       ? (el: HTMLDivElement | null) => {
                           if (el) loadMoreMedicos()
                         }
@@ -144,9 +160,17 @@ export function MedicoCombobox({
                   <Check
                     className={cn("mr-2 h-4 w-4", selectedMedico?.id === medico.id ? "opacity-100" : "opacity-0")}
                   />
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-[#204983]" />
-                    <span>{`${medico.first_name} ${medico.last_name}`}</span>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <User className="h-4 w-4 shrink-0 text-[#204983]" />
+                    <span className="min-w-0 truncate">{`${medico.first_name} ${medico.last_name}`}</span>
+                    {medico.id === idDeLaUltimaVez && (
+                      // El cartel dice POR QUÉ está arriba. Sin él, el orden
+                      // parece arbitrario y quien atiende igual busca el nombre
+                      // a mano — la lista quedaría reordenada para nada.
+                      <span className="ml-auto shrink-0 rounded-full bg-[#204983]/10 px-2 py-0.5 text-[10px] font-medium text-[#204983]">
+                        La última vez
+                      </span>
+                    )}
                   </div>
                 </CommandItem>
               ))}

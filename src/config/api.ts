@@ -174,6 +174,13 @@ export const PROTOCOL_ENDPOINTS = {
   PROTOCOL_DETAIL_UPDATE: (protocolId: number, detailId: number) =>
     buildApiUrl(`/protocols/protocols/${protocolId}/details/${detailId}/`),
   SEND_METHODS: buildApiUrl("/protocols/send-methods/"),
+  /**
+   * Con qué médico y qué obra social vino este paciente la última vez.
+   * Devuelve `{doctor, insurance}` (ids o null). Sirve para ORDENAR el combo,
+   * no para elegir por nadie.
+   */
+  LO_DE_LA_ULTIMA_VEZ: (patientId: number) =>
+    buildApiUrl(`/protocols/protocols/lo-de-la-ultima-vez/?patient=${patientId}`),
   REPORT_BATCH: buildApiUrl("/protocols/protocols/report-batch/"),
   REGULARIZE_BALANCE: (id: number) => buildApiUrl(`/protocols/protocols/${id}/regularize-balance/`),
   UNCANCEL: (id: number) => buildApiUrl(`/protocols/protocols/${id}/uncancel/`),

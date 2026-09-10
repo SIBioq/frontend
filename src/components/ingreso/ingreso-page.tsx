@@ -27,6 +27,7 @@ import { useEndpointProgress } from "@/hooks/use-endpoint-progress"
 import { menosMovimiento } from "@/lib/menos-movimiento"
 import { cn } from "@/lib/utils"
 import { useProtocolQuote } from "@/hooks/use-protocol-quote"
+import { useLoDeLaUltimaVez } from "@/hooks/use-lo-de-la-ultima-vez"
 import type {
   Analysis,
   Patient,
@@ -172,6 +173,40 @@ export default function IngresoPage() {
    */
   const seDeshizoElProtocolo = useRef(false)
   const [origenDelVerde, setOrigenDelVerde] = useState<{ x: number; y: number } | null>(null)
+
+  /**
+   * Lo que este paciente usó la última vez, para subirlo en los combos.
+   *
+   * No elige nada: sólo cambia el ORDEN de las listas y le pone un cartel al
+   * que estuvo. Ver `use-lo-de-la-ultima-vez`.
+   */
+  const loDeLaUltimaVez = useLoDeLaUltimaVez(currentPatient?.id, doctors, insurances)
+
+  /**
+   * Las listas de los combos, con la ficha de la última vez adentro.
+   *
+   * El ingreso arranca con los primeros 20 médicos y las primeras 20 obras
+   * sociales. El de la última vez puede no estar entre esos —cuanto más grande
+   * el catálogo, más probable— y sin la ficha no hay nada que poner arriba: el
+   * hook la trae suelta y acá se suma a la lista.
+   *
+   * Se hace acá y no con `setDoctors` para no ensuciar el estado que usan el
+   * alta y la edición: esto es una lista para MOSTRAR, no el catálogo cargado.
+   */
+  const doctorsConElDeLaUltimaVez = useMemo(
+    () =>
+      loDeLaUltimaVez.medicoFaltante
+        ? [loDeLaUltimaVez.medicoFaltante, ...doctors]
+        : doctors,
+    [doctors, loDeLaUltimaVez.medicoFaltante],
+  )
+  const insurancesConLaDeLaUltimaVez = useMemo(
+    () =>
+      loDeLaUltimaVez.obraSocialFaltante
+        ? [loDeLaUltimaVez.obraSocialFaltante, ...insurances]
+        : insurances,
+    [insurances, loDeLaUltimaVez.obraSocialFaltante],
+  )
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -898,8 +933,12 @@ export default function IngresoPage() {
           >
             <ProtocolForm
               patient={currentPatient}
-              doctors={doctors}
-              insurances={insurances}
+              doctors={doctorsConElDeLaUltimaVez}
+              insurances={insurancesConLaDeLaUltimaVez}
+              idsDeLaUltimaVez={{
+                medico: loDeLaUltimaVez.medico,
+                obraSocial: loDeLaUltimaVez.obraSocial,
+              }}
               sendMethods={sendMethods}
               selectedAnalyses={selectedAnalyses}
               selectedDoctor={selectedDoctor}

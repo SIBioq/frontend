@@ -308,7 +308,10 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
           onKeyDown={handleKeyDown}
           className="pl-10 border-gray-300 focus:border-[#204983] focus:ring-[#204983]"
           onFocus={() => searchTerm && setShowResults(true)}
-          onBlur={() => setTimeout(() => setShowResults(false), 200)}
+          // Cerrar al perder el foco, pero NO cuando el foco se va a la propia
+          // lista: eso lo frena el `onMouseDown` del desplegable, que impide el
+          // blur. Ver el comentario de ahí abajo.
+          onBlur={() => setShowResults(false)}
         />
         {isSearching && (
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -320,7 +323,22 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
       {showResults && orderedResults.length > 0 && (
         <div
           ref={resultsRef}
-          className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto"
+          // EL CLICK EN EL + NO TIENE QUE CERRAR LA LISTA ANTES DE LLEGAR
+          // ==============================================================
+          // Antes esto se resolvía con `onBlur` + `setTimeout(200)`: se cerraba
+          // la lista 200 ms después de perder el foco, esperando que el click
+          // llegara primero. Un click normal entra; uno en el que se aprieta y
+          // se suelta con calma —o el de un touchpad con la mano apoyada— tarda
+          // más que eso, y ahí el `+` se desmontaba entre el mousedown y el
+          // mouseup: el click no ocurría nunca y el botón parecía roto.
+          //
+          // `preventDefault` en el mousedown evita que el input pierda el foco,
+          // así no hay blur, no hay carrera y no hace falta adivinar cuánto
+          // tarda una persona en soltar el botón.
+          onMouseDown={(event) => event.preventDefault()}
+          // Alto: entran ~5 resultados en vez de los ~3 de antes, sin pasarse
+          // de la mitad de la pantalla en una notebook o un teléfono.
+          className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-[min(22rem,50vh)] overflow-y-auto"
         >
           {orderedResults.map((analysis, index) => (
             <div
@@ -358,9 +376,11 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
                 )}
               </div>
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => handleAddAnalysis(analysis)}
+                aria-label={`Agregar ${analysis.name}`}
                 className="shrink-0 border-[#204983] text-[#204983] hover:bg-[#204983] hover:text-white"
               >
                 <Plus className="h-4 w-4" />
@@ -382,7 +402,9 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
       )}
 
       {showResults && searchTerm && filteredResults.length === 0 && !isSearching && (
-        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
+        <div
+          onMouseDown={(event) => event.preventDefault()}
+          className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-gray-500">
           <TestTube className="h-8 w-8 mx-auto mb-2 text-gray-300" />
           <p className="text-sm">No se encontraron análisis para "{searchTerm}"</p>
         </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, Plus } from "lucide-react"
+import { Loader2, Minus, Plus } from "lucide-react"
 
 import { AnalysisSearch } from "@/components/ingreso/components/analysis-search"
 import { Button } from "@/components/ui/button"
@@ -89,7 +89,12 @@ export function AgregarAnalisisDialog({ open, onOpenChange, yaEstan, onAgregar }
 
   return (
     <Dialog open={open} onOpenChange={cerrar}>
-      <DialogContent className="max-w-2xl">
+      {/* `overflow-visible` a propósito: el desplegable del buscador se posiciona
+          absoluto y con el `overflow-y-auto` que trae el diálogo por defecto
+          quedaba recortado abajo — se veían dos resultados y había que
+          scrollear el diálogo entero para ver el resto. La altura igual está
+          acotada: el desplegable tiene su tope y la lista de elegidos también. */}
+      <DialogContent className="max-w-2xl overflow-visible">
         <DialogHeader>
           <DialogTitle>Agregar análisis</DialogTitle>
           <DialogDescription>
@@ -112,10 +117,31 @@ export function AgregarAnalisisDialog({ open, onOpenChange, yaEstan, onAgregar }
             <p className="mb-2 text-xs font-medium text-gray-600">
               Se van a agregar {elegidos.length}:
             </p>
-            <ul className="space-y-1">
+            {/* CADA UNO SE PUEDE SACAR DE ACÁ
+                ==============================
+                Agregar el análisis equivocado es de las cosas más fáciles de
+                hacer en esta pantalla: se busca por código y un dígito de más
+                trae otra práctica. Sin esto había que cancelar el diálogo
+                entero y volver a cargar los que sí estaban bien. */}
+            <ul className="max-h-48 space-y-1 overflow-y-auto">
               {elegidos.map((a) => (
-                <li key={a.id} className="text-sm text-gray-800">
-                  · {a.name}
+                <li
+                  key={a.id}
+                  className="flex items-center justify-between gap-2 rounded px-1 py-0.5 text-sm text-gray-800 hover:bg-white"
+                >
+                  <span className="min-w-0 break-words">· {a.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setElegidos((previos) => previos.filter((e) => e.id !== a.id))}
+                    disabled={guardando}
+                    aria-label={`Quitar ${a.name} de la lista`}
+                    title="Quitar de la lista"
+                    className="h-7 w-7 shrink-0 p-0 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
                 </li>
               ))}
             </ul>
