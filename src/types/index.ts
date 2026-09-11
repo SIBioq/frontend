@@ -359,7 +359,6 @@ export interface Insurance {
   charges_material_descartable?: boolean
   charges_derivacion?: boolean
   requires_preauthorization?: boolean
-  requires_historia_clinica?: boolean
   /** La OOSS factura por Centro o Clínica según la preautorización: se elige en el ingreso. */
   chooses_billing_entity?: boolean
   /** El paciente paga como particular y la OOSS le reintegra después. */

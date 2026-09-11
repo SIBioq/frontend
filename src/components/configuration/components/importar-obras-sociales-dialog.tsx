@@ -67,7 +67,6 @@ const ETIQUETAS: Record<string, string> = {
   charges_material_descartable: "material descartable",
   charges_derivacion: "derivación",
   requires_preauthorization: "preautorización",
-  requires_historia_clinica: "historia clínica",
   description: "descripción",
   is_active: "reactivación",
 }

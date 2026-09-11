@@ -69,6 +69,9 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
   // medirlo a él haría que el alto dependiera del alto que acaba de fijarse.
   const campoRef = useRef<HTMLDivElement>(null)
   const [altoDelDesplegable, setAltoDelDesplegable] = useState(ALTO_MAXIMO_DEL_DESPLEGABLE)
+  // Dónde estaba el puntero la última vez que se movió de verdad. Ver el
+  // `onMouseMove` de las filas.
+  const ultimoPuntero = useRef<{ x: number; y: number } | null>(null)
 
   const loadMoreAnalyses = () => {
     if (nextUrl && !isLoadingMore) {
@@ -192,6 +195,37 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
       window.removeEventListener("scroll", medir, true)
     }
   }, [showResults])
+
+  /*
+   * EL RESALTADO SIEMPRE A LA VISTA
+   * ===============================
+   * Con las flechas se puede bajar más allá de lo que muestra el desplegable,
+   * y el resaltado seguía avanzando por abajo, fuera de vista: había que
+   * soltar el teclado y scrollear con el mouse para ver qué iba a agregar el
+   * Enter. Ahora la lista se corre sola lo justo para mostrarlo: si ya se ve,
+   * no se mueve. Al llegar al último, el scroll infinito trae los siguientes
+   * como si se hubiera bajado con la rueda.
+   *
+   * Se corre la LISTA y nada más, a mano, y no con `scrollIntoView`: ése
+   * también corre la página si el desplegable queda cerca del borde de abajo,
+   * y la página corrida pasa la lista por debajo del mouse quieto. Ver el
+   * `onMouseMove` de las filas.
+   *
+   * Se busca por `data-indice` y no con un ref por fila: el último ítem ya
+   * lleva el ref del scroll infinito, y una función nueva en cada render lo
+   * volvería a observar a cada tecla.
+   */
+  useEffect(() => {
+    const lista = resultsRef.current
+    const fila = lista?.querySelector<HTMLElement>(`[data-indice="${highlightedIndex}"]`)
+    if (!showResults || !lista || !fila) return
+    // `offsetTop` es contra la lista: es `absolute`, así que es la que
+    // posiciona a sus filas.
+    const arriba = fila.offsetTop
+    const abajo = arriba + fila.offsetHeight
+    if (arriba < lista.scrollTop) lista.scrollTop = arriba
+    else if (abajo > lista.scrollTop + lista.clientHeight) lista.scrollTop = abajo - lista.clientHeight
+  }, [highlightedIndex, showResults])
 
   useEffect(() => {
     setHighlightedIndex(0)
@@ -385,8 +419,21 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
           {orderedResults.map((analysis, index) => (
             <div
               key={`analysis-${analysis.id}`}
+              data-indice={index}
               ref={index === orderedResults.length - 1 ? setLastElementRef : null}
-              onMouseEnter={() => setHighlightedIndex(index)}
+              // EL MOUSE RESALTA SÓLO SI SE MUEVE
+              // ================================
+              // Con `onMouseEnter`, bajar con las flechas corría la lista por
+              // debajo del mouse quieto, el navegador avisaba que ahora estaba
+              // sobre otra fila, y el resaltado volvía a esa: una de cada dos
+              // flechas se perdía. Ahora cuenta sólo si el puntero cambió de
+              // lugar; la lista moviéndose debajo no.
+              onMouseMove={(event) => {
+                const antes = ultimoPuntero.current
+                if (antes && antes.x === event.clientX && antes.y === event.clientY) return
+                ultimoPuntero.current = { x: event.clientX, y: event.clientY }
+                if (index !== highlightedIndex) setHighlightedIndex(index)
+              }}
               // El nombre de un análisis puede ser largo ("Perfil tiroideo
               // (TSH, T3, T4 libre)"). Sin `min-w-0` el bloque de la izquierda
               // no achica, y en un teléfono el botón de agregar se iba afuera

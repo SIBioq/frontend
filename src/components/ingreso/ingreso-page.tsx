@@ -134,6 +134,10 @@ export default function IngresoPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateMedico, setShowCreateMedico] = useState(false)
   const [showCreateObraSocial, setShowCreateObraSocial] = useState(false)
+  // Cuántas veces se pidió crear. Va de `key` de los formularios: pedirlo con
+  // el formulario ya abierto lo vuelve a montar, y montarlo es lo que lleva
+  // la vista y el cursor hasta él (`useIrAlFormulario`).
+  const [pedidosDeCrear, setPedidosDeCrear] = useState(0)
   const [successData, setSuccessData] = useState<{
     protocol: Protocol
     patient: Patient
@@ -377,17 +381,21 @@ export default function IngresoPage() {
     setCreatingAnonymous(true)
   }
 
+  // El recién creado es el que se quería elegir: queda elegido. El aviso de
+  // "creado" lo da el formulario; repetirlo acá eran dos toasts iguales.
   const handleDoctorCreated = (doctor: Doctor) => {
     setDoctors([...doctors, doctor])
+    setSelectedDoctor(doctor)
     setShowCreateMedico(false)
-    toast.success("Médico creado exitosamente")
   }
 
   const handleInsuranceCreated = (insurance: Insurance) => {
     setInsurances([...insurances, insurance])
-    setSelectedInsurance(insurance)
+    // Por `handleInsuranceSelect` y no con el setter directo: elegirla tiene
+    // que limpiar el afiliado, la entidad y los montos de la que estaba antes,
+    // igual que cuando se elige del combo.
+    handleInsuranceSelect(insurance)
     setShowCreateObraSocial(false)
-    toast.success("Obra social creada exitosamente")
   }
 
   useEffect(() => {
@@ -970,8 +978,14 @@ export default function IngresoPage() {
               onPatientNotFound={handlePatientNotFound}
               onCreateAnonymous={handleCreateAnonymous}
               onReset={handleReset}
-              onShowCreateMedico={() => setShowCreateMedico(true)}
-              onShowCreateObraSocial={() => setShowCreateObraSocial(true)}
+              onShowCreateMedico={() => {
+                setShowCreateMedico(true)
+                setPedidosDeCrear((n) => n + 1)
+              }}
+              onShowCreateObraSocial={() => {
+                setShowCreateObraSocial(true)
+                setPedidosDeCrear((n) => n + 1)
+              }}
               onPagoEfectivoChange={setPagoEfectivo}
               onPagoTransferenciaChange={setPagoTransferencia}
               onAffiliateNumberChange={setAffiliateNumber}
@@ -1016,11 +1030,16 @@ export default function IngresoPage() {
               )}
 
               {showCreateMedico && (
-                <CreateMedicoForm onMedicoCreated={handleDoctorCreated} onCancel={() => setShowCreateMedico(false)} />
+                <CreateMedicoForm
+                  key={pedidosDeCrear}
+                  onMedicoCreated={handleDoctorCreated}
+                  onCancel={() => setShowCreateMedico(false)}
+                />
               )}
 
               {showCreateObraSocial && (
                 <CreateObraSocialForm
+                  key={pedidosDeCrear}
                   onObraSocialCreated={handleInsuranceCreated}
                   onCancel={() => setShowCreateObraSocial(false)}
                 />

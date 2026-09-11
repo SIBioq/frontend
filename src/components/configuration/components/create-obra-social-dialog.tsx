@@ -34,7 +34,6 @@ interface FormData {
   charges_material_descartable: boolean
   charges_derivacion: boolean
   requires_preauthorization: boolean
-  requires_historia_clinica: boolean
   a_reintegro: boolean
   descuento_desde_ub: string
   descuento_porcentaje_a_cobrar: string
@@ -57,7 +56,6 @@ const initialFormData: FormData = {
   charges_material_descartable: false,
   charges_derivacion: false,
   requires_preauthorization: false,
-  requires_historia_clinica: false,
   a_reintegro: false,
   descuento_desde_ub: "0.00",
   descuento_porcentaje_a_cobrar: "100.00",
@@ -133,7 +131,6 @@ export function CreateObraSocialDialog({ open, onOpenChange, onSuccess }: Create
         charges_material_descartable: formData.charges_material_descartable,
         charges_derivacion: formData.charges_derivacion,
         requires_preauthorization: formData.requires_preauthorization,
-        requires_historia_clinica: formData.requires_historia_clinica,
         chooses_billing_entity: formData.chooses_billing_entity,
         a_reintegro: formData.a_reintegro,
         descuento_desde_ub: formData.descuento_desde_ub || "0.00",
@@ -356,17 +353,6 @@ export function CreateObraSocialDialog({ open, onOpenChange, onSuccess }: Create
                   id="requires_preauthorization"
                   checked={formData.requires_preauthorization}
                   onCheckedChange={(checked) => handleSwitchChange("requires_preauthorization", checked)}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="requires_historia_clinica" className="cursor-pointer">Pide historia clínica (internados)</Label>
-                  <p className="text-xs text-gray-500">La OOSS exige adjuntarla para pacientes internados.</p>
-                </div>
-                <Switch
-                  id="requires_historia_clinica"
-                  checked={formData.requires_historia_clinica}
-                  onCheckedChange={(checked) => handleSwitchChange("requires_historia_clinica", checked)}
                 />
               </div>
               <div className="flex items-center justify-between">

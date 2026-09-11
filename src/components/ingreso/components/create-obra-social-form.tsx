@@ -17,6 +17,7 @@ import { MEDICAL_ENDPOINTS } from "@/config/api"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
 import { NbuSelect } from "@/components/configuration/components/nbu-select"
 import { BillingEntitySelect } from "@/components/configuration/components/billing-entity-select"
+import { useIrAlFormulario } from "@/hooks/use-ir-al-formulario"
 
 interface CreateObraSocialFormProps {
   onObraSocialCreated: (obraSocial: Insurance) => void
@@ -39,6 +40,7 @@ export function CreateObraSocialForm({ onObraSocialCreated, onCancel }: CreateOb
     requires_preauthorization: false,
   })
   const [isCreating, setIsCreating] = useState(false)
+  const primerCampo = useIrAlFormulario()
 
   // El NBU ya NO se pre-selecciona por defecto: lo elige el usuario o queda vacío.
 
@@ -115,6 +117,7 @@ export function CreateObraSocialForm({ onObraSocialCreated, onCancel }: CreateOb
         <div className="space-y-2">
           <Label htmlFor="name">Nombre *</Label>
           <Input
+            ref={primerCampo}
             id="name"
             name="name"
             value={formData.name}

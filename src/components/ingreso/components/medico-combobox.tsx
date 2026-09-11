@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Check, ChevronsUpDown, Plus, User } from "lucide-react"
 import { Button } from "../../ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../ui/command"
@@ -42,6 +42,10 @@ export function MedicoCombobox({
 }: MedicoComboboxProps) {
   const { apiRequest } = useApi()
   const [open, setOpen] = useState(false)
+  // "Crear nuevo médico" cierra el desplegable, y al cerrarse el desplegable
+  // devuelve el foco a este botón: se lo sacaría al formulario que se acaba de
+  // abrir. Con esto, ese cierre en particular no lo devuelve.
+  const pidioCrear = useRef(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [allMedicos, setAllMedicos] = useState<Medico[]>(initialMedicos)
   const [isLoading, setIsLoading] = useState(false)
@@ -131,7 +135,14 @@ export function MedicoCombobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        onCloseAutoFocus={(event) => {
+          if (!pidioCrear.current) return
+          pidioCrear.current = false
+          event.preventDefault()
+        }}
+      >
         <Command>
           <CommandInput placeholder="Buscar médico..." value={searchTerm} onValueChange={setSearchTerm} />
           <CommandList>
@@ -186,6 +197,7 @@ export function MedicoCombobox({
                 variant="outline"
                 size="sm"
                 onClick={() => {
+                  pidioCrear.current = true
                   onShowCreateMedico()
                   setOpen(false)
                 }}

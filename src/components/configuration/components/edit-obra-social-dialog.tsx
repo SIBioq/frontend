@@ -36,7 +36,6 @@ interface FormData {
   charges_material_descartable: boolean
   charges_derivacion: boolean
   requires_preauthorization: boolean
-  requires_historia_clinica: boolean
   a_reintegro: boolean
   descuento_desde_ub: string
   descuento_porcentaje_a_cobrar: string
@@ -71,7 +70,6 @@ export function EditObraSocialDialog({ open, onOpenChange, obraSocial, onSuccess
     charges_material_descartable: false,
     charges_derivacion: false,
     requires_preauthorization: false,
-  requires_historia_clinica: false,
   a_reintegro: false,
     descuento_desde_ub: "",
     descuento_porcentaje_a_cobrar: "",
@@ -97,7 +95,6 @@ export function EditObraSocialDialog({ open, onOpenChange, obraSocial, onSuccess
         charges_material_descartable: obraSocial.charges_material_descartable ?? false,
         charges_derivacion: obraSocial.charges_derivacion ?? false,
         requires_preauthorization: obraSocial.requires_preauthorization ?? false,
-        requires_historia_clinica: obraSocial.requires_historia_clinica ?? false,
         chooses_billing_entity: obraSocial.chooses_billing_entity ?? false,
         a_reintegro: obraSocial.a_reintegro ?? false,
         descuento_desde_ub: obraSocial.descuento_desde_ub ?? "0.00",
@@ -173,9 +170,6 @@ export function EditObraSocialDialog({ open, onOpenChange, obraSocial, onSuccess
     }
     if (formData.requires_preauthorization !== (obraSocial.requires_preauthorization ?? false)) {
       changes.requires_preauthorization = formData.requires_preauthorization
-    }
-    if (formData.requires_historia_clinica !== (obraSocial.requires_historia_clinica ?? false)) {
-      changes.requires_historia_clinica = formData.requires_historia_clinica
     }
     if (formData.chooses_billing_entity !== (obraSocial.chooses_billing_entity ?? false)) {
       changes.chooses_billing_entity = formData.chooses_billing_entity
@@ -416,17 +410,6 @@ export function EditObraSocialDialog({ open, onOpenChange, obraSocial, onSuccess
                   id="requires_preauthorization"
                   checked={formData.requires_preauthorization}
                   onCheckedChange={(checked) => handleSwitchChange("requires_preauthorization", checked)}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="requires_historia_clinica" className="cursor-pointer">Pide historia clínica (internados)</Label>
-                  <p className="text-xs text-gray-500">La OOSS exige adjuntarla para pacientes internados.</p>
-                </div>
-                <Switch
-                  id="requires_historia_clinica"
-                  checked={formData.requires_historia_clinica}
-                  onCheckedChange={(checked) => handleSwitchChange("requires_historia_clinica", checked)}
                 />
               </div>
               <div className="flex items-center justify-between">
