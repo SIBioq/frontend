@@ -27,6 +27,8 @@ import { Skeleton } from "../ui/skeleton"
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover"
 import { ProtocolsTable } from "./components/protocols-table"
 import { BatchActionBar } from "./components/batch-action-bar"
+import { EnviarInformeDialog } from "./components/dialogs/enviar-informe-dialog"
+import { cuerpoDelDestino, type DestinoElegido } from "@/lib/destino-del-envio"
 import { useProtocolQuickActions } from "./components/use-protocol-quick-actions"
 import { useAuth } from "@/contexts/auth-context"
 import { usePersistedState } from "@/hooks/use-persisted-state"
@@ -446,14 +448,16 @@ export default function ProtocolosPage() {
   const getBatchSignaturePayload = () =>
     batchSigned && batchSignatureId !== "default" ? { signature_id: Number(batchSignatureId) } : {}
 
-  const handleMergeReport = async (action: MergeReportAction) => {
+  // Lo que tiene que cumplirse para unificar. Se revisa antes de preguntar a
+  // dónde mandarlo: no tiene sentido elegir destino para algo que no sale.
+  const sePuedeUnificar = () => {
     if (!canPrintReports) {
       toast.error(PERMISSION_MESSAGES.MANAGE_PRINTS, { duration: TOAST_DURATION })
-      return
+      return false
     }
     if (selectedProtocols.size < 2) {
       toast.error("Seleccioná al menos 2 protocolos del mismo paciente.", { duration: TOAST_DURATION })
-      return
+      return false
     }
     const ids = Array.from(selectedProtocols)
     const patientIds = new Set(
@@ -461,8 +465,14 @@ export default function ProtocolosPage() {
     )
     if (patientIds.size > 1) {
       toast.error("Todos los protocolos deben ser del mismo paciente para unificar el reporte.", { duration: TOAST_DURATION })
-      return
+      return false
     }
+    return true
+  }
+
+  const handleMergeReport = async (action: MergeReportAction, destino: Record<string, string> = {}) => {
+    if (!sePuedeUnificar()) return
+    const ids = Array.from(selectedProtocols)
 
     setIsBatchProcessing(true)
     try {
@@ -470,6 +480,8 @@ export default function ProtocolosPage() {
       const { res: response, cancelado, quedoEnCola } = await pedirInforme(
         apiRequest, PROTOCOL_ENDPOINTS.MERGE_REPORT, {
           protocol_ids: ids,
+          // A dónde: el paciente, su alternativo u otro destino. Ver `cuerpoDelDestino`.
+          ...destino,
           action: endpointAction,
           type: batchReportType,
           signed: batchSigned,
@@ -595,7 +607,7 @@ export default function ProtocolosPage() {
     }
   }
 
-  const handleBatchAction = async (action: BatchReportAction) => {
+  const handleBatchAction = async (action: BatchReportAction, destino: Record<string, string> = {}) => {
     if (!canPrintReports) {
       toast.error(PERMISSION_MESSAGES.MANAGE_PRINTS, { duration: TOAST_DURATION })
       return
@@ -608,6 +620,8 @@ export default function ProtocolosPage() {
       const { res: response, cancelado, quedoEnCola } = await pedirInforme(
         apiRequest, PROTOCOL_ENDPOINTS.REPORT_BATCH, {
           protocol_ids: Array.from(selectedProtocols),
+          // A dónde: cada paciente, el alternativo de cada uno, o todos a otro destino.
+          ...destino,
           action: endpointAction,
           type: batchReportType,
           signed: batchSigned,
@@ -710,6 +724,47 @@ export default function ProtocolosPage() {
       setIsBatchProcessing(false)
     }
   }
+
+  // MAIL Y WHATSAPP DEL LOTE: PRIMERO, A DÓNDE.
+  // Igual que el envío de un protocolo, el lote y el unificado preguntan si va
+  // a cada paciente, a su alternativo o todos a otro destino. Imprimir y
+  // descargar no le mandan nada a nadie, así que no preguntan.
+  const [envioDelLote, setEnvioDelLote] = useState<{ tipo: "lote" | "unificado"; metodo: "email" | "whatsapp" } | null>(null)
+
+  const alElegirAccionDelLote = (action: BatchReportAction) => {
+    if (action === "email" || action === "whatsapp") {
+      if (!canPrintReports) {
+        toast.error(PERMISSION_MESSAGES.MANAGE_PRINTS, { duration: TOAST_DURATION })
+        return
+      }
+      if (selectedProtocols.size > 0) setEnvioDelLote({ tipo: "lote", metodo: action })
+      return
+    }
+    void handleBatchAction(action)
+  }
+
+  const alElegirUnificado = (action: MergeReportAction) => {
+    if (action === "email" || action === "whatsapp") {
+      if (sePuedeUnificar()) setEnvioDelLote({ tipo: "unificado", metodo: action })
+      return
+    }
+    void handleMergeReport(action)
+  }
+
+  const alConfirmarElDestinoDelLote = (destino: DestinoElegido) => {
+    const pedido = envioDelLote
+    setEnvioDelLote(null)
+    if (!pedido) return
+    const cuerpo = cuerpoDelDestino(pedido.metodo, destino)
+    if (pedido.tipo === "lote") void handleBatchAction(pedido.metodo, cuerpo)
+    else void handleMergeReport(pedido.metodo, cuerpo)
+  }
+
+  // El unificado es de un solo paciente: su nombre va en las opciones.
+  const pacienteDelUnificado = (() => {
+    const primero = allProtocols.find((p) => selectedProtocols.has(p.id))
+    return primero?.patient ? `${primero.patient.first_name ?? ""} ${primero.patient.last_name ?? ""}`.trim() : undefined
+  })()
 
   if (error) {
     return (
@@ -989,10 +1044,28 @@ export default function ProtocolosPage() {
           onSelectAll={selectAll}
           onDeselectAll={deselectAll}
           onPreview={handleBatchPreview}
-          onBatch={handleBatchAction}
-          onMerge={handleMergeReport}
+          onBatch={alElegirAccionDelLote}
+          onMerge={alElegirUnificado}
         />
       )}
+
+
+      <EnviarInformeDialog
+        open={envioDelLote !== null}
+        onOpenChange={(open) => {
+          if (!open) setEnvioDelLote(null)
+        }}
+        metodo={envioDelLote?.metodo ?? null}
+        titulo={
+          envioDelLote?.tipo === "unificado"
+            ? `Unificado · ${selectedProtocols.size} protocolos`
+            : `${selectedProtocols.size} ${selectedProtocols.size === 1 ? "protocolo" : "protocolos"}`
+        }
+        paraCadaPaciente={envioDelLote?.tipo === "lote"}
+        patientName={envioDelLote?.tipo === "unificado" ? pacienteDelUnificado : undefined}
+        tipoDeInforme={batchReportType}
+        onConfirm={alConfirmarElDestinoDelLote}
+      />
 
       {quickActions.dialogs}
     </div>

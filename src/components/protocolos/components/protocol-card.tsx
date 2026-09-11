@@ -66,6 +66,7 @@ import { TRAJO_ORDEN, normalizeTrajoOrden, type TrajoOrdenStatus } from "@/lib/p
 import { AgregarAnalisisDialog } from "./dialogs/agregar-analisis-dialog"
 import { FormaDePagoDialog } from "./dialogs/forma-de-pago-dialog"
 import { EnviarInformeDialog } from "./dialogs/enviar-informe-dialog"
+import { cuerpoDelDestino, type DestinoElegido } from "@/lib/destino-del-envio"
 import { nombreDelPdf } from "@/lib/nombre-del-pdf"
 
 interface ProtocolDetailResponse {
@@ -837,11 +838,11 @@ export function ProtocolCard({
     }
   }
 
-  const executeSendEmail = async (otroEmail: string | null = null) => {
+  const executeSendEmail = async (destino: Record<string, string> = {}) => {
     if (!ensureCanPrintReports()) return
     setIsSendingEmail(true)
     try {
-      const { res: response, cancelado, quedoEnCola } = await pedirEnvio("email", otroEmail ? { email: otroEmail } : {})
+      const { res: response, cancelado, quedoEnCola } = await pedirEnvio("email", destino)
 
       // Canceló: no pasó nada y eso no es una falla. Se cierra y listo.
       if (cancelado) {
@@ -878,11 +879,11 @@ export function ProtocolCard({
     }
   }
 
-  const executeSendWhatsApp = async (otroNumero: string | null = null) => {
+  const executeSendWhatsApp = async (destino: Record<string, string> = {}) => {
     if (!ensureCanPrintReports()) return
     setIsSendingWhatsApp(true)
     try {
-      const { res: response, cancelado, quedoEnCola } = await pedirEnvio("whatsapp", otroNumero ? { phone_number: otroNumero } : {})
+      const { res: response, cancelado, quedoEnCola } = await pedirEnvio("whatsapp", destino)
 
       // Canceló: no pasó nada y eso no es una falla. Se cierra y listo.
       if (cancelado) {
@@ -940,17 +941,17 @@ export function ProtocolCard({
   const handleSendEmail = () => openSendConfirmation("email")
   const handleSendWhatsApp = () => openSendConfirmation("whatsapp")
 
-  const handleConfirmSend = async (otroDestino: string | null) => {
+  const handleConfirmSend = async (destino: DestinoElegido) => {
     setSendConfirmationOpen(false)
     const method = pendingSendMethod
     setPendingSendMethod(null)
 
     if (method === "email") {
-      await executeSendEmail(otroDestino)
+      await executeSendEmail(cuerpoDelDestino("email", destino))
     }
 
     if (method === "whatsapp") {
-      await executeSendWhatsApp(otroDestino)
+      await executeSendWhatsApp(cuerpoDelDestino("whatsapp", destino))
     }
   }
 
@@ -1830,7 +1831,7 @@ export function ProtocolCard({
           if (!open) setPendingSendMethod(null)
         }}
         metodo={pendingSendMethod}
-        protocolId={protocol.id}
+        titulo={`Protocolo #${protocol.id}`}
         patientName={getPatientName()}
         email={datoDeContacto("email")}
         telefono={datoDeContacto("phone_mobile")}
