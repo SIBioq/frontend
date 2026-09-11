@@ -195,13 +195,19 @@ export function ProtocolsTable({
   busyId,
   separarPorDia,
 }: ProtocolsTableProps) {
+  // Con selección activa, click en cualquier parte de la fila toggle-a la
+  // selección (no hace falta apuntar al checkbox); sin selección, navega.
+  const selectionMode = selectedIds.size > 0
+
   const columns: Column<ProtocolListItem>[] = [
     {
       id: "select",
       compact: true,
       header: "",
       className: "w-10 pl-4",
-      responsive: "hidden md:table-cell",
+      // En el celular no está hasta que hay un lote en marcha (se empieza
+      // manteniendo apretada una fila): ahí aparece, para ver qué está elegido.
+      responsive: selectionMode ? undefined : "hidden md:table-cell",
       cell: (p) => (
         <input
           type="checkbox"
@@ -351,10 +357,6 @@ export function ProtocolsTable({
     },
   ]
 
-  // Con selección activa, click en cualquier parte de la fila toggle-a la
-  // selección (no hace falta apuntar al checkbox); sin selección, navega.
-  const selectionMode = selectedIds.size > 0
-
   // Corte de día: sale cuando la fila arranca una fecha distinta de la
   // anterior, y también en la primera fila, que si no queda huérfana arriba
   // del primer separador sin que se sepa de qué día es.
@@ -371,6 +373,11 @@ export function ProtocolsTable({
       rows={protocols}
       getRowId={(p) => p.id}
       onRowClick={(p) => (selectionMode ? onToggleSelect(p.id) : onRowClick(p.id))}
+      // En el celular no hay checkboxes: mantener apretada una fila la elige, y
+      // con eso arranca el lote. Después, tocar una fila la elige o la saca.
+      onRowLongPress={(p) => {
+        if (!selectedIds.has(p.id)) onToggleSelect(p.id)
+      }}
       sort={sort}
       onSortChange={onSortChange}
       isLoading={isLoading}
