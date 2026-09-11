@@ -76,11 +76,15 @@ export function abrirVistaPrevia(pdf: Blob, titulo: string, paginas: number | nu
     :root { color-scheme: light; }
     html, body { margin: 0; height: 100%; background: #eef2f7;
                  font-family: 'Segoe UI', Arial, sans-serif; }
-    header { display: flex; align-items: center; gap: 8px; box-sizing: border-box; height: 39px;
-             padding: 10px 16px; background: #204983; color: #fff; font-size: 13px; }
+    /* Tres columnas, las de los costados iguales: así la cantidad de páginas
+       queda en el centro exacto de la barra, sea cual sea el largo del aviso. */
+    header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
+             box-sizing: border-box; height: 39px; padding: 0 16px;
+             background: #204983; color: #fff; font-size: 13px; }
+    header .aviso { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
     header strong { font-weight: 700; letter-spacing: 1px; }
-    header .paginas { margin-left: auto; padding: 1px 10px; border-radius: 999px;
-                      background: rgba(255, 255, 255, 0.18); font-size: 12px; font-weight: 700; }
+    header .paginas { grid-column: 2; padding: 2px 12px; border-radius: 999px; white-space: nowrap;
+                      background: rgba(255, 255, 255, 0.2); font-weight: 700; }
     iframe { display: block; width: 100%; height: calc(100% - 39px); border: 0; }
     /* Esta ventana no es para sacar el informe: ver el comentario del módulo. */
     @media print {
@@ -93,7 +97,7 @@ export function abrirVistaPrevia(pdf: Blob, titulo: string, paginas: number | nu
   </style>
 </head>
 <body>
-  <header><strong>LABSALUD</strong> · ${AVISO}${paginas ? `<span class="paginas">${textoDePaginas(paginas)}</span>` : ""}</header>
+  <header><span class="aviso"><strong>LABSALUD</strong> · ${AVISO}</span>${paginas ? `<span class="paginas">${textoDePaginas(paginas)}</span>` : ""}</header>
   <iframe src="${url}#toolbar=0&amp;navpanes=0&amp;statusbar=0" title="${titulo}"></iframe>
 </body>
 </html>`)
