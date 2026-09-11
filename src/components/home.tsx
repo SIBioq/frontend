@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 import CajaDelDia from "@/components/caja-del-dia"
 import {
@@ -545,6 +545,28 @@ export default function Home() {
   })()
 
   const promediosDelMes = mesData?.promedio_de_pacientes_por_dia
+
+  // La tarjeta de promedios se abre también TOCANDO el botón, no sólo con el
+  // hover: en el celular no hay hover, y Safari no le da el foco a un botón
+  // tocado, así que `group-focus-within` tampoco la abría. Se cierra tocando
+  // afuera o con Escape.
+  const [promediosAbiertos, setPromediosAbiertos] = useState(false)
+  const promediosRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!promediosAbiertos) return
+    const cerrarSiEsAfuera = (evento: PointerEvent) => {
+      if (!promediosRef.current?.contains(evento.target as Node)) setPromediosAbiertos(false)
+    }
+    const cerrarConEscape = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setPromediosAbiertos(false)
+    }
+    document.addEventListener("pointerdown", cerrarSiEsAfuera)
+    document.addEventListener("keydown", cerrarConEscape)
+    return () => {
+      document.removeEventListener("pointerdown", cerrarSiEsAfuera)
+      document.removeEventListener("keydown", cerrarConEscape)
+    }
+  }, [promediosAbiertos])
   const mesAnteriorVisible: MesDisponible =
     mesVisible.mes === 1
       ? { anio: mesVisible.anio - 1, mes: 12 }
@@ -915,20 +937,25 @@ export default function Home() {
                   contesta la pregunta que aparece después.
 
                   `group-focus-within` además del hover: con teclado se llega
-                  con Tab y se abre igual. */}
-              <div className="group relative">
+                  con Tab y se abre igual. Y tocando el botón, para el
+                  celular, donde no hay ni hover ni foco al tocar. */}
+              <div ref={promediosRef} className="group relative">
                 <button
                   type="button"
+                  onClick={() => setPromediosAbiertos((abiertos) => !abiertos)}
+                  aria-expanded={promediosAbiertos}
                   aria-describedby="promedios-por-dia"
                   className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600 transition hover:border-[#204983]/40 hover:bg-[#204983]/5 hover:text-[#204983] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#204983]/40"
                 >
                   <TrendingUp className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Promedios</span>
+                  <span>Promedios</span>
                 </button>
                 <div
                   id="promedios-por-dia"
                   role="tooltip"
-                  className="pointer-events-none absolute right-0 top-full z-30 mt-1 w-64 rounded-lg border border-slate-200 bg-white p-3 text-left opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100"
+                  className={`absolute right-0 top-full z-30 mt-1 w-64 rounded-lg border border-slate-200 bg-white p-3 text-left shadow-lg transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 ${
+                    promediosAbiertos ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+                  }`}
                 >
                   <p className="mb-2 text-xs font-semibold text-slate-900">
                     Pacientes por día
