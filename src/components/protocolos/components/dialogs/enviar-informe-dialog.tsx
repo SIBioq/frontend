@@ -23,7 +23,11 @@ interface EnviarInformeDialogProps {
   metodo: MetodoDeEnvio | null
   protocolId: number
   patientName: string
-  /** El email o el teléfono que el paciente tiene cargado, según el método. */
+  /**
+   * El email o el teléfono que el paciente tiene cargado, según el método.
+   * `""` es que no tiene ninguno; `undefined`, que no se sabe —y entonces no se
+   * bloquea: el backend manda a lo que el paciente tenga cargado—.
+   */
   datoDelPaciente?: string
   tipoDeInforme: "full" | "summary"
   /** `null` si va a los datos del paciente; si no, el email o el número elegido. */
@@ -63,15 +67,15 @@ export function EnviarInformeDialog({
 }: EnviarInformeDialogProps) {
   const [destino, setDestino] = useState<Destino>("paciente")
   const [otroDestino, setOtroDestino] = useState("")
-  const tieneDato = Boolean(datoDelPaciente)
+  const noTieneDato = datoDelPaciente === ""
 
   useEffect(() => {
     if (open) {
       // Sin email o teléfono cargado, lo único que se puede es otro destino.
-      setDestino(datoDelPaciente ? "paciente" : "otro")
+      setDestino(noTieneDato ? "otro" : "paciente")
       setOtroDestino("")
     }
-  }, [open, datoDelPaciente])
+  }, [open, noTieneDato])
 
   if (!metodo) return null
 
@@ -80,7 +84,7 @@ export function EnviarInformeDialog({
   const colorDelIcono = esEmail ? "text-[#204983]" : "text-emerald-600"
   const elegido = esEmail ? "border-[#204983] bg-sky-50" : "border-emerald-500 bg-emerald-50"
   const valor = otroDestino.trim()
-  const valido = destino === "paciente" ? tieneDato : esUnDestinoValido(metodo, valor)
+  const valido = destino === "paciente" ? !noTieneDato : esUnDestinoValido(metodo, valor)
   const mostrarError = destino === "otro" && valor.length > 0 && !valido
 
   const confirmar = () => {
@@ -107,7 +111,7 @@ export function EnviarInformeDialog({
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <button
                 type="button"
-                disabled={!tieneDato}
+                disabled={noTieneDato}
                 onClick={() => setDestino("paciente")}
                 className={`rounded-md border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
                   destino === "paciente" ? elegido : "border-gray-200 hover:border-gray-300"
@@ -118,9 +122,9 @@ export function EnviarInformeDialog({
                   <span className="text-sm font-semibold">A los datos del paciente</span>
                 </div>
                 <p className="truncate text-xs text-gray-600">
-                  {tieneDato
-                    ? `${patientName} · ${datoDelPaciente}`
-                    : `El paciente no tiene ${esEmail ? "email" : "teléfono"} cargado`}
+                  {noTieneDato
+                    ? `El paciente no tiene ${esEmail ? "email" : "teléfono"} cargado`
+                    : `${patientName} · ${datoDelPaciente || `el ${esEmail ? "email" : "teléfono"} que tiene cargado`}`}
                 </p>
               </button>
               <button
