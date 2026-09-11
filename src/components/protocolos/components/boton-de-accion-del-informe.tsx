@@ -15,6 +15,11 @@ export interface ActionButtonProps {
   colorClass: string
   disabledReason?: string
   isPatientMethod?: boolean
+  /**
+   * Un nombre corto debajo del ícono. Es para el celular: ahí no hay mouse, así
+   * que el tooltip que en el escritorio dice qué hace cada botón no aparece.
+   */
+  etiqueta?: string
 }
 
 /**
@@ -44,6 +49,7 @@ export function ActionButton({
   colorClass,
   disabledReason,
   isPatientMethod,
+  etiqueta,
 }: ActionButtonProps) {
   const button = (
     <button
@@ -73,7 +79,14 @@ export function ActionButton({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="inline-block">{button}</span>
+        {etiqueta ? (
+          <span className="flex flex-col items-center gap-1">
+            {button}
+            <span className="text-center text-[11px] leading-tight text-slate-600">{etiqueta}</span>
+          </span>
+        ) : (
+          <span className="inline-block">{button}</span>
+        )}
       </TooltipTrigger>
       <TooltipContent className="max-w-[260px] bg-slate-900 text-white">
         <p className="font-semibold">
