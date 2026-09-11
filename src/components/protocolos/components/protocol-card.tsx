@@ -7,7 +7,7 @@ import { Card, CardContent } from "../../ui/card"
 import { Skeleton } from "../../ui/skeleton"
 import { useApi } from "../../../hooks/use-api"
 import { toast } from "sonner"
-import { abrirVistaPrevia } from "@/lib/ventana-de-vista-previa"
+import { abrirVistaPrevia, paginasDelPdf } from "@/lib/ventana-de-vista-previa"
 import { PROTOCOL_ENDPOINTS, TOAST_DURATION } from "@/config/api"
 import { PERMISSIONS, PERMISSION_MESSAGES } from "@/config/permissions"
 import { ACTO_BIOQUIMICO_CODES } from "@/lib/codigos-analisis"
@@ -743,6 +743,7 @@ export function ProtocolCard({
       const abrio = abrirVistaPrevia(
         await response.blob(),
         `Vista previa · Protocolo #${protocol.id}`,
+        paginasDelPdf(response),
       )
       if (!abrio) {
         toast.error("El navegador bloqueó la ventana. Permití pop-ups para ver la vista previa.", {

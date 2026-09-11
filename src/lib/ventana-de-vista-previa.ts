@@ -35,8 +35,27 @@
 /** Lo que se ve arriba de todo, para que nadie confunda esta ventana con la otra. */
 const AVISO = "Vista previa · no marca el protocolo como enviado"
 
-export function abrirVistaPrevia(pdf: Blob, titulo: string): boolean {
+/**
+ * Cuántas páginas tiene el PDF que mandó el servidor, si lo dijo.
+ *
+ * Viene contado en `X-Page-Count`: el backend lo sabe al maquetar, y sacarlo
+ * acá del PDF ya armado obligaría a traer un lector de PDF entero. Si no llega
+ * —un backend viejo, o la cabecera sin exponer por CORS— la vista previa se
+ * abre igual, sin el número.
+ */
+export function paginasDelPdf(respuesta: Response): number | null {
+  const paginas = Number.parseInt(respuesta.headers.get("X-Page-Count") ?? "", 10)
+  return Number.isFinite(paginas) && paginas > 0 ? paginas : null
+}
+
+export function textoDePaginas(paginas: number): string {
+  return paginas === 1 ? "1 página" : `${paginas} páginas`
+}
+
+export function abrirVistaPrevia(pdf: Blob, titulo: string, paginas: number | null = null): boolean {
   const url = URL.createObjectURL(pdf)
+  // En la pestaña también: con dos vistas previas abiertas, se distinguen sin entrar.
+  const tituloDeLaVentana = paginas ? `${titulo} · ${textoDePaginas(paginas)}` : titulo
   // Sin `noopener`: con esa bandera `window.open` devuelve null aunque abra la
   // ventana, y sin referencia no hay dónde escribir. Ver arriba.
   const ventana = window.open("", "_blank")
@@ -52,14 +71,16 @@ export function abrirVistaPrevia(pdf: Blob, titulo: string): boolean {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${titulo}</title>
+  <title>${tituloDeLaVentana}</title>
   <style>
     :root { color-scheme: light; }
     html, body { margin: 0; height: 100%; background: #eef2f7;
                  font-family: 'Segoe UI', Arial, sans-serif; }
-    header { display: flex; align-items: center; gap: 8px;
+    header { display: flex; align-items: center; gap: 8px; box-sizing: border-box; height: 39px;
              padding: 10px 16px; background: #204983; color: #fff; font-size: 13px; }
     header strong { font-weight: 700; letter-spacing: 1px; }
+    header .paginas { margin-left: auto; padding: 1px 10px; border-radius: 999px;
+                      background: rgba(255, 255, 255, 0.18); font-size: 12px; font-weight: 700; }
     iframe { display: block; width: 100%; height: calc(100% - 39px); border: 0; }
     /* Esta ventana no es para sacar el informe: ver el comentario del módulo. */
     @media print {
@@ -72,7 +93,7 @@ export function abrirVistaPrevia(pdf: Blob, titulo: string): boolean {
   </style>
 </head>
 <body>
-  <header><strong>LABSALUD</strong> · ${AVISO}</header>
+  <header><strong>LABSALUD</strong> · ${AVISO}${paginas ? `<span class="paginas">${textoDePaginas(paginas)}</span>` : ""}</header>
   <iframe src="${url}#toolbar=0&amp;navpanes=0&amp;statusbar=0" title="${titulo}"></iframe>
 </body>
 </html>`)
