@@ -1491,13 +1491,11 @@ export function ProtocolCard({
     hasBalanceToRegularize && !isEditable
       ? `No se pueden registrar pagos o devoluciones en estado "${statusName}".`
       : undefined
-  // `undefined` = el detalle no trajo el dato y no se sabe; `""` = el paciente
-  // no lo tiene cargado. El diálogo de envío sólo bloquea el segundo caso.
-  const patientEmail = protocolDetail?.patient.email?.trim()
-  const patientPhone =
-    protocolDetail && ("phone_mobile" in protocolDetail.patient || "alt_phone" in protocolDetail.patient)
-      ? (protocolDetail.patient.phone_mobile || protocolDetail.patient.alt_phone || "").trim()
-      : undefined
+  // El contacto del paciente para el diálogo de envío. `undefined` = el detalle
+  // no trajo el dato y no se sabe; `""` = el paciente no lo tiene cargado.
+  const contactoDelPaciente = protocolDetail?.patient
+  const datoDeContacto = (campo: "email" | "phone_mobile" | "alt_phone") =>
+    contactoDelPaciente && campo in contactoDelPaciente ? (contactoDelPaciente[campo] ?? "").trim() : undefined
   // Sin email o teléfono cargado igual se puede mandar: el diálogo de envío
   // ofrece otro destino. Por eso esos botones ya no se deshabilitan.
 
@@ -1834,7 +1832,9 @@ export function ProtocolCard({
         metodo={pendingSendMethod}
         protocolId={protocol.id}
         patientName={getPatientName()}
-        datoDelPaciente={pendingSendMethod === "email" ? patientEmail : patientPhone}
+        email={datoDeContacto("email")}
+        telefono={datoDeContacto("phone_mobile")}
+        telefonoAlternativo={datoDeContacto("alt_phone")}
         tipoDeInforme={reportType}
         onConfirm={handleConfirmSend}
       />
