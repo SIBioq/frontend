@@ -46,7 +46,7 @@ import { PROTOCOL_ENDPOINTS, ANALYTICS_ENDPOINTS, REPORTING_ENDPOINTS, TOAST_DUR
 import type { ProtocolListItem, ReportSignature } from "@/types"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
 import { nombreDelLote, nombreDelPdf } from "@/lib/nombre-del-pdf"
-import { abrirVistaPrevia } from "@/lib/ventana-de-vista-previa"
+import { abrirVistaPrevia, paginasDelPdf } from "@/lib/ventana-de-vista-previa"
 import {
   getProtocolStatusStyleByName,
   normalizeProtocolStatusName,
@@ -582,6 +582,7 @@ export default function ProtocolosPage() {
       const abrio = abrirVistaPrevia(
         await response.blob(),
         `Vista previa · ${selectedProtocols.size} protocolos`,
+        paginasDelPdf(response),
       )
       if (!abrio) {
         toast.error("El navegador bloqueó la ventana. Permití pop-ups para ver la vista previa.", {
