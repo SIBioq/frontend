@@ -11,6 +11,7 @@ import {
   Loader2,
   MessageCircle,
   RefreshCw,
+  PhoneForwarded,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -78,6 +79,8 @@ type Mensaje = {
   protocol_id: number | null
   del_unificado: boolean
   es_de_este_protocolo: boolean
+  /** Salió a un número elegido al mandarlo, no al del paciente. */
+  a_otro_numero?: boolean
   analyses: AnalisisDelMensaje[]
 }
 
@@ -176,6 +179,15 @@ function Globo({ mensaje }: { mensaje: Mensaje }) {
               {mensaje.del_unificado && " (informe unificado)"}
             </span>
           </div>
+        )}
+
+        {/* A OTRO NÚMERO. No salió al teléfono del paciente sino a uno que se
+            eligió al mandarlo —el del médico, un familiar—: que se vea adónde fue. */}
+        {esNuestro && mensaje.a_otro_numero && (
+          <p className="mb-1 flex items-center gap-1 text-xs font-medium text-amber-800">
+            <PhoneForwarded className="h-3.5 w-3.5 shrink-0" />
+            Enviado a otro número: +{mensaje.to_phone}
+          </p>
         )}
 
         {esAviso && (
