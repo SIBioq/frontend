@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Check, ChevronsUpDown, Plus, Building } from "lucide-react"
 import { Button } from "../../ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../ui/command"
@@ -42,6 +42,10 @@ export function ObraSocialCombobox({
 }: ObraSocialComboboxProps) {
   const { apiRequest } = useApi()
   const [open, setOpen] = useState(false)
+  // Igual que en el combo de médicos: el cierre que viene de "Crear nueva obra
+  // social" no le devuelve el foco a este botón, que se lo sacaría al
+  // formulario recién abierto.
+  const pidioCrear = useRef(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [allObrasSociales, setAllObrasSociales] = useState<Insurance[]>(initialObrasSociales)
   const [isLoading, setIsLoading] = useState(false)
@@ -133,7 +137,14 @@ export function ObraSocialCombobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        onCloseAutoFocus={(event) => {
+          if (!pidioCrear.current) return
+          pidioCrear.current = false
+          event.preventDefault()
+        }}
+      >
         <Command>
           <CommandInput placeholder="Buscar obra social..." value={searchTerm} onValueChange={setSearchTerm} />
           <CommandList>
@@ -224,6 +235,7 @@ export function ObraSocialCombobox({
                 variant="outline"
                 size="sm"
                 onClick={() => {
+                  pidioCrear.current = true
                   onShowCreateObraSocial()
                   setOpen(false)
                 }}
