@@ -45,6 +45,8 @@ import { toast } from "sonner"
 import { PROTOCOL_ENDPOINTS, ANALYTICS_ENDPOINTS, REPORTING_ENDPOINTS, TOAST_DURATION } from "@/config/api"
 import type { ProtocolListItem, ReportSignature } from "@/types"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
+import { nombreDelLote, nombreDelPdf } from "@/lib/nombre-del-pdf"
+import { abrirVistaPrevia } from "@/lib/ventana-de-vista-previa"
 import {
   getProtocolStatusStyleByName,
   normalizeProtocolStatusName,
@@ -125,6 +127,8 @@ export default function ProtocolosPage() {
   const [batchReportType, setBatchReportType] = useState<"full" | "summary">("full")
   const [batchSigned, setBatchSigned] = useState(true)
   const [batchDate, setBatchDate] = useState("")
+  // El horario del informe, como en el de un protocolo: `HH:MM`, opcional.
+  const [batchTime, setBatchTime] = useState("")
   const [batchSignatureId, setBatchSignatureId] = useState("default")
   const [isBatchProcessing, setIsBatchProcessing] = useState(false)
 
@@ -470,6 +474,7 @@ export default function ProtocolosPage() {
           type: batchReportType,
           signed: batchSigned,
           ...(batchDate ? { protocol_date: batchDate } : {}),
+          ...(batchTime ? { protocol_time: batchTime } : {}),
           ...getBatchSignaturePayload(),
         })
 
@@ -504,8 +509,10 @@ export default function ProtocolosPage() {
           } else {
             const a = document.createElement("a")
             a.href = url
-            const signedSuffix = batchSigned ? "firmado" : "sin_firma"
-            a.download = `reporte_unificado_${batchReportType}_${signedSuffix}_${new Date().toISOString().slice(0, 10)}.pdf`
+            // El unificado es de un solo paciente (se controló arriba): lleva
+            // su nombre y los números de todos los protocolos.
+            const paciente = allProtocols.find((p) => ids.includes(p.id))?.patient
+            a.download = nombreDelPdf(paciente, ids, batchReportType)
             document.body.appendChild(a)
             a.click()
             document.body.removeChild(a)
@@ -541,6 +548,53 @@ export default function ProtocolosPage() {
     }
   }
 
+  /**
+   * La vista previa del lote: el mismo PDF que se imprimiría, pero sin marcar
+   * nada, igual que la del informe de un protocolo. No se lo manda por
+   * `pedirInforme`: mirar no es un envío, no tiene sentido dejarlo en cola.
+   * Tampoco limpia la selección: después de mirar, lo que sigue es sacarlo.
+   */
+  const handleBatchPreview = async () => {
+    if (!canPrintReports) {
+      toast.error(PERMISSION_MESSAGES.MANAGE_PRINTS, { duration: TOAST_DURATION })
+      return
+    }
+    if (selectedProtocols.size === 0) return
+
+    setIsBatchProcessing(true)
+    try {
+      const response = await apiRequest(PROTOCOL_ENDPOINTS.REPORT_BATCH, {
+        method: "POST",
+        body: {
+          protocol_ids: Array.from(selectedProtocols),
+          action: "preview",
+          type: batchReportType,
+          signed: batchSigned,
+          ...(batchDate ? { protocol_date: batchDate } : {}),
+          ...(batchTime ? { protocol_time: batchTime } : {}),
+          ...getBatchSignaturePayload(),
+        },
+      })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(formatApiError(errorData, "No se pudo generar la vista previa"))
+      }
+      const abrio = abrirVistaPrevia(
+        await response.blob(),
+        `Vista previa · ${selectedProtocols.size} protocolos`,
+      )
+      if (!abrio) {
+        toast.error("El navegador bloqueó la ventana. Permití pop-ups para ver la vista previa.", {
+          duration: TOAST_DURATION,
+        })
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, "No se pudo generar la vista previa"), { duration: TOAST_DURATION })
+    } finally {
+      setIsBatchProcessing(false)
+    }
+  }
+
   const handleBatchAction = async (action: BatchReportAction) => {
     if (!canPrintReports) {
       toast.error(PERMISSION_MESSAGES.MANAGE_PRINTS, { duration: TOAST_DURATION })
@@ -558,6 +612,7 @@ export default function ProtocolosPage() {
           type: batchReportType,
           signed: batchSigned,
           ...(batchDate ? { protocol_date: batchDate } : {}),
+          ...(batchTime ? { protocol_time: batchTime } : {}),
           ...getBatchSignaturePayload(),
         })
 
@@ -592,8 +647,10 @@ export default function ProtocolosPage() {
           } else {
             const a = document.createElement("a")
             a.href = url
-            const signedSuffix = batchSigned ? "firmado" : "sin_firma"
-            a.download = `protocolos_${batchReportType}_${signedSuffix}_${new Date().toISOString().slice(0, 10)}.pdf`
+            // Los números de los seleccionados. Si el servidor salteó alguno,
+            // lo avisa en una cabecera que el navegador no deja leer desde
+            // otro origen; el nombre del backend (`nombre_del_lote`) sí lo excluye.
+            a.download = nombreDelLote(Array.from(selectedProtocols), batchReportType)
             document.body.appendChild(a)
             a.click()
             document.body.removeChild(a)
@@ -925,10 +982,13 @@ export default function ProtocolosPage() {
           signatures={reportSignatures}
           date={batchDate}
           onDateChange={setBatchDate}
+          time={batchTime}
+          onTimeChange={setBatchTime}
           isProcessing={isBatchProcessing}
           disabledReason={batchDisabledReason}
           onSelectAll={selectAll}
           onDeselectAll={deselectAll}
+          onPreview={handleBatchPreview}
           onBatch={handleBatchAction}
           onMerge={handleMergeReport}
         />

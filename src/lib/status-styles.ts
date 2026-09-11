@@ -349,6 +349,31 @@ export const getSendMethodAction = (sendMethodName?: string | null): SendMethodA
   return null
 }
 
+/**
+ * Los colores de los botones de acción del informe, con su hover. El que
+ * coincide con el método de envío del paciente (`activeAction`) va lleno; sin
+ * método —en el lote, que son pacientes distintos— van todos en su tono claro.
+ */
+export const getActionColor = (action: "print" | "download" | "email" | "whatsapp", activeAction: string | null) => {
+  const isActive = action === activeAction
+  if (action === "whatsapp") {
+    return isActive
+      ? "border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 hover:border-emerald-700"
+      : "border-green-200 bg-green-50 text-green-800 hover:bg-green-100 hover:border-green-300"
+  }
+  if (action === "email") {
+    return isActive
+      ? "border-[#204983] bg-[#204983] text-white shadow-sm hover:bg-[#1a3d6f] hover:border-[#1a3d6f]"
+      : "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100 hover:border-sky-300"
+  }
+  if (action === "print") {
+    return isActive
+      ? "border-[#204983] bg-[#204983] text-white shadow-sm hover:bg-[#1a3d6f] hover:border-[#1a3d6f]"
+      : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300"
+  }
+  return "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 hover:border-slate-300"
+}
+
 export const getSendMethodInfo = (sendMethodName?: string | null) => {
   const accion = getSendMethodAction(sendMethodName)
   const label = (sendMethodName || "").trim()
