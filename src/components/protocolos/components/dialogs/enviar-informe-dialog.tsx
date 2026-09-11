@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Mail, MessageCircle, Send, User } from "lucide-react"
+import { Mail, MessageCircle, Phone, PhoneForwarded, Send, User } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -15,7 +16,7 @@ import { Input } from "../../../ui/input"
 import { Label } from "../../../ui/label"
 
 export type MetodoDeEnvio = "email" | "whatsapp"
-type Destino = "paciente" | "otro"
+type Eleccion = "principal" | "alternativo" | "otro"
 
 interface EnviarInformeDialogProps {
   open: boolean
@@ -24,14 +25,23 @@ interface EnviarInformeDialogProps {
   protocolId: number
   patientName: string
   /**
-   * El email o el teléfono que el paciente tiene cargado, según el método.
-   * `""` es que no tiene ninguno; `undefined`, que no se sabe —y entonces no se
-   * bloquea: el backend manda a lo que el paciente tenga cargado—.
+   * Lo que el paciente tiene cargado. `""` es que no lo tiene; `undefined`, que
+   * el detalle no lo trajo y no se sabe —y entonces el principal no se bloquea:
+   * el backend manda a lo que el paciente tenga cargado—.
    */
-  datoDelPaciente?: string
+  email?: string
+  telefono?: string
+  telefonoAlternativo?: string
   tipoDeInforme: "full" | "summary"
-  /** `null` si va a los datos del paciente; si no, el email o el número elegido. */
-  onConfirm: (otroDestino: string | null) => void
+  /** `null` si va al dato principal del paciente; si no, el email o el número elegido. */
+  onConfirm: (destino: string | null) => void
+}
+
+type OpcionDelPaciente = {
+  eleccion: "principal" | "alternativo"
+  titulo: string
+  dato: string | undefined
+  icono: LucideIcon
 }
 
 const EMAIL_VALIDO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -44,16 +54,27 @@ function esUnDestinoValido(metodo: MetodoDeEnvio, valor: string) {
 }
 
 /**
+ * El principal se bloquea sólo si se sabe que está vacío: si no se sabe, el
+ * backend manda a lo que haya. El alternativo necesita un número concreto,
+ * porque es el que se le pasa al backend.
+ */
+function sePuede(opcion: OpcionDelPaciente) {
+  return opcion.eleccion === "principal" ? opcion.dato !== "" : Boolean(opcion.dato)
+}
+
+/**
  * Adónde sale el informe por mail o por WhatsApp.
  *
  * Antes este paso mostraba el PDF embebido y mandaba siempre a los datos del
- * paciente. Ahora pregunta lo que de verdad cambia de un envío a otro: si va al
- * paciente o a otro destino —el médico, un familiar—, igual que la facturación
- * a ARCA pregunta si se le factura al paciente o a un tercero. El PDF se sigue
+ * paciente. Ahora pregunta lo que de verdad cambia de un envío a otro, igual
+ * que la facturación a ARCA pregunta si se le factura al paciente o a un
+ * tercero: por mail, al email del paciente o a otro; por WhatsApp, a su
+ * teléfono principal, a su alternativo o a otro número. El PDF se sigue
  * pudiendo mirar con la vista previa del diálogo de reporte.
  *
- * Un destino distinto al del paciente queda registrado: el backend lo anota en
- * la auditoría y, si es WhatsApp, en el chat del protocolo.
+ * Un destino que no es del paciente queda registrado: el backend lo anota en
+ * la auditoría y, si es WhatsApp, en el chat del protocolo. El alternativo es
+ * del paciente, así que no cuenta como otro.
  */
 export function EnviarInformeDialog({
   open,
@@ -61,35 +82,56 @@ export function EnviarInformeDialog({
   metodo,
   protocolId,
   patientName,
-  datoDelPaciente,
+  email,
+  telefono,
+  telefonoAlternativo,
   tipoDeInforme,
   onConfirm,
 }: EnviarInformeDialogProps) {
-  const [destino, setDestino] = useState<Destino>("paciente")
+  const [eleccion, setEleccion] = useState<Eleccion>("principal")
   const [otroDestino, setOtroDestino] = useState("")
-  const noTieneDato = datoDelPaciente === ""
+
+  const esEmail = metodo === "email"
+  const opciones: OpcionDelPaciente[] = esEmail
+    ? [{ eleccion: "principal", titulo: "Email del paciente", dato: email, icono: User }]
+    : [
+        { eleccion: "principal", titulo: "Teléfono principal", dato: telefono, icono: Phone },
+        { eleccion: "alternativo", titulo: "Teléfono alternativo", dato: telefonoAlternativo, icono: PhoneForwarded },
+      ]
+  // Sin nada del paciente para mandarle, arranca en otro destino.
+  const primeraDisponible: Eleccion = opciones.find(sePuede)?.eleccion ?? "otro"
 
   useEffect(() => {
     if (open) {
-      // Sin email o teléfono cargado, lo único que se puede es otro destino.
-      setDestino(noTieneDato ? "otro" : "paciente")
+      setEleccion(primeraDisponible)
       setOtroDestino("")
     }
-  }, [open, noTieneDato])
+  }, [open, primeraDisponible])
 
   if (!metodo) return null
 
-  const esEmail = metodo === "email"
   const Icono = esEmail ? Mail : MessageCircle
   const colorDelIcono = esEmail ? "text-[#204983]" : "text-emerald-600"
   const elegido = esEmail ? "border-[#204983] bg-sky-50" : "border-emerald-500 bg-emerald-50"
   const valor = otroDestino.trim()
-  const valido = destino === "paciente" ? !noTieneDato : esUnDestinoValido(metodo, valor)
-  const mostrarError = destino === "otro" && valor.length > 0 && !valido
+  const opcionElegida = opciones.find((opcion) => opcion.eleccion === eleccion)
+  const valido =
+    eleccion === "otro" ? esUnDestinoValido(metodo, valor) : Boolean(opcionElegida && sePuede(opcionElegida))
+  const mostrarError = eleccion === "otro" && valor.length > 0 && !valido
+
+  const textoDelDato = (opcion: OpcionDelPaciente) => {
+    if (opcion.dato) return opcion.dato
+    if (opcion.dato === undefined && opcion.eleccion === "principal") {
+      return esEmail ? "El email que tiene cargado" : "El teléfono que tiene cargado"
+    }
+    return esEmail ? "No tiene email cargado" : "No tiene este teléfono cargado"
+  }
 
   const confirmar = () => {
     if (!valido) return
-    onConfirm(destino === "otro" ? valor : null)
+    if (eleccion === "otro") onConfirm(valor)
+    else if (eleccion === "alternativo") onConfirm(telefonoAlternativo ?? null)
+    else onConfirm(null)
   }
 
   return (
@@ -97,7 +139,7 @@ export function EnviarInformeDialog({
       <DialogContent className="w-[95vw] max-w-[560px] max-h-[90vh] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Icono className={`h-5 w-5 ${colorDelIcono}`} />
+            <Icono className={`h-5 w-5 shrink-0 ${colorDelIcono}`} />
             Enviar por {esEmail ? "email" : "WhatsApp"} — Protocolo #{protocolId}
           </DialogTitle>
           <DialogDescription>
@@ -108,34 +150,40 @@ export function EnviarInformeDialog({
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label>¿A dónde lo enviás?</Label>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-2">
+              {opciones.map((opcion) => {
+                const IconoDeLaOpcion = opcion.icono
+                return (
+                  <button
+                    key={opcion.eleccion}
+                    type="button"
+                    disabled={!sePuede(opcion)}
+                    onClick={() => setEleccion(opcion.eleccion)}
+                    className={`rounded-md border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                      eleccion === opcion.eleccion ? elegido : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <div className="mb-1 flex items-center gap-2">
+                      <IconoDeLaOpcion className={`h-4 w-4 shrink-0 ${colorDelIcono}`} />
+                      <span className="text-sm font-semibold">{opcion.titulo}</span>
+                    </div>
+                    {/* Completo y sin cortar: si no entra en un renglón, baja
+                        al siguiente. Un texto recortado se lee con el hover, y
+                        en el celular no hay hover. */}
+                    <p className="break-words text-xs text-gray-600">{patientName}</p>
+                    <p className="break-all text-sm font-medium text-gray-800">{textoDelDato(opcion)}</p>
+                  </button>
+                )
+              })}
               <button
                 type="button"
-                disabled={noTieneDato}
-                onClick={() => setDestino("paciente")}
-                className={`rounded-md border p-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
-                  destino === "paciente" ? elegido : "border-gray-200 hover:border-gray-300"
-                }`}
-              >
-                <div className="mb-1 flex items-center gap-2">
-                  <User className={`h-4 w-4 ${colorDelIcono}`} />
-                  <span className="text-sm font-semibold">A los datos del paciente</span>
-                </div>
-                <p className="truncate text-xs text-gray-600">
-                  {noTieneDato
-                    ? `El paciente no tiene ${esEmail ? "email" : "teléfono"} cargado`
-                    : `${patientName} · ${datoDelPaciente || `el ${esEmail ? "email" : "teléfono"} que tiene cargado`}`}
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDestino("otro")}
+                onClick={() => setEleccion("otro")}
                 className={`rounded-md border p-3 text-left transition ${
-                  destino === "otro" ? elegido : "border-gray-200 hover:border-gray-300"
+                  eleccion === "otro" ? elegido : "border-gray-200 hover:border-gray-300"
                 }`}
               >
                 <div className="mb-1 flex items-center gap-2">
-                  <Send className={`h-4 w-4 ${colorDelIcono}`} />
+                  <Send className={`h-4 w-4 shrink-0 ${colorDelIcono}`} />
                   <span className="text-sm font-semibold">{esEmail ? "A otro email" : "A otro número"}</span>
                 </div>
                 <p className="text-xs text-gray-600">
@@ -145,7 +193,7 @@ export function EnviarInformeDialog({
             </div>
           </div>
 
-          {destino === "otro" && (
+          {eleccion === "otro" && (
             <div className="space-y-1">
               <Label htmlFor="otro-destino">{esEmail ? "Email" : "Número de WhatsApp"}</Label>
               <Input
