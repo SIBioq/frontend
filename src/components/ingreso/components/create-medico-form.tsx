@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import type { Medico } from "../../../types"
 import { MEDICAL_ENDPOINTS } from "@/config/api"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
+import { useIrAlFormulario } from "@/hooks/use-ir-al-formulario"
 
 interface CreateMedicoFormProps {
   onMedicoCreated: (medico: Medico) => void
@@ -31,6 +32,7 @@ export function CreateMedicoForm({ onMedicoCreated, onCancel }: CreateMedicoForm
     email: "",
   })
   const [isCreating, setIsCreating] = useState(false)
+  const primerCampo = useIrAlFormulario()
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -88,6 +90,7 @@ export function CreateMedicoForm({ onMedicoCreated, onCancel }: CreateMedicoForm
           <div className="space-y-2">
             <Label htmlFor="first_name">Nombre *</Label>
             <Input
+              ref={primerCampo}
               id="first_name"
               name="first_name"
               value={formData.first_name}

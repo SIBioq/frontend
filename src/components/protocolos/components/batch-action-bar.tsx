@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Printer, Download, Mail, MessageCircle, GitMerge, Loader2, PenLine, X, Lock } from "lucide-react"
+import { Printer, Download, Mail, MessageCircle, GitMerge, Loader2, PenLine, X, Lock, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -15,7 +15,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { ENTRADA_ABAJO } from "@/lib/entrada"
+import { getActionColor } from "@/lib/status-styles"
 import type { ReportSignature } from "@/types"
+import { ActionButton } from "./boton-de-accion-del-informe"
 
 type BatchAction = "print" | "download" | "email" | "whatsapp"
 
@@ -33,6 +35,9 @@ interface BatchActionBarProps {
   signatures: ReportSignature[]
   date: string
   onDateChange: (date: string) => void
+  /** El horario del informe, `HH:MM`. Vacío: el del protocolo. */
+  time: string
+  onTimeChange: (time: string) => void
   isProcessing: boolean
   /**
    * Motivo por el que TODAS las acciones de reporte están bloqueadas (falta el
@@ -42,6 +47,8 @@ interface BatchActionBarProps {
   disabledReason?: string
   onSelectAll: () => void
   onDeselectAll: () => void
+  /** Mirar el PDF del lote sin sacarlo: no marca nada. */
+  onPreview: () => void
   onBatch: (action: BatchAction) => void
   onMerge: (action: "print" | BatchAction) => void
 }
@@ -50,6 +57,13 @@ interface BatchActionBarProps {
  * Barra flotante centrada para acciones en lote sobre los protocolos
  * seleccionados (reportes / envío / unificación). Presentacional: recibe todo
  * por props desde la página.
+ *
+ * LAS MISMAS ACCIONES QUE EL INFORME DE UN PROTOCOLO
+ * ==================================================
+ * Los botones son los del diálogo de reportes —solo el ícono, el nombre en el
+ * tooltip, el mismo color y el mismo hover— y en el mismo orden: primero mirar,
+ * después sacar. También tiene el horario además de la fecha. Eran botones con
+ * texto y otros colores: las mismas cinco cosas, aprendidas dos veces.
  *
  * LA BARRA SE HACE SU PROPIO LUGAR
  * ================================
@@ -73,15 +87,20 @@ export function BatchActionBar({
   signatures,
   date,
   onDateChange,
+  time,
+  onTimeChange,
   isProcessing,
   disabledReason,
   onSelectAll,
   onDeselectAll,
+  onPreview,
   onBatch,
   onMerge,
 }: BatchActionBarProps) {
   const defaultSignature = signatures.find((s) => s.is_default)
   const blocked = Boolean(disabledReason)
+  // Cuál se apretó: la ruedita va en ese botón y no en los cinco.
+  const [accionEnCurso, setAccionEnCurso] = useState<BatchAction | "preview" | null>(null)
 
   const barraRef = useRef<HTMLDivElement>(null)
   const [altoDeLaBarra, setAltoDeLaBarra] = useState(0)
@@ -99,6 +118,22 @@ export function BatchActionBar({
       window.removeEventListener("resize", medir)
     }
   }, [])
+
+  // Por qué no se puede, para el tooltip del botón apagado.
+  const motivo =
+    disabledReason ||
+    (selectedCount === 0
+      ? "Seleccioná al menos un protocolo."
+      : isProcessing
+        ? "Hay otra acción de reporte en proceso."
+        : undefined)
+
+  const ejecutar = (accion: BatchAction | "preview") => {
+    setAccionEnCurso(accion)
+    if (accion === "preview") onPreview()
+    else onBatch(accion)
+  }
+  const cargando = (accion: BatchAction | "preview") => isProcessing && accionEnCurso === accion
 
   return (
     <>
@@ -132,16 +167,37 @@ export function BatchActionBar({
               </SelectContent>
             </Select>
 
+            {/* Fecha y horario del informe, opcionales: los mismos dos campos
+                que el informe de un protocolo. Se limpian juntos. */}
             <div className="flex items-center gap-1">
               <Input
                 type="date"
                 value={date}
                 onChange={(e) => onDateChange(e.target.value)}
                 className="h-9 w-[150px]"
-                title="Fecha de emisión (opcional)"
+                title="Fecha del reporte (opcional)"
+                aria-label="Fecha del reporte"
               />
-              {date && (
-                <button type="button" onClick={() => onDateChange("")} className="text-gray-400 hover:text-gray-600" title="Limpiar fecha">
+              <Input
+                type="time"
+                value={time}
+                onChange={(e) => onTimeChange(e.target.value)}
+                step={60}
+                className="h-9 w-[110px]"
+                title="Horario del reporte (opcional)"
+                aria-label="Horario del reporte"
+              />
+              {(date || time) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDateChange("")
+                    onTimeChange("")
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                  title="Limpiar fecha y hora"
+                  aria-label="Limpiar fecha y hora"
+                >
                   <X className="h-4 w-4" />
                 </button>
               )}
@@ -188,42 +244,70 @@ export function BatchActionBar({
                 {disabledReason}
               </p>
             )}
-            <span title={disabledReason} className="inline-flex">
-              <Button size="sm" variant="outline" disabled={blocked || selectedCount === 0 || isProcessing} onClick={() => onBatch("print")}>
-                {isProcessing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Printer className="mr-1 h-4 w-4" />}
-                Imprimir
-              </Button>
-            </span>
-            <span title={disabledReason} className="inline-flex">
-              <Button
-                size="sm"
-                disabled={blocked || selectedCount === 0 || isProcessing}
-                onClick={() => onBatch("download")}
-                className="bg-[#204983] hover:bg-[#1a3d6f]"
-              >
-                {isProcessing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Download className="mr-1 h-4 w-4" />}
-                Descargar
-              </Button>
-            </span>
-            <span title={disabledReason} className="inline-flex">
-              <Button size="sm" variant="outline" disabled={blocked || selectedCount === 0 || isProcessing} onClick={() => onBatch("email")}>
-                <Mail className="mr-1 h-4 w-4" />
-                Email
-              </Button>
-            </span>
-            <span title={disabledReason} className="inline-flex">
-              <Button size="sm" variant="outline" disabled={blocked || selectedCount === 0 || isProcessing} onClick={() => onBatch("whatsapp")}>
-                <MessageCircle className="mr-1 h-4 w-4" />
-                WhatsApp
-              </Button>
-            </span>
+            {/* Primero mirar, después sacar. La vista previa no marca nada:
+                ni los análisis como enviados ni los protocolos como impresos. */}
+            <ActionButton
+              onClick={() => ejecutar("preview")}
+              disabled={Boolean(motivo)}
+              disabledReason={motivo}
+              isLoading={cargando("preview")}
+              loadingLabel="Abriendo..."
+              icon={<Eye className="h-5 w-5" />}
+              label="Ver vista previa"
+              description="Solo para mirarlo: no los marca como enviados ni impresos"
+              colorClass="border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+            />
+            <ActionButton
+              onClick={() => ejecutar("print")}
+              disabled={Boolean(motivo)}
+              disabledReason={motivo}
+              isLoading={cargando("print")}
+              loadingLabel="Imprimiendo..."
+              icon={<Printer className="h-5 w-5" />}
+              label="Imprimir"
+              description="Todos los seleccionados en un PDF, para imprimir"
+              colorClass={getActionColor("print", null)}
+            />
+            <ActionButton
+              onClick={() => ejecutar("download")}
+              disabled={Boolean(motivo)}
+              disabledReason={motivo}
+              isLoading={cargando("download")}
+              loadingLabel="Descargando..."
+              icon={<Download className="h-5 w-5" />}
+              label="Descargar PDF"
+              description="Todos los seleccionados en un PDF, al dispositivo"
+              colorClass={getActionColor("download", null)}
+            />
+            <ActionButton
+              onClick={() => ejecutar("email")}
+              disabled={Boolean(motivo)}
+              disabledReason={motivo}
+              isLoading={cargando("email")}
+              loadingLabel="Enviando email..."
+              icon={<Mail className="h-5 w-5" />}
+              label="Enviar por email"
+              description="A cada paciente, su informe"
+              colorClass={getActionColor("email", null)}
+            />
+            <ActionButton
+              onClick={() => ejecutar("whatsapp")}
+              disabled={Boolean(motivo)}
+              disabledReason={motivo}
+              isLoading={cargando("whatsapp")}
+              loadingLabel="Enviando..."
+              icon={<MessageCircle className="h-5 w-5" />}
+              label="Enviar por WhatsApp"
+              description="A cada paciente, su informe"
+              colorClass={getActionColor("whatsapp", null)}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={blocked || selectedCount < 2 || isProcessing}
-                  className="border-[#204983] text-[#204983] hover:bg-[#204983] hover:text-white"
+                  className="h-11 border-[#204983] text-[#204983] hover:bg-[#204983] hover:text-white"
                   title={disabledReason || "Combinar varios protocolos del mismo paciente en un único reporte"}
                 >
                   {isProcessing ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <GitMerge className="mr-1 h-4 w-4" />}

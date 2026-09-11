@@ -66,6 +66,7 @@ import { seguirElWhatsApp } from "@/lib/seguimiento-de-whatsapp"
 import { TRAJO_ORDEN, normalizeTrajoOrden, type TrajoOrdenStatus } from "@/lib/protocol-order"
 import { AgregarAnalisisDialog } from "./dialogs/agregar-analisis-dialog"
 import { FormaDePagoDialog } from "./dialogs/forma-de-pago-dialog"
+import { nombreDelPdf } from "@/lib/nombre-del-pdf"
 
 interface ProtocolDetailResponse {
   id: number
@@ -810,8 +811,7 @@ export function ProtocolCard({
       if (response.ok) {
         const blob = await response.blob()
         const url = window.URL.createObjectURL(blob)
-        const reportDate = new Date().toISOString().slice(0, 10)
-        const fileName = `reporte_labsalud_${protocol.id}_${reportDate}.pdf`
+        const fileName = nombreDelPdf(protocol.patient, [protocol.id], reportType)
 
         // Crear link de descarga
         const link = document.createElement("a")
