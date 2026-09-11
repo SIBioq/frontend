@@ -1,6 +1,6 @@
 "use client"
 
-import { Fragment, type ReactNode } from "react"
+import { Fragment, useRef, type MouseEvent as EventoDeMouse, type PointerEvent as EventoDePuntero, type ReactNode } from "react"
 import { ChevronDown, ChevronUp, ChevronsUpDown, AlertCircle } from "lucide-react"
 import {
   Table,
@@ -92,7 +92,18 @@ interface DataTableProps<T> {
    *
    * Ocupa todas las columnas y no dispara `onRowClick`. */
   rowSeparator?: (fila: T, anterior: T | undefined) => ReactNode
+  /**
+   * Mantener apretada una fila con el dedo, medio segundo. Es para el celular,
+   * donde no hay checkboxes a la vista ni clic derecho: la lista de protocolos
+   * lo usa para empezar a elegir un lote. Con el mouse no se dispara.
+   */
+  onRowLongPress?: (row: T) => void
 }
+
+/** Cuánto hay que mantener apretada una fila para que cuente, en ms. */
+const DEMORA_PARA_MANTENER_MS = 500
+/** Cuánto se puede mover el dedo sin que deje de contar: más que esto es scroll. */
+const TOLERANCIA_AL_MANTENER_PX = 10
 
 const alignClass = {
   left: "text-left",
@@ -120,7 +131,50 @@ export function DataTable<T>({
   footer,
   rowClassName,
   rowSeparator,
+  onRowLongPress,
 }: DataTableProps<T>) {
+  // MANTENER APRETADO
+  // Un temporizador que arranca al apoyar el dedo y se cancela si el dedo se
+  // levanta o se mueve. Si llega a cumplirse, el clic que el navegador dispara
+  // al soltar se descarta: si no, la misma fila se elegiría y se sacaría en el
+  // mismo gesto. La marca se limpia en el próximo toque, porque hay navegadores
+  // (Safari) que después de mantener apretado no disparan ese clic.
+  const mantenido = useRef<{ temporizador: number; x: number; y: number } | null>(null)
+  const descartarElClic = useRef(false)
+  const soltar = () => {
+    if (mantenido.current) window.clearTimeout(mantenido.current.temporizador)
+    mantenido.current = null
+  }
+  const alMantener = (row: T) =>
+    onRowLongPress
+      ? {
+          onPointerDown: (e: EventoDePuntero) => {
+            descartarElClic.current = false
+            if (e.pointerType === "mouse") return
+            soltar()
+            const temporizador = window.setTimeout(() => {
+              mantenido.current = null
+              descartarElClic.current = true
+              navigator.vibrate?.(30)
+              onRowLongPress(row)
+            }, DEMORA_PARA_MANTENER_MS)
+            mantenido.current = { temporizador, x: e.clientX, y: e.clientY }
+          },
+          onPointerMove: (e: EventoDePuntero) => {
+            const inicio = mantenido.current
+            if (inicio && Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) > TOLERANCIA_AL_MANTENER_PX) soltar()
+          },
+          onPointerUp: soltar,
+          onPointerCancel: soltar,
+          onPointerLeave: soltar,
+          // El menú del navegador (Android) sale justo al mantener apretado, y
+          // acá mantener apretado ya quiere decir otra cosa.
+          onContextMenu: (e: EventoDeMouse) => {
+            if (descartarElClic.current || mantenido.current) e.preventDefault()
+          },
+        }
+      : {}
+
   const renderSortIcon = (col: Column<T>) => {
     if (!col.sortable || !col.sortField) return null
     const active = sort?.field === col.sortField
@@ -243,9 +297,22 @@ export function DataTable<T>({
                     className={cn(
                       "border-gray-100",
                       onRowClick && "cursor-pointer",
+                      // Sin la selección de texto ni el menú de iOS al mantener apretado.
+                      onRowLongPress && "max-md:select-none max-md:[-webkit-touch-callout:none]",
                       rowClassName?.(row),
                     )}
-                    onClick={onRowClick ? () => onRowClick(row) : undefined}
+                    onClick={
+                      onRowClick
+                        ? () => {
+                            if (descartarElClic.current) {
+                              descartarElClic.current = false
+                              return
+                            }
+                            onRowClick(row)
+                          }
+                        : undefined
+                    }
+                    {...alMantener(row)}
                   >
                     {columns.map((col) => (
                       <TableCell

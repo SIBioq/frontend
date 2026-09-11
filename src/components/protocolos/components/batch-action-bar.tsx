@@ -104,6 +104,16 @@ export function BatchActionBar({
 
   const barraRef = useRef<HTMLDivElement>(null)
   const [altoDeLaBarra, setAltoDeLaBarra] = useState(0)
+  // En el celular los botones llevan el nombre abajo: sin mouse, el tooltip
+  // que dice qué hace cada ícono no aparece nunca.
+  const [esCelular, setEsCelular] = useState(false)
+  useEffect(() => {
+    const consulta = window.matchMedia("(max-width: 767px)")
+    const aplicar = () => setEsCelular(consulta.matches)
+    aplicar()
+    consulta.addEventListener("change", aplicar)
+    return () => consulta.removeEventListener("change", aplicar)
+  }, [])
 
   useEffect(() => {
     const nodo = barraRef.current
@@ -254,6 +264,7 @@ export function BatchActionBar({
               loadingLabel="Abriendo..."
               icon={<Eye className="h-5 w-5" />}
               label="Ver vista previa"
+              etiqueta={esCelular ? "Vista previa" : undefined}
               description="Solo para mirarlo: no los marca como enviados ni impresos"
               colorClass="border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
             />
@@ -265,6 +276,7 @@ export function BatchActionBar({
               loadingLabel="Imprimiendo..."
               icon={<Printer className="h-5 w-5" />}
               label="Imprimir"
+              etiqueta={esCelular ? "Imprimir" : undefined}
               description="Todos los seleccionados en un PDF, para imprimir"
               colorClass={getActionColor("print", null)}
             />
@@ -276,6 +288,7 @@ export function BatchActionBar({
               loadingLabel="Descargando..."
               icon={<Download className="h-5 w-5" />}
               label="Descargar PDF"
+              etiqueta={esCelular ? "PDF" : undefined}
               description="Todos los seleccionados en un PDF, al dispositivo"
               colorClass={getActionColor("download", null)}
             />
@@ -287,6 +300,7 @@ export function BatchActionBar({
               loadingLabel="Enviando email..."
               icon={<Mail className="h-5 w-5" />}
               label="Enviar por email"
+              etiqueta={esCelular ? "Email" : undefined}
               description="A cada paciente, su informe"
               colorClass={getActionColor("email", null)}
             />
@@ -298,6 +312,7 @@ export function BatchActionBar({
               loadingLabel="Enviando..."
               icon={<MessageCircle className="h-5 w-5" />}
               label="Enviar por WhatsApp"
+              etiqueta={esCelular ? "WhatsApp" : undefined}
               description="A cada paciente, su informe"
               colorClass={getActionColor("whatsapp", null)}
             />

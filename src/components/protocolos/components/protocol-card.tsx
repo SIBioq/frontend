@@ -7,11 +7,10 @@ import { Card, CardContent } from "../../ui/card"
 import { Skeleton } from "../../ui/skeleton"
 import { useApi } from "../../../hooks/use-api"
 import { toast } from "sonner"
-import { abrirVistaPrevia } from "@/lib/ventana-de-vista-previa"
+import { abrirVistaPrevia, paginasDelPdf } from "@/lib/ventana-de-vista-previa"
 import { PROTOCOL_ENDPOINTS, TOAST_DURATION } from "@/config/api"
 import { PERMISSIONS, PERMISSION_MESSAGES } from "@/config/permissions"
 import { ACTO_BIOQUIMICO_CODES } from "@/lib/codigos-analisis"
-import { Mail, MessageCircle } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,6 +65,8 @@ import { seguirElWhatsApp } from "@/lib/seguimiento-de-whatsapp"
 import { TRAJO_ORDEN, normalizeTrajoOrden, type TrajoOrdenStatus } from "@/lib/protocol-order"
 import { AgregarAnalisisDialog } from "./dialogs/agregar-analisis-dialog"
 import { FormaDePagoDialog } from "./dialogs/forma-de-pago-dialog"
+import { EnviarInformeDialog } from "./dialogs/enviar-informe-dialog"
+import { cuerpoDelDestino, type DestinoElegido } from "@/lib/destino-del-envio"
 import { nombreDelPdf } from "@/lib/nombre-del-pdf"
 
 interface ProtocolDetailResponse {
@@ -280,10 +281,6 @@ export function ProtocolCard({
   const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false)
   const [sendConfirmationOpen, setSendConfirmationOpen] = useState(false)
   const [pendingSendMethod, setPendingSendMethod] = useState<"email" | "whatsapp" | null>(null)
-  // Preview del PDF (mismo que se enviará) para confirmar antes de mandar.
-  const [sendPreviewUrl, setSendPreviewUrl] = useState<string | null>(null)
-  const [sendPreviewLoading, setSendPreviewLoading] = useState(false)
-  const [sendPreviewError, setSendPreviewError] = useState<string | null>(null)
   // Confirmación al editar un protocolo COMPLETADO (antes de cada cambio).
   const [completedEditConfirmOpen, setCompletedEditConfirmOpen] = useState(false)
   const pendingCompletedEditRef = useRef<null | (() => void)>(null)
@@ -365,7 +362,7 @@ export function ProtocolCard({
    * quien apretó el botón, que es quien sabe si lo quiere mandar. Cancelar no
    * deja nada esperando.
    */
-  const pedirEnvio = async (action: ReportAction) => {
+  const pedirEnvio = async (action: ReportAction, destino: Record<string, string> = {}) => {
     const reportRequest = getReportRequestOptions()
     const reportPayload = (reportRequest.body ?? {}) as Record<string, unknown>
 
@@ -376,6 +373,8 @@ export function ProtocolCard({
       action,
       type: reportType,
       ...reportPayload,
+      // El email o el número elegido al mandar, si no es el del paciente.
+      ...destino,
     })
   }
 
@@ -743,6 +742,7 @@ export function ProtocolCard({
       const abrio = abrirVistaPrevia(
         await response.blob(),
         `Vista previa · Protocolo #${protocol.id}`,
+        paginasDelPdf(response),
       )
       if (!abrio) {
         toast.error("El navegador bloqueó la ventana. Permití pop-ups para ver la vista previa.", {
@@ -839,11 +839,11 @@ export function ProtocolCard({
     }
   }
 
-  const executeSendEmail = async () => {
+  const executeSendEmail = async (destino: Record<string, string> = {}) => {
     if (!ensureCanPrintReports()) return
     setIsSendingEmail(true)
     try {
-      const { res: response, cancelado, quedoEnCola } = await pedirEnvio("email")
+      const { res: response, cancelado, quedoEnCola } = await pedirEnvio("email", destino)
 
       // Canceló: no pasó nada y eso no es una falla. Se cierra y listo.
       if (cancelado) {
@@ -860,7 +860,9 @@ export function ProtocolCard({
 
       if (response.ok) {
         const data = await response.json()
-        toast.success(data.detail || "Email enviado exitosamente", { duration: TOAST_DURATION })
+        toast.success(data.otro_destino ? `Email enviado a ${data.email}` : data.detail || "Email enviado exitosamente", {
+          duration: TOAST_DURATION,
+        })
         if (data.protocol_status !== undefined) setLiveStatus(data.protocol_status)
         setReportDialogOpen(false)
         await refreshProtocolDetail()
@@ -878,11 +880,11 @@ export function ProtocolCard({
     }
   }
 
-  const executeSendWhatsApp = async () => {
+  const executeSendWhatsApp = async (destino: Record<string, string> = {}) => {
     if (!ensureCanPrintReports()) return
     setIsSendingWhatsApp(true)
     try {
-      const { res: response, cancelado, quedoEnCola } = await pedirEnvio("whatsapp")
+      const { res: response, cancelado, quedoEnCola } = await pedirEnvio("whatsapp", destino)
 
       // Canceló: no pasó nada y eso no es una falla. Se cierra y listo.
       if (cancelado) {
@@ -899,7 +901,12 @@ export function ProtocolCard({
 
       if (response.ok) {
         const data = await response.json()
-        toast.success(data.detail || "WhatsApp en camino", { duration: TOAST_DURATION })
+        toast.success(
+          data.otro_destino
+            ? `WhatsApp en camino a ${data.phone}. Confirmamos la entrega en unos segundos.`
+            : data.detail || "WhatsApp en camino",
+          { duration: TOAST_DURATION },
+        )
         if (data.protocol_status !== undefined) setLiveStatus(data.protocol_status)
         setReportDialogOpen(false)
         await refreshProtocolDetail()
@@ -926,62 +933,26 @@ export function ProtocolCard({
     }
   }
 
-  const clearSendPreview = () => {
-    setSendPreviewUrl((prev) => {
-      if (prev) window.URL.revokeObjectURL(prev)
-      return null
-    })
-    setSendPreviewError(null)
-    setSendPreviewLoading(false)
-  }
-
-  // Genera el MISMO PDF que se enviará (modo 'preview', sin marcar como
-  // enviado) para mostrarlo embebido y confirmar antes de mandar.
-  const loadSendPreview = async () => {
-    if (!canPrintReports) {
-      setSendPreviewError(PERMISSION_MESSAGES.MANAGE_PRINTS)
-      return
-    }
-    clearSendPreview()
-    setSendPreviewLoading(true)
-    try {
-      const response = await executeSingleReportRequest("preview")
-      if (response.ok) {
-        const blob = await response.blob()
-        setSendPreviewUrl(window.URL.createObjectURL(blob))
-      } else {
-        const errorData = await response.json().catch(() => ({}))
-        setSendPreviewError(extractErrorMessage(errorData, "No se pudo generar la vista previa"))
-      }
-    } catch (error) {
-      setSendPreviewError(getErrorMessage(error, "No se pudo generar la vista previa"))
-    } finally {
-      setSendPreviewLoading(false)
-    }
-  }
-
   const openSendConfirmation = (method: "email" | "whatsapp") => {
     if (!ensureCanPrintReports()) return
     setPendingSendMethod(method)
     setSendConfirmationOpen(true)
-    void loadSendPreview()
   }
 
   const handleSendEmail = () => openSendConfirmation("email")
   const handleSendWhatsApp = () => openSendConfirmation("whatsapp")
 
-  const handleConfirmSend = async () => {
+  const handleConfirmSend = async (destino: DestinoElegido) => {
     setSendConfirmationOpen(false)
     const method = pendingSendMethod
     setPendingSendMethod(null)
-    clearSendPreview()
 
     if (method === "email") {
-      await executeSendEmail()
+      await executeSendEmail(cuerpoDelDestino("email", destino))
     }
 
     if (method === "whatsapp") {
-      await executeSendWhatsApp()
+      await executeSendWhatsApp(cuerpoDelDestino("whatsapp", destino))
     }
   }
 
@@ -1522,18 +1493,13 @@ export function ProtocolCard({
     hasBalanceToRegularize && !isEditable
       ? `No se pueden registrar pagos o devoluciones en estado "${statusName}".`
       : undefined
-  const patientEmail = protocolDetail?.patient.email?.trim()
-  const patientPhone = (protocolDetail?.patient.phone_mobile || protocolDetail?.patient.alt_phone || "").trim()
-  const emailDisabledReason =
-    protocolDetail && "email" in protocolDetail.patient && !patientEmail
-      ? "No se puede enviar por email porque el paciente no tiene email cargado."
-      : undefined
-  const whatsappDisabledReason =
-    protocolDetail &&
-    ("phone_mobile" in protocolDetail.patient || "alt_phone" in protocolDetail.patient) &&
-    !patientPhone
-      ? "No se puede enviar por WhatsApp porque el paciente no tiene teléfono cargado."
-      : undefined
+  // El contacto del paciente para el diálogo de envío. `undefined` = el detalle
+  // no trajo el dato y no se sabe; `""` = el paciente no lo tiene cargado.
+  const contactoDelPaciente = protocolDetail?.patient
+  const datoDeContacto = (campo: "email" | "phone_mobile" | "alt_phone") =>
+    contactoDelPaciente && campo in contactoDelPaciente ? (contactoDelPaciente[campo] ?? "").trim() : undefined
+  // Sin email o teléfono cargado igual se puede mandar: el diálogo de envío
+  // ofrece otro destino. Por eso esos botones ya no se deshabilitan.
 
   const getBorderColor = (statusName: string): string => {
     return getProtocolStatusStyleByName(statusName).border
@@ -1852,8 +1818,6 @@ export function ProtocolCard({
         sendMethodId={protocolDetail?.send_method?.id ? String(protocolDetail.send_method.id) : ""}
         onSendMethodChange={handleCambiarEnvio}
         savingSendMethod={guardandoEnvio}
-        emailDisabledReason={emailDisabledReason}
-        whatsappDisabledReason={whatsappDisabledReason}
         isPreviewing={isPreviewingReport}
         isGenerating={isGeneratingReport}
         isDownloading={isDownloadingReport}
@@ -1861,92 +1825,21 @@ export function ProtocolCard({
         isSendingWhatsApp={isSendingWhatsApp}
       />
 
-      <AlertDialog
+      <EnviarInformeDialog
         open={sendConfirmationOpen}
         onOpenChange={(open) => {
           setSendConfirmationOpen(open)
-          if (!open) {
-            setPendingSendMethod(null)
-            clearSendPreview()
-          }
+          if (!open) setPendingSendMethod(null)
         }}
-      >
-        <AlertDialogContent className="flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden border-0 p-0 shadow-2xl sm:max-w-3xl">
-          <div
-            className={
-              pendingSendMethod === "email"
-                ? "shrink-0 bg-gradient-to-r from-[#204983] to-sky-600 px-6 py-5 text-white"
-                : "shrink-0 bg-gradient-to-r from-emerald-600 to-green-500 px-6 py-5 text-white"
-            }
-          >
-            <AlertDialogHeader>
-              <div className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-white/20">
-                {pendingSendMethod === "email" ? <Mail className="h-6 w-6" /> : <MessageCircle className="h-6 w-6" />}
-              </div>
-              <AlertDialogTitle className="text-white">
-                {pendingSendMethod === "email" ? "Enviar reporte por email" : "Enviar reporte por WhatsApp"}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-white/85">
-                Revisá la vista previa del reporte tal como se enviará y, si está todo bien, confirmá.{" "}
-                {pendingSendMethod === "email"
-                  ? "Se enviará al email cargado en el paciente."
-                  : "Se enviará al teléfono cargado para WhatsApp."}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto bg-white px-6 pt-4">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-              Vista previa ({reportType === "summary" ? "resumen" : "reporte completo"})
-            </p>
-            <div className="mb-4 h-[45vh] w-full overflow-hidden rounded-lg border border-slate-200 bg-slate-50 sm:h-[440px]">
-              {sendPreviewLoading ? (
-                <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
-                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-300 border-t-[#204983]" />
-                  <span className="text-sm">Generando vista previa…</span>
-                </div>
-              ) : sendPreviewError ? (
-                <div className="flex h-full items-center justify-center px-6 text-center text-sm text-red-600">
-                  {sendPreviewError}
-                </div>
-              ) : sendPreviewUrl ? (
-                <iframe title="Vista previa del reporte" src={sendPreviewUrl} className="h-full w-full" />
-              ) : null}
-            </div>
-            {sendPreviewUrl && (
-              <button
-                type="button"
-                onClick={() => window.open(sendPreviewUrl, "_blank", "noopener,noreferrer")}
-                className="mb-3 self-start text-xs font-medium text-[#204983] underline underline-offset-2 hover:text-[#1a3d6f]"
-              >
-                Abrir vista completa (en el celular, para ver todas las páginas)
-              </button>
-            )}
-          </div>
-          <div className="shrink-0 bg-white px-6 pb-4">
-            <AlertDialogFooter>
-              <AlertDialogCancel
-                onClick={() => {
-                  setPendingSendMethod(null)
-                  clearSendPreview()
-                }}
-              >
-                Cancelar
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleConfirmSend}
-                disabled={sendPreviewLoading}
-                className={
-                  pendingSendMethod === "email"
-                    ? "bg-[#204983] text-white hover:bg-[#1a3d6f]"
-                    : "bg-emerald-600 text-white hover:bg-emerald-700"
-                }
-              >
-                Confirmar y enviar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </div>
-        </AlertDialogContent>
-      </AlertDialog>
+        metodo={pendingSendMethod}
+        titulo={`Protocolo #${protocol.id}`}
+        patientName={getPatientName()}
+        email={datoDeContacto("email")}
+        telefono={datoDeContacto("phone_mobile")}
+        telefonoAlternativo={datoDeContacto("alt_phone")}
+        tipoDeInforme={reportType}
+        onConfirm={handleConfirmSend}
+      />
 
       <AlertDialog
         open={completedEditConfirmOpen}

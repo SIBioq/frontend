@@ -436,6 +436,84 @@ export function ReportDialog({
   const signatureDescription = signed
     ? "Se incluirá firma digital del bioquímico"
     : "Se incluirá línea para firma física"
+  // LAS ACCIONES, UNA SOLA VEZ.
+  // El escritorio y el celular son dos maquetas distintas y cada una tenía su
+  // propia lista de botones. Así fue como al celular le faltó la vista previa:
+  // se agregó en una y no en la otra. Ahora las dos usan esta.
+  //
+  // En el celular van con el nombre abajo (`conEtiqueta`): ahí no hay mouse, y
+  // el tooltip que en el escritorio dice qué hace cada ícono no aparece nunca.
+  const botonesDeAccion = (conEtiqueta: boolean) => (
+    <>
+      {/* Primero mirar, después sacar. Esta no marca nada: ni los análisis
+          como enviados ni el protocolo como impreso, así que se puede abrir
+          las veces que haga falta. */}
+      <ActionButton
+        onClick={onPreviewReport}
+        disabled={Boolean(printDisabledReason)}
+        disabledReason={printDisabledReason}
+        isLoading={isPreviewing}
+        loadingLabel="Abriendo..."
+        icon={<Eye className="h-5 w-5" />}
+        label="Ver vista previa"
+        description="Solo para mirarlo: no lo marca como enviado"
+        colorClass="border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+        etiqueta={conEtiqueta ? "Vista previa" : undefined}
+      />
+      <ActionButton
+        onClick={onGenerateReport}
+        disabled={Boolean(printDisabledReason)}
+        disabledReason={printDisabledReason}
+        isLoading={isGenerating}
+        loadingLabel="Imprimiendo..."
+        icon={<Printer className="h-5 w-5" />}
+        label="Imprimir"
+        description="Dialogo de impresion del navegador"
+        colorClass={getActionColor("print", activeSendAction)}
+        isPatientMethod={activeSendAction === "print"}
+        etiqueta={conEtiqueta ? "Imprimir" : undefined}
+      />
+      <ActionButton
+        onClick={onDownloadReport}
+        disabled={Boolean(downloadDisabledReason)}
+        disabledReason={downloadDisabledReason}
+        isLoading={isDownloading}
+        loadingLabel="Descargando..."
+        icon={<Download className="h-5 w-5" />}
+        label="Descargar PDF"
+        description="Guardar archivo en el dispositivo"
+        colorClass={getActionColor("download", activeSendAction)}
+        etiqueta={conEtiqueta ? "PDF" : undefined}
+      />
+      <ActionButton
+        onClick={onSendEmail}
+        disabled={Boolean(emailActionDisabledReason)}
+        disabledReason={emailActionDisabledReason}
+        isLoading={isSending}
+        loadingLabel="Enviando email..."
+        icon={<Mail className="h-5 w-5" />}
+        label="Enviar por email"
+        description="Envia el reporte al paciente"
+        colorClass={getActionColor("email", activeSendAction)}
+        isPatientMethod={activeSendAction === "email"}
+        etiqueta={conEtiqueta ? "Email" : undefined}
+      />
+      <ActionButton
+        onClick={onSendWhatsApp}
+        disabled={Boolean(whatsappActionDisabledReason)}
+        disabledReason={whatsappActionDisabledReason}
+        isLoading={isSendingWhatsApp}
+        loadingLabel="Enviando..."
+        icon={<MessageCircle className="h-5 w-5" />}
+        label="Enviar por WhatsApp"
+        description="Comparte el reporte por WhatsApp"
+        colorClass={getActionColor("whatsapp", activeSendAction)}
+        isPatientMethod={activeSendAction === "whatsapp"}
+        etiqueta={conEtiqueta ? "WhatsApp" : undefined}
+      />
+    </>
+  )
+
   // La geometría del escritorio en un solo lugar. Antes eran cuatro números
   // sueltos —620 de tarjeta, 540 de panel, 528 de corrimiento del panel y 264
   // de corrimiento del diálogo— que solo cerraban en una pantalla grande. En
@@ -590,69 +668,7 @@ export function ReportDialog({
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Acciones</p>
               {envioDeResultados}
 
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Primero mirar, después sacar. Esta no marca nada: ni los
-                    análisis como enviados ni el protocolo como impreso, así
-                    que se puede abrir las veces que haga falta. */}
-                <ActionButton
-                  onClick={onPreviewReport}
-                  disabled={Boolean(printDisabledReason)}
-                  disabledReason={printDisabledReason}
-                  isLoading={isPreviewing}
-                  loadingLabel="Abriendo..."
-                  icon={<Eye className="h-5 w-5" />}
-                  label="Ver vista previa"
-                  description="Solo para mirarlo: no lo marca como enviado"
-                  colorClass="border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
-                />
-                <ActionButton
-                  onClick={onGenerateReport}
-                  disabled={Boolean(printDisabledReason)}
-                  disabledReason={printDisabledReason}
-                  isLoading={isGenerating}
-                  loadingLabel="Imprimiendo..."
-                  icon={<Printer className="h-5 w-5" />}
-                  label="Imprimir"
-                  description="Dialogo de impresion del navegador"
-                  colorClass={getActionColor("print", activeSendAction)}
-                  isPatientMethod={activeSendAction === "print"}
-                />
-                <ActionButton
-                  onClick={onDownloadReport}
-                  disabled={Boolean(downloadDisabledReason)}
-                  disabledReason={downloadDisabledReason}
-                  isLoading={isDownloading}
-                  loadingLabel="Descargando..."
-                  icon={<Download className="h-5 w-5" />}
-                  label="Descargar PDF"
-                  description="Guardar archivo en el dispositivo"
-                  colorClass={getActionColor("download", activeSendAction)}
-                />
-                <ActionButton
-                  onClick={onSendEmail}
-                  disabled={Boolean(emailActionDisabledReason)}
-                  disabledReason={emailActionDisabledReason}
-                  isLoading={isSending}
-                  loadingLabel="Enviando email..."
-                  icon={<Mail className="h-5 w-5" />}
-                  label="Enviar por email"
-                  description="Envia el reporte al paciente"
-                  colorClass={getActionColor("email", activeSendAction)}
-                  isPatientMethod={activeSendAction === "email"}
-                />
-                <ActionButton
-                  onClick={onSendWhatsApp}
-                  disabled={Boolean(whatsappActionDisabledReason)}
-                  disabledReason={whatsappActionDisabledReason}
-                  isLoading={isSendingWhatsApp}
-                  loadingLabel="Enviando..."
-                  icon={<MessageCircle className="h-5 w-5" />}
-                  label="Enviar por WhatsApp"
-                  description="Comparte el reporte por WhatsApp"
-                  colorClass={getActionColor("whatsapp", activeSendAction)}
-                  isPatientMethod={activeSendAction === "whatsapp"}
-                />
-              </div>
+              <div className="flex flex-wrap items-center gap-2">{botonesDeAccion(false)}</div>
             </div>
 
             <Separator />
@@ -722,7 +738,7 @@ export function ReportDialog({
 
                     <Separator />
 
-                    <div ref={frontScrollRef} className="flex-1 overflow-y-auto px-5 py-4 pb-24">
+                    <div ref={frontScrollRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
                       <div className="flex flex-col gap-3">
                         <div className="flex flex-col gap-2">
                           <Label className="text-sm font-medium">Tipo de reporte</Label>
@@ -807,60 +823,16 @@ export function ReportDialog({
                         <div className="flex flex-col gap-2">
                           <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Acciones</p>
                           {envioDeResultados}
-                          <div className="grid grid-cols-1 gap-2">
-                            <ActionButton
-                              onClick={onGenerateReport}
-                              disabled={Boolean(printDisabledReason)}
-                              disabledReason={printDisabledReason}
-                              isLoading={isGenerating}
-                              loadingLabel="Imprimiendo..."
-                              icon={<Printer className="h-5 w-5" />}
-                              label="Imprimir"
-                              description="Dialogo de impresion del navegador"
-                              colorClass={getActionColor("print", activeSendAction)}
-                  isPatientMethod={activeSendAction === "print"}
-                            />
-                            <ActionButton
-                              onClick={onDownloadReport}
-                              disabled={Boolean(downloadDisabledReason)}
-                              disabledReason={downloadDisabledReason}
-                              isLoading={isDownloading}
-                              loadingLabel="Descargando..."
-                              icon={<Download className="h-5 w-5" />}
-                              label="Descargar PDF"
-                              description="Guardar archivo en el dispositivo"
-                              colorClass={getActionColor("download", activeSendAction)}
-                            />
-                            <ActionButton
-                              onClick={onSendEmail}
-                              disabled={Boolean(emailActionDisabledReason)}
-                              disabledReason={emailActionDisabledReason}
-                              isLoading={isSending}
-                              loadingLabel="Enviando email..."
-                              icon={<Mail className="h-5 w-5" />}
-                              label="Enviar por email"
-                              description="Envia el reporte al paciente"
-                              colorClass={getActionColor("email", activeSendAction)}
-                  isPatientMethod={activeSendAction === "email"}
-                            />
-                            <ActionButton
-                              onClick={onSendWhatsApp}
-                              disabled={Boolean(whatsappActionDisabledReason)}
-                              disabledReason={whatsappActionDisabledReason}
-                              isLoading={isSendingWhatsApp}
-                              loadingLabel="Enviando..."
-                              icon={<MessageCircle className="h-5 w-5" />}
-                              label="Enviar por WhatsApp"
-                              description="Comparte el reporte por WhatsApp"
-                              colorClass={getActionColor("whatsapp", activeSendAction)}
-                  isPatientMethod={activeSendAction === "whatsapp"}
-                            />
-                          </div>
+                          {/* Las cinco en una fila, como en el escritorio: una por
+                              renglón se comían la pantalla del celular. */}
+                          <div className="grid grid-cols-5 justify-items-center gap-1">{botonesDeAccion(true)}</div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2">
+                    {/* Abajo de todo y no flotando encima: flotando tapaba la
+                        fila de acciones, justo lo que hay que tocar. */}
+                    <div className="flex shrink-0 justify-center border-t border-slate-200 bg-white px-5 py-3">
                       <Button
                         type="button"
                         onClick={() => onToggleCustomizationOpen(true)}
@@ -894,7 +866,7 @@ export function ReportDialog({
                       </div>
                     </div>
 
-                    <div ref={backScrollRef} className="flex-1 overflow-y-auto px-5 py-4 pb-24">
+                    <div ref={backScrollRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
                       {visibleAnalyses.length === 0 ? (
                         <div className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-500">
                           No hay análisis disponibles para personalizar.
@@ -963,7 +935,7 @@ export function ReportDialog({
                       )}
                     </div>
 
-                    <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2">
+                    <div className="flex shrink-0 justify-center border-t border-slate-200 bg-white px-5 py-3">
                       <Button
                         type="button"
                         onClick={() => onToggleCustomizationOpen(false)}
