@@ -133,7 +133,7 @@ export function CreateMedicoForm({ onMedicoCreated, onCancel }: CreateMedicoForm
             )}
             {isCreating ? "Creando..." : "Crear Médico"}
           </Button>
-          <Button variant="outline" onClick={onCancel} className="sm:w-auto bg-transparent">
+          <Button type="button" variant="outline" onClick={onCancel} className="sm:w-auto bg-transparent">
             <X className="h-4 w-4 mr-2" />
             Cancelar
           </Button>

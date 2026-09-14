@@ -15,10 +15,10 @@ import type { Analysis, SelectedAnalysis } from "../../../types"
 import { CATALOG_ENDPOINTS } from "../../../config/api"
 import {
   ACTO_BIOQUIMICO,
+  candidatosDeCodigo,
   compararCodigos,
   esActoDeIngreso,
   mismoCodigo,
-  normalizarCodigo,
 } from "../../../lib/codigos-analisis"
 import { usePreciosFijos } from "@/hooks/use-precios-fijos"
 
@@ -49,6 +49,14 @@ const ALTO_MINIMO_DEL_DESPLEGABLE = 176
 const ALTO_MAXIMO_DEL_DESPLEGABLE = 352
 const AIRE_CONTRA_EL_BORDE = 16
 
+const buscarCoincidenciaDeCodigo = (analyses: Analysis[], code: string): Analysis | null => {
+  for (const candidato of candidatosDeCodigo(code)) {
+    const encontrado = analyses.find((analysis) => mismoCodigo(analysis.code, candidato))
+    if (encontrado) return encontrado
+  }
+  return null
+}
+
 export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisSearchProps) {
   // Un análisis con precio cargado pero la función deshabilitada se cobra
   // por UB: anunciarle el precio a quien lo elige sería mentirle.
@@ -62,6 +70,9 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
   const [hasMore, setHasMore] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [nextUrl, setNextUrl] = useState<string | null>(null)
+  const [frequentAnalyses, setFrequentAnalyses] = useState<Analysis[]>([])
+  const latestSearchId = useRef(0)
+  const exactCodeInFlight = useRef(new Map<string, Promise<Analysis | null>>())
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
   const resultsRef = useRef<HTMLDivElement>(null)
@@ -72,6 +83,30 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
   // Dónde estaba el puntero la última vez que se movió de verdad. Ver el
   // `onMouseMove` de las filas.
   const ultimoPuntero = useRef<{ x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    let vigente = true
+    const cargarAnalisisFrecuentes = async () => {
+      const acumulados: Analysis[] = []
+      let url: string | null = `${CATALOG_ENDPOINTS.ANALYSIS}?frequent=true&is_active=true&limit=200&offset=0`
+      while (vigente && url) {
+        const response = await apiRequest(url)
+        if (!response.ok) return
+        const data: PaginatedResponse<Analysis> = await response.json()
+        acumulados.push(...(data.results || []))
+        url = data.next
+      }
+      if (vigente) {
+        setFrequentAnalyses(acumulados)
+        setSearchResults(acumulados)
+      }
+    }
+    void cargarAnalisisFrecuentes()
+      .catch((error) => console.error("Error precargando análisis frecuentes:", error))
+    return () => {
+      vigente = false
+    }
+  }, [apiRequest])
 
   const loadMoreAnalyses = () => {
     if (nextUrl && !isLoadingMore) {
@@ -107,21 +142,31 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
     return null
   }
 
-  // Trae el análisis cuyo código es EXACTAMENTE `code`. Se usa al presionar Enter
-  // con un código: garantiza que se agregue ese código y no un match parcial o un
-  // resultado viejo del debounce (bug: a veces tomaba un código más corto).
-  const fetchByExactCode = async (code: string): Promise<Analysis | null> => {
-    try {
-      const url = `${CATALOG_ENDPOINTS.ANALYSIS}?code=${code}&is_active=true`
-      const response = await apiRequest(url)
-      if (response.ok) {
-        const data: PaginatedResponse<Analysis> = await response.json()
-        return data.results.find((a) => mismoCodigo(a.code, code)) ?? null
+  // Resuelve en una sola petición el código escrito y su posible forma NBU.
+  // El backend devuelve ambos si existen; acá siempre gana el literal.
+  const fetchByCodeOrSuffix = async (code: string): Promise<Analysis | null> => {
+    const pendiente = exactCodeInFlight.current.get(code)
+    if (pendiente) return pendiente
+
+    const request = (async () => {
+      try {
+        const url = `${CATALOG_ENDPOINTS.ANALYSIS}?code_or_suffix=${encodeURIComponent(code)}&is_active=true`
+        const response = await apiRequest(url)
+        if (response.ok) {
+          const data: PaginatedResponse<Analysis> = await response.json()
+          return buscarCoincidenciaDeCodigo(data.results, code)
+        }
+      } catch (error) {
+        console.error(`Error fetching analysis by code ${code}:`, error)
       }
-    } catch (error) {
-      console.error(`Error fetching analysis by code ${code}:`, error)
+      return null
+    })()
+    exactCodeInFlight.current.set(code, request)
+    try {
+      return await request
+    } finally {
+      if (exactCodeInFlight.current.get(code) === request) exactCodeInFlight.current.delete(code)
     }
-    return null
   }
 
   const searchAnalyses = async (term: string, isNewSearch = false) => {
@@ -147,11 +192,17 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
 
       if (!url) return
 
+      const searchId = ++latestSearchId.current
       const response = await apiRequest(url)
 
       if (response.ok) {
         const data: PaginatedResponse<Analysis> = await response.json()
         const newResults = data.results || []
+
+        // Con latencia, una respuesta de una búsqueda vieja puede llegar
+        // después de la nueva. Nunca dejamos que pise lo que el usuario acaba
+        // de escribir.
+        if (searchId !== latestSearchId.current) return
 
         if (isNewSearch) {
           setSearchResults(newResults)
@@ -229,15 +280,24 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
 
   useEffect(() => {
     setHighlightedIndex(0)
+    latestSearchId.current += 1
     if (debouncedSearchTerm.trim()) {
-      searchAnalyses(debouncedSearchTerm, true)
+      const coincidenciaPrecargada = buscarCoincidenciaDeCodigo(frequentAnalyses, debouncedSearchTerm)
+      if (coincidenciaPrecargada) {
+        setSearchResults([coincidenciaPrecargada])
+        setShowResults(true)
+        setHasMore(false)
+        setNextUrl(null)
+      } else {
+        searchAnalyses(debouncedSearchTerm, true)
+      }
     } else {
-      setSearchResults([])
+      setSearchResults(frequentAnalyses)
       setShowResults(false)
       setHasMore(false)
       setNextUrl(null)
     }
-  }, [debouncedSearchTerm])
+  }, [debouncedSearchTerm, frequentAnalyses])
 
   /**
    * Agrega el análisis elegido, actos bioquímicos incluidos.
@@ -318,17 +378,19 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
     (analysis) => !selectedAnalyses.find((selected) => selected.id === analysis.id),
   )
 
-  // Si el término es un código numérico, el match EXACTO va primero (y queda
-  // resaltado por defecto), para que Enter no agarre un código parcial/más corto.
-  // Si el término parece un código, el match EXACTO va primero (y queda
-  // resaltado por defecto), para que Enter no agarre un código parcial.
-  const terminoComoCodigo = normalizarCodigo(searchTerm)
-  const orderedResults = !terminoComoCodigo
+  // El código exacto queda primero; después viene su posible forma NBU. Así
+  // Enter no toma un resultado parcial mientras el usuario escribe rápido.
+  const codigosCandidatos = candidatosDeCodigo(searchTerm)
+  const orderedResults = codigosCandidatos.length === 0
     ? filteredResults
     : [...filteredResults].sort(
-        (a, b) =>
-          (mismoCodigo(a.code, terminoComoCodigo) ? 0 : 1) -
-          (mismoCodigo(b.code, terminoComoCodigo) ? 0 : 1),
+        (a, b) => {
+          const posicionA = codigosCandidatos.findIndex((code) => mismoCodigo(a.code, code))
+          const posicionB = codigosCandidatos.findIndex((code) => mismoCodigo(b.code, code))
+          const prioridadA = posicionA === -1 ? codigosCandidatos.length : posicionA
+          const prioridadB = posicionB === -1 ? codigosCandidatos.length : posicionB
+          return prioridadA - prioridadB
+        },
       )
 
   const handleKeyDown = async (e: React.KeyboardEvent) => {
@@ -346,25 +408,34 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
       e.preventDefault()
       const term = searchTerm.trim()
 
-      // Si hay un análisis con EXACTAMENTE ese código, gana siempre: el
-      // término puede ser también parte del nombre de otro.
-      const exact = orderedResults.find((a) => mismoCodigo(a.code, term))
-      if (exact) {
-        handleAddAnalysis(exact)
+      const coincidenciaFrecuente = buscarCoincidenciaDeCodigo(frequentAnalyses, term)
+      if (coincidenciaFrecuente) {
+        handleAddAnalysis(coincidenciaFrecuente)
+        return
+      }
+
+      // Si el código literal o su abreviatura ya están visibles, no esperamos
+      // ninguna petición.
+      const coincidenciaVisible = buscarCoincidenciaDeCodigo(orderedResults, term)
+      if (coincidenciaVisible) {
+        handleAddAnalysis(coincidenciaVisible)
         return
       }
       // No está entre los resultados visibles (debounce o paginación): se
-      // pregunta por el código exacto antes de resignarse al resaltado.
+      // resuelve el código y su posible abreviatura antes de usar el resaltado.
       //
       // Solo si el término puede ser un código. Un código no tiene espacios y
       // tiene al menos un dígito (`660001`, `A15`), así que buscar por nombre
       // no paga un viaje al servidor antes de agregar el resaltado.
       if (/^[\w.-]+$/.test(term) && /\d/.test(term)) {
-        const fetched = await fetchByExactCode(term)
+        const fetched = await fetchByCodeOrSuffix(term)
         if (fetched) {
           handleAddAnalysis(fetched)
-          return
         }
+        // Un código escrito no puede caer silenciosamente en el primer
+        // resultado parcial mientras la búsqueda exacta todavía responde.
+        if (!fetched) toast.error(`No encontramos el análisis con código o abreviatura "${term}"`)
+        return
       }
 
       // Texto: agregar el análisis resaltado.

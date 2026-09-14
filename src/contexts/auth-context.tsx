@@ -20,6 +20,7 @@ import type {
   TwoFactorEnrollmentRequiredResponse,
   TwoFactorRequiredResponse,
   TwoFactorSetupResponse,
+  TwoFactorMethod,
   User,
 } from "@/types"
 import {
@@ -54,7 +55,7 @@ export type LoginOutcome =
    *  contexto porque el login lo necesita en el mismo tick: para cuando
    *  `user` se actualiza, la pantalla ya decidió qué animar. */
   | { status: "success"; mustChangePassword: boolean }
-  | { status: "two_factor_required"; ephemeralToken: string; expiresIn: number }
+  | { status: "two_factor_required"; ephemeralToken: string; expiresIn: number; method: TwoFactorMethod }
   /** Está obligada a tener segundo factor y todavía no se enroló: falta el alta. */
   | { status: "two_factor_enrollment_required"; ephemeralToken: string; expiresIn: number }
   | { status: "error" }
@@ -92,7 +93,7 @@ interface AuthContextType {
   isLoading: boolean
   login: (username: string, password: string) => Promise<LoginOutcome>
   verifyTwoFactor: (params: VerifyTwoFactorParams) => Promise<TwoFactorOutcome>
-  startTwoFactorEnrollment: (ephemeralToken: string) => Promise<TwoFactorEnrollmentStartOutcome>
+  startTwoFactorEnrollment: (ephemeralToken: string, method: TwoFactorMethod) => Promise<TwoFactorEnrollmentStartOutcome>
   confirmTwoFactorEnrollment: (
     params: ConfirmTwoFactorEnrollmentParams,
   ) => Promise<TwoFactorEnrollmentConfirmOutcome>
@@ -419,6 +420,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             status: "two_factor_required",
             ephemeralToken: data.ephemeral_token,
             expiresIn: Number(data.expires_in) > 0 ? Number(data.expires_in) : 300,
+            method: data.two_factor_method || "totp",
           }
         }
 
@@ -520,14 +522,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * `login.tsx`), nunca en storage.
    */
   const startTwoFactorEnrollment = useCallback(
-    async (ephemeralToken: string): Promise<TwoFactorEnrollmentStartOutcome> => {
+    async (ephemeralToken: string, method: TwoFactorMethod): Promise<TwoFactorEnrollmentStartOutcome> => {
       try {
         const response = await fetch(AUTH_ENDPOINTS.TWO_FACTOR_SETUP, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ ephemeral_token: ephemeralToken }),
+          body: JSON.stringify({ ephemeral_token: ephemeralToken, method }),
         })
 
         if (response.status === 429) {

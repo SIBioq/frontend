@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react"
 import { AlertCircle, ArrowLeft, Check, KeyRound, ShieldCheck, TimerReset } from "lucide-react"
 import { CodeInput } from "@/components/ui/code-input"
 import { formatCountdown, useExpiryCountdown } from "@/hooks/use-expiry-countdown"
+import type { TwoFactorMethod } from "@/types"
 
 export interface TwoFactorSubmitResult {
   ok: boolean
@@ -17,6 +18,7 @@ interface TwoFactorChallengeProps {
   username: string
   /** Segundos de vida que le quedaban al `ephemeral_token` cuando llegó. */
   expiresIn: number
+  method?: TwoFactorMethod
   onSubmit: (code: string, rememberDevice: boolean) => Promise<TwoFactorSubmitResult>
   /** Volver al formulario de usuario y contraseña. */
   onCancel: () => void
@@ -24,7 +26,7 @@ interface TwoFactorChallengeProps {
 
 const CODE_LENGTH = 6
 
-export function TwoFactorChallenge({ username, expiresIn, onSubmit, onCancel }: TwoFactorChallengeProps) {
+export function TwoFactorChallenge({ username, expiresIn, method = "totp", onSubmit, onCancel }: TwoFactorChallengeProps) {
   const [code, setCode] = useState("")
   const [recoveryCode, setRecoveryCode] = useState("")
   const [useRecovery, setUseRecovery] = useState(false)
@@ -118,7 +120,9 @@ export function TwoFactorChallenge({ username, expiresIn, onSubmit, onCancel }: 
             <>Ingresá uno de tus códigos de recuperación</>
           ) : (
             <>
-              Abrí tu app de autenticación y escribí el código de 6 dígitos de <strong>{username}</strong>
+              {method === "email"
+                ? <>Escribí el código de 6 dígitos que enviamos al correo de <strong>{username}</strong></>
+                : <>Abrí tu app de autenticación y escribí el código de 6 dígitos de <strong>{username}</strong></>}
             </>
           )}
         </p>

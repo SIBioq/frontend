@@ -1,11 +1,12 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
-import { AlertCircle, AlertTriangle, ArrowLeft, ShieldAlert, TimerReset } from "lucide-react"
+import { useCallback, useState } from "react"
+import { AlertCircle, AlertTriangle, ArrowLeft, Mail, ShieldAlert, Smartphone, TimerReset } from "lucide-react"
 import { TwoFactorEnrollStep } from "@/components/common/two-factor-enroll-step"
 import { TwoFactorRecoveryCodes } from "@/components/common/two-factor-recovery-codes"
 import { formatCountdown, useExpiryCountdown } from "@/hooks/use-expiry-countdown"
 import type { TwoFactorSetupResponse } from "@/types"
+import type { TwoFactorMethod } from "@/types"
 
 export interface TwoFactorEnrollmentStartResult {
   ok: boolean
@@ -26,7 +27,7 @@ interface TwoFactorEnrollmentProps {
   username: string
   /** Segundos de vida que le quedaban al pase cuando llegó (el backend usa 900). */
   expiresIn: number
-  onStart: () => Promise<TwoFactorEnrollmentStartResult>
+  onStart: (method: TwoFactorMethod) => Promise<TwoFactorEnrollmentStartResult>
   onConfirm: (code: string) => Promise<TwoFactorEnrollmentConfirmResult>
   /** La persona ya guardó los códigos: seguimos a la app. */
   onDone: () => void
@@ -34,7 +35,7 @@ interface TwoFactorEnrollmentProps {
   onCancel: () => void
 }
 
-type Step = "loading" | "scan" | "codes" | "failed"
+type Step = "choose" | "loading" | "scan" | "codes" | "failed"
 
 const PRIMARY_BUTTON =
   "flex w-full items-center justify-center gap-2 rounded-lg bg-[#204983] px-4 py-3 font-medium text-white transition-colors duration-200 hover:bg-[#1a3d6f] focus:outline-none focus:ring-2 focus:ring-[#204983] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -56,7 +57,7 @@ export function TwoFactorEnrollment({
   onDone,
   onCancel,
 }: TwoFactorEnrollmentProps) {
-  const [step, setStep] = useState<Step>("loading")
+  const [step, setStep] = useState<Step>("choose")
   const [setup, setSetup] = useState<TwoFactorSetupResponse | null>(null)
   const [code, setCode] = useState("")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -65,12 +66,12 @@ export function TwoFactorEnrollment({
   const [codesAcknowledged, setCodesAcknowledged] = useState(false)
   const { secondsLeft, expired, markExpired } = useExpiryCountdown(expiresIn)
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (method: TwoFactorMethod) => {
     setStep("loading")
     setErrorMessage(null)
     setCode("")
 
-    const result = await onStart()
+    const result = await onStart(method)
     if (result.ok && result.setup) {
       setSetup(result.setup)
       setStep("scan")
@@ -81,16 +82,6 @@ export function TwoFactorEnrollment({
     setErrorMessage(result.message || "No se pudo preparar el enrolamiento.")
     setStep("failed")
   }, [markExpired, onStart])
-
-  // Una sola vez por montaje: el pase es de un solo uso y pedir el secreto dos
-  // veces generaría dos secretos distintos. Cuando llega un pase nuevo el padre
-  // remonta la pantalla con `key`, así que el arranque vuelve a correr.
-  const startedRef = useRef(false)
-  useEffect(() => {
-    if (startedRef.current) return
-    startedRef.current = true
-    void start()
-  }, [start])
 
   const confirm = useCallback(
     async (value: string) => {
@@ -180,6 +171,22 @@ export function TwoFactorEnrollment({
         </p>
       </div>
 
+      {step === "choose" && (
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">Elegí cómo querés recibir el código al iniciar sesión.</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => void start("totp")} className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition hover:border-[#204983] hover:bg-[#204983]/5">
+              <Smartphone className="h-5 w-5 text-[#204983]" />
+              <span><strong className="block text-sm text-gray-800">Aplicación autenticadora</strong><small className="text-xs text-gray-500">Google Authenticator, Authy o similar</small></span>
+            </button>
+            <button type="button" onClick={() => void start("email")} className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition hover:border-[#204983] hover:bg-[#204983]/5">
+              <Mail className="h-5 w-5 text-[#204983]" />
+              <span><strong className="block text-sm text-gray-800">Correo electrónico</strong><small className="text-xs text-gray-500">Te enviamos un código temporal</small></span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {step === "loading" && (
         <div className="flex items-center justify-center gap-3 py-10 text-sm text-gray-600">
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-[#204983] border-t-transparent" />
@@ -196,7 +203,7 @@ export function TwoFactorEnrollment({
               <p className="mt-1 whitespace-pre-line text-sm text-red-700">{errorMessage}</p>
             </div>
           </div>
-          <button type="button" onClick={() => void start()} className={PRIMARY_BUTTON}>
+          <button type="button" onClick={() => setStep("choose")} className={PRIMARY_BUTTON}>
             Reintentar
           </button>
         </div>

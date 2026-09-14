@@ -38,6 +38,28 @@ export function TwoFactorEnrollStep({
 }: TwoFactorEnrollStepProps) {
   const { success, error: errorToast } = useToast()
 
+  if (setup.method === "email") {
+    return (
+      <div className="space-y-4 py-2">
+        <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
+          Enviamos un código de 6 dígitos a <strong>{setup.email || "tu correo electrónico"}</strong>. Es válido por unos minutos y se usa una sola vez.
+        </div>
+        <CodeInput
+          value={code}
+          onChange={onCodeChange}
+          onComplete={onComplete}
+          disabled={isConfirming}
+          invalid={Boolean(errorMessage)}
+          autoFocus
+        />
+        <div className="flex h-5 items-center justify-center text-xs text-gray-500">
+          {isConfirming ? "Verificando..." : "Se envía solo al completar los 6 dígitos"}
+        </div>
+        {errorMessage && <p className="whitespace-pre-line text-center text-sm text-red-600">{errorMessage}</p>}
+      </div>
+    )
+  }
+
   const handleCopySecret = async () => {
     const ok = await copyToClipboard(setup.secret)
     if (ok) success("Clave copiada")

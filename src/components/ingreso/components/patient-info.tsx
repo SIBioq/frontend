@@ -158,16 +158,18 @@ export function PatientInfo({ patient, onEdit }: PatientInfoProps) {
               </div>
             </div>
 
-          <div className="space-y-2 sm:space-y-3">
-            {patient.phone_mobile && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm">
-                <Phone className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
-                <div>
-                  <p className="font-medium">Teléfono móvil</p>
-                  <p className="text-gray-600 break-all">{patient.phone_mobile}</p>
-                </div>
+          <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50/60 p-3 sm:space-y-3">
+            <div className="border-b border-amber-200 pb-2">
+              <p className="text-xs font-semibold text-amber-900">Confirmá los datos de contacto</p>
+              <p className="mt-1 text-[11px] text-amber-800">Preguntale al paciente si son correctos antes de continuar.</p>
+            </div>
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <Phone className="h-3 w-3 text-amber-700 sm:h-4 sm:w-4" />
+              <div>
+                <p className="font-medium">Teléfono móvil</p>
+                <p className="break-all text-gray-600">{patient.phone_mobile || "Sin cargar"}</p>
               </div>
-            )}
+            </div>
 
             {patient.alt_phone && (
               <div className="flex items-center gap-2 text-xs sm:text-sm">
@@ -179,15 +181,14 @@ export function PatientInfo({ patient, onEdit }: PatientInfoProps) {
               </div>
             )}
 
-            {patient.email && (
-              <div className="flex items-center gap-2 text-xs sm:text-sm">
-                <Mail className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
-                <div>
-                  <p className="font-medium">Email</p>
-                  <p className="text-gray-600 break-all">{patient.email}</p>
-                </div>
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <Mail className="h-3 w-3 text-amber-700 sm:h-4 sm:w-4" />
+              <div>
+                <p className="font-medium">Email</p>
+                <p className="break-all text-gray-600">{patient.email || "Sin cargar"}</p>
               </div>
-            )}
+            </div>
+
           </div>
         </div>
         )}
