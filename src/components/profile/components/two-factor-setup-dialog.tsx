@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { AlertTriangle, ShieldCheck } from "lucide-react"
+import { AlertTriangle, Mail, ShieldCheck, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog"
 import { DialogHeading } from "@/components/common/dialog-heading"
@@ -10,7 +10,7 @@ import { TwoFactorRecoveryCodes } from "@/components/common/two-factor-recovery-
 import { AUTH_ENDPOINTS } from "@/config/api"
 import { useApi } from "@/hooks/use-api"
 import { readApiError } from "@/lib/api-error"
-import type { TwoFactorConfirmResponse, TwoFactorSetupResponse } from "@/types"
+import type { TwoFactorConfirmResponse, TwoFactorMethod, TwoFactorSetupResponse } from "@/types"
 
 interface TwoFactorSetupDialogProps {
   open: boolean
@@ -19,12 +19,12 @@ interface TwoFactorSetupDialogProps {
   onConfirmed: () => void
 }
 
-type Step = "loading" | "scan" | "codes" | "failed"
+type Step = "choose" | "loading" | "scan" | "codes" | "failed"
 
 export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed }: TwoFactorSetupDialogProps) {
   const { apiRequest } = useApi()
 
-  const [step, setStep] = useState<Step>("loading")
+  const [step, setStep] = useState<Step>("choose")
   const [setupData, setSetupData] = useState<TwoFactorSetupResponse | null>(null)
   const [code, setCode] = useState("")
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -32,12 +32,12 @@ export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed }: TwoFac
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
   const [codesAcknowledged, setCodesAcknowledged] = useState(false)
 
-  const startSetup = useCallback(async () => {
+  const startSetup = useCallback(async (method: TwoFactorMethod) => {
     setStep("loading")
     setErrorMessage(null)
     setCode("")
     try {
-      const response = await apiRequest(AUTH_ENDPOINTS.TWO_FACTOR_SETUP, { method: "POST" })
+      const response = await apiRequest(AUTH_ENDPOINTS.TWO_FACTOR_SETUP, { method: "POST", body: { method } })
       if (!response.ok) {
         setErrorMessage(await readApiError(response, "No se pudo iniciar la configuración."))
         setStep("failed")
@@ -57,8 +57,8 @@ export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed }: TwoFac
     setSetupData(null)
     setRecoveryCodes([])
     setCodesAcknowledged(false)
-    void startSetup()
-  }, [open, startSetup])
+    setStep("choose")
+  }, [open])
 
   const confirmCode = useCallback(
     async (value: string) => {
@@ -130,7 +130,7 @@ export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed }: TwoFac
           <DialogHeading
             icon={ShieldCheck}
             title="Activar verificación en dos pasos"
-            description="Escaneá el código con tu app de autenticación."
+            description={step === "scan" && setupData?.method === "email" ? "Confirmá el código que enviamos a tu correo." : "Elegí un método y confirmá el código para activarlo."}
           />
         )}
 
@@ -144,9 +144,23 @@ export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed }: TwoFac
         {step === "failed" && (
           <div className="space-y-4 py-6">
             <p className="whitespace-pre-line text-sm text-red-700">{errorMessage}</p>
-            <Button onClick={() => void startSetup()} className="bg-[#204983] hover:bg-[#1a3d6f]">
-              Reintentar
-            </Button>
+            <Button onClick={() => setStep("choose")} className="bg-[#204983] hover:bg-[#1a3d6f]">Elegir método</Button>
+          </div>
+        )}
+
+        {step === "choose" && (
+          <div className="space-y-3 py-4">
+            <p className="text-sm text-gray-600">Elegí cómo querés recibir el código al iniciar sesión.</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button type="button" onClick={() => void startSetup("totp")} className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition hover:border-[#204983] hover:bg-[#204983]/5">
+                <Smartphone className="h-5 w-5 text-[#204983]" />
+                <span><strong className="block text-sm text-gray-800">Aplicación autenticadora</strong><small className="text-xs text-gray-500">QR y código de la app</small></span>
+              </button>
+              <button type="button" onClick={() => void startSetup("email")} className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition hover:border-[#204983] hover:bg-[#204983]/5">
+                <Mail className="h-5 w-5 text-[#204983]" />
+                <span><strong className="block text-sm text-gray-800">Correo electrónico</strong><small className="text-xs text-gray-500">Código temporal al correo de la cuenta</small></span>
+              </button>
+            </div>
           </div>
         )}
 

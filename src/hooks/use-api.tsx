@@ -30,6 +30,10 @@ const demorarComoEnProduccion = async () => {
   await new Promise((resolve) => setTimeout(resolve, conJitter))
 }
 
+// Evita que doble clics o dos efectos simultáneos repitan una escritura
+// idéntica mientras la primera todavía está en vuelo.
+const escriturasEnCurso = new Map<string, Promise<Response>>()
+
 // JSDoc documentation for ApiRequestOptions and useApi hook
 /**
  * Options for API requests, including HTTP method, request body, headers, and timeout.
@@ -135,28 +139,56 @@ export const useApi = () => {
       }
 
       try {
-        let response = await makeRequest()
-
-        if (response.status === 401 && !skipTokenRefresh) {
-          console.warn("[v0] 401 Unauthorized. Attempting token refresh...")
-
-          const refreshSuccess = await refreshToken()
-
-          if (refreshSuccess) {
-            console.log("[v0] Token refreshed successfully. Retrying request...")
-            response = await makeRequest()
-          } else {
-            console.error("[v0] Token refresh failed. Session expired.")
-            clearSession()
-            dispatchSessionExpiredEvent({
-              reason: "refresh_failed",
-              message: "Tu sesión expiró. Volvé a iniciar sesión para continuar.",
-            })
-            throw new Error("Sesión expirada")
+        const esEscritura = method !== "GET" && !(body instanceof FormData)
+        let clave: string | null = null
+        if (esEscritura) {
+          try {
+            const sesion = getAccessToken() || "anon"
+            clave = `${sesion}:${method}:${url}:${JSON.stringify(body ?? null)}`
+          } catch {
+            // Un body no serializable no se puede deduplicar de forma segura.
           }
         }
 
-        return response
+        const ejecutar = async () => {
+          let response = await makeRequest()
+
+          if (response.status === 401 && !skipTokenRefresh) {
+            console.warn("[v0] 401 Unauthorized. Attempting token refresh...")
+
+            const refreshSuccess = await refreshToken()
+
+            if (refreshSuccess) {
+              console.log("[v0] Token refreshed successfully. Retrying request...")
+              response = await makeRequest()
+            } else {
+              console.error("[v0] Token refresh failed. Session expired.")
+              clearSession()
+              dispatchSessionExpiredEvent({
+                reason: "refresh_failed",
+                message: "Tu sesión expiró. Volvé a iniciar sesión para continuar.",
+              })
+              throw new Error("Sesión expirada")
+            }
+          }
+
+          return response
+        }
+
+        if (!clave) return await ejecutar()
+
+        const existente = escriturasEnCurso.get(clave)
+        if (existente) return (await existente).clone()
+
+        const promesa = ejecutar()
+        escriturasEnCurso.set(clave, promesa)
+        try {
+          // Todos reciben una copia: la respuesta original queda disponible
+          // para los demás consumidores que esperen la misma operación.
+          return (await promesa).clone()
+        } finally {
+          if (escriturasEnCurso.get(clave) === promesa) escriturasEnCurso.delete(clave)
+        }
       } catch (error) {
         console.error(`[v0] Final error:`, error)
         throw error

@@ -167,10 +167,15 @@ export function TwoFactorSection() {
                   {status?.enabled && status.confirmed_at && (
                     <span className="text-xs text-gray-500">desde {formatUtcDateTime(status.confirmed_at)}</span>
                   )}
+                  {status?.enabled && (
+                    <Badge variant="outline" className="text-xs">
+                      {status.method === "email" ? "Código por correo" : "App autenticadora"}
+                    </Badge>
+                  )}
                 </div>
                 <p className="mt-1 text-sm text-gray-600">
                   {status?.enabled
-                    ? "Al iniciar sesión en un equipo nuevo se te pide el código de la app. En un equipo de confianza no se vuelve a pedir hasta que venza la ventana de 8 horas."
+                    ? `${status.method === "email" ? "Al iniciar sesión se te pide el código enviado por correo" : "Al iniciar sesión en un equipo nuevo se te pide el código de la app"}. En un equipo de confianza no se vuelve a pedir hasta que venza la ventana de 8 horas.`
                     : "Sumá un código de 6 dígitos desde tu celular al iniciar sesión."}
                 </p>
               </div>

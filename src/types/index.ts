@@ -1663,7 +1663,10 @@ export interface TwoFactorRequiredResponse {
   ephemeral_token: string
   /** Segundos de vida del `ephemeral_token` (el backend usa 300). */
   expires_in: number
+  two_factor_method?: TwoFactorMethod
 }
+
+export type TwoFactorMethod = "totp" | "email"
 
 /**
  * Respuesta de `POST /auth/token/` cuando la persona está OBLIGADA a tener
@@ -1691,11 +1694,15 @@ export interface TwoFactorStatus {
   confirmed_at: string | null
   recovery_codes_left: number
   trusted_devices: TrustedDevice[]
+  method: TwoFactorMethod | null
+  email: string | null
 }
 
 export interface TwoFactorSetupResponse {
+  method: TwoFactorMethod
   secret: string
   otpauth_uri: string
+  email?: string | null
 }
 
 /** Los códigos de recuperación se devuelven una única vez, al confirmar el alta. */
@@ -1724,6 +1731,7 @@ export interface TwoFactorEnrollmentConfirmResponse extends TwoFactorConfirmResp
  */
 export interface UserTwoFactorStatus {
   enabled: boolean
+  method: TwoFactorMethod | null
   confirmed_at: string | null
   required: boolean
   recovery_codes_left: number
@@ -1771,4 +1779,3 @@ export interface DiarioContingencia {
   resumen: ResumenContingencia
   operaciones: OperacionContingencia[]
 }
-

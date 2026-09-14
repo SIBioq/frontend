@@ -48,6 +48,20 @@ export function normalizarCodigo(code: unknown): string {
   return String(code).trim()
 }
 
+/**
+ * Códigos a probar cuando quien ingresa el protocolo escribe sólo el sufijo
+ * NBU: `5` representa `660005`, `412` representa `660412` y `1050`, `661050`.
+ * El código literal va primero por si existe una práctica propia con ese valor.
+ */
+export function candidatosDeCodigo(code: unknown): string[] {
+  const exacto = normalizarCodigo(code)
+  if (!exacto) return []
+  if (!/^\d{1,4}$/.test(exacto)) return [exacto]
+
+  const codigoNbu = `66${exacto.padStart(4, "0")}`
+  return codigoNbu === exacto ? [exacto] : [exacto, codigoNbu]
+}
+
 export function isActoBioquimico(code: unknown): boolean {
   return ACTO_BIOQUIMICO_CODES.has(normalizarCodigo(code))
 }
