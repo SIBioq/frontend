@@ -17,11 +17,12 @@ interface TwoFactorSetupDialogProps {
   onOpenChange: (open: boolean) => void
   /** Se llama cuando el alta quedó confirmada, para refrescar el estado. */
   onConfirmed: () => void
+  activeMethods?: TwoFactorMethod[]
 }
 
-type Step = "choose" | "loading" | "scan" | "codes" | "failed"
+type Step = "choose" | "loading" | "scan" | "codes" | "done" | "failed"
 
-export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed }: TwoFactorSetupDialogProps) {
+export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed, activeMethods = [] }: TwoFactorSetupDialogProps) {
   const { apiRequest } = useApi()
 
   const [step, setStep] = useState<Step>("choose")
@@ -84,8 +85,9 @@ export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed }: TwoFac
         }
 
         const data: TwoFactorConfirmResponse = await response.json()
-        setRecoveryCodes(Array.isArray(data.recovery_codes) ? data.recovery_codes : [])
-        setStep("codes")
+        const newCodes = Array.isArray(data.recovery_codes) ? data.recovery_codes : []
+        setRecoveryCodes(newCodes)
+        setStep(newCodes.length ? "codes" : "done")
         onConfirmed()
       } catch {
         setErrorMessage("No se pudo conectar con el servidor.")
@@ -152,13 +154,13 @@ export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed }: TwoFac
           <div className="space-y-3 py-4">
             <p className="text-sm text-gray-600">Elegí cómo querés recibir el código al iniciar sesión.</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={() => void startSetup("totp")} className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition hover:border-[#204983] hover:bg-[#204983]/5">
+              <button type="button" disabled={activeMethods.includes("totp")} onClick={() => void startSetup("totp")} className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition hover:border-[#204983] hover:bg-[#204983]/5 disabled:cursor-not-allowed disabled:opacity-50">
                 <Smartphone className="h-5 w-5 text-[#204983]" />
-                <span><strong className="block text-sm text-gray-800">Aplicación autenticadora</strong><small className="text-xs text-gray-500">QR y código de la app</small></span>
+                <span><strong className="block text-sm text-gray-800">Aplicación autenticadora</strong><small className="text-xs text-gray-500">{activeMethods.includes("totp") ? "Ya configurada" : "QR y código de la app"}</small></span>
               </button>
-              <button type="button" onClick={() => void startSetup("email")} className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition hover:border-[#204983] hover:bg-[#204983]/5">
+              <button type="button" disabled={activeMethods.includes("email")} onClick={() => void startSetup("email")} className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition hover:border-[#204983] hover:bg-[#204983]/5 disabled:cursor-not-allowed disabled:opacity-50">
                 <Mail className="h-5 w-5 text-[#204983]" />
-                <span><strong className="block text-sm text-gray-800">Correo electrónico</strong><small className="text-xs text-gray-500">Código temporal al correo de la cuenta</small></span>
+                <span><strong className="block text-sm text-gray-800">Correo electrónico</strong><small className="text-xs text-gray-500">{activeMethods.includes("email") ? "Ya configurado" : "Código temporal al correo de la cuenta"}</small></span>
               </button>
             </div>
           </div>
@@ -186,6 +188,12 @@ export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed }: TwoFac
           />
         )}
 
+        {step === "done" && (
+          <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+            El método quedó agregado. Tus códigos de recuperación actuales siguen siendo los mismos.
+          </div>
+        )}
+
         <DialogFooter className="flex-col gap-2 sm:flex-row">
           {step === "codes" ? (
             <Button
@@ -196,6 +204,8 @@ export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed }: TwoFac
             >
               Listo
             </Button>
+          ) : step === "done" ? (
+            <Button type="button" onClick={() => onOpenChange(false)} className="w-full bg-[#204983] hover:bg-[#1a3d6f] sm:w-auto">Listo</Button>
           ) : (
             <Button
               type="button"

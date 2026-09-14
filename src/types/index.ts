@@ -1664,6 +1664,7 @@ export interface TwoFactorRequiredResponse {
   /** Segundos de vida del `ephemeral_token` (el backend usa 300). */
   expires_in: number
   two_factor_method?: TwoFactorMethod
+  two_factor_methods?: TwoFactorMethod[]
 }
 
 export type TwoFactorMethod = "totp" | "email"
@@ -1695,6 +1696,7 @@ export interface TwoFactorStatus {
   recovery_codes_left: number
   trusted_devices: TrustedDevice[]
   method: TwoFactorMethod | null
+  methods: TwoFactorMethod[]
   email: string | null
 }
 
@@ -1708,6 +1710,8 @@ export interface TwoFactorSetupResponse {
 /** Los códigos de recuperación se devuelven una única vez, al confirmar el alta. */
 export interface TwoFactorConfirmResponse {
   recovery_codes: string[]
+  recovery_codes_generated?: boolean
+  methods?: TwoFactorMethod[]
 }
 
 /**

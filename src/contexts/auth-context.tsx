@@ -55,7 +55,7 @@ export type LoginOutcome =
    *  contexto porque el login lo necesita en el mismo tick: para cuando
    *  `user` se actualiza, la pantalla ya decidió qué animar. */
   | { status: "success"; mustChangePassword: boolean }
-  | { status: "two_factor_required"; ephemeralToken: string; expiresIn: number; method: TwoFactorMethod }
+  | { status: "two_factor_required"; ephemeralToken: string; expiresIn: number; method: TwoFactorMethod; methods: TwoFactorMethod[] }
   /** Está obligada a tener segundo factor y todavía no se enroló: falta el alta. */
   | { status: "two_factor_enrollment_required"; ephemeralToken: string; expiresIn: number }
   | { status: "error" }
@@ -78,6 +78,7 @@ export interface VerifyTwoFactorParams {
   ephemeralToken: string
   code: string
   rememberDevice: boolean
+  method?: TwoFactorMethod
 }
 
 export interface ConfirmTwoFactorEnrollmentParams {
@@ -93,6 +94,10 @@ interface AuthContextType {
   isLoading: boolean
   login: (username: string, password: string) => Promise<LoginOutcome>
   verifyTwoFactor: (params: VerifyTwoFactorParams) => Promise<TwoFactorOutcome>
+  requestTwoFactorMethod: (
+    ephemeralToken: string,
+    method: TwoFactorMethod,
+  ) => Promise<{ ok: boolean; message?: string; expired?: boolean }>
   startTwoFactorEnrollment: (ephemeralToken: string, method: TwoFactorMethod) => Promise<TwoFactorEnrollmentStartOutcome>
   confirmTwoFactorEnrollment: (
     params: ConfirmTwoFactorEnrollmentParams,
@@ -421,6 +426,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
             ephemeralToken: data.ephemeral_token,
             expiresIn: Number(data.expires_in) > 0 ? Number(data.expires_in) : 300,
             method: data.two_factor_method || "totp",
+            methods: data.two_factor_methods?.length
+              ? data.two_factor_methods
+              : [data.two_factor_method || "totp"],
           }
         }
 
@@ -461,7 +469,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
    * alcance de cualquier XSS.
    */
   const verifyTwoFactor = useCallback(
-    async ({ ephemeralToken, code, rememberDevice }: VerifyTwoFactorParams): Promise<TwoFactorOutcome> => {
+    async ({ ephemeralToken, code, rememberDevice, method }: VerifyTwoFactorParams): Promise<TwoFactorOutcome> => {
       setIsLoading(true)
       try {
         const response = await fetch(AUTH_ENDPOINTS.TOKEN_2FA, {
@@ -474,6 +482,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             code,
             device_id: getDeviceId(),
             remember_device: rememberDevice,
+            method,
           }),
         })
 
@@ -511,6 +520,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     },
     [completeSession],
+  )
+
+  const requestTwoFactorMethod = useCallback(
+    async (ephemeralToken: string, method: TwoFactorMethod) => {
+      try {
+        const response = await fetch(AUTH_ENDPOINTS.TOKEN_2FA_CHALLENGE, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ephemeral_token: ephemeralToken,
+            method,
+            device_id: getDeviceId(),
+          }),
+        })
+        if (response.ok) return { ok: true }
+        const data = await response.json().catch(() => null)
+        return {
+          ok: false,
+          expired: looksLikeExpiredToken(response.status, data),
+          message: formatApiError(data, "No pudimos preparar ese método de verificación."),
+        }
+      } catch {
+        return { ok: false, message: "No se pudo conectar con el servidor. Revisá la conexión." }
+      }
+    },
+    [],
   )
 
   /**
@@ -666,6 +701,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isLoading,
       login,
       verifyTwoFactor,
+      requestTwoFactorMethod,
       startTwoFactorEnrollment,
       confirmTwoFactorEnrollment,
       logout,
@@ -683,6 +719,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isLoading,
       login,
       verifyTwoFactor,
+      requestTwoFactorMethod,
       startTwoFactorEnrollment,
       confirmTwoFactorEnrollment,
       logout,
