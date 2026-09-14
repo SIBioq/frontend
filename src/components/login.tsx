@@ -18,6 +18,7 @@ import {
   type TwoFactorEnrollmentConfirmResult,
   type TwoFactorEnrollmentStartResult,
 } from "@/components/two-factor-enrollment"
+import type { TwoFactorMethod } from "@/types"
 
 /**
  * La pantalla de inicio de sesión.
@@ -65,6 +66,7 @@ interface PendingTwoFactor {
   ephemeralToken: string
   expiresIn: number
   username: string
+  method?: TwoFactorMethod
 }
 
 export default function Login() {
@@ -239,6 +241,7 @@ export default function Login() {
         ephemeralToken: outcome.ephemeralToken,
         expiresIn: outcome.expiresIn,
         username,
+        method: outcome.method,
       })
     } else if (outcome.status === "two_factor_enrollment_required") {
       // Credenciales OK, pero está obligada al segundo factor y no lo tiene:
@@ -302,10 +305,10 @@ export default function Login() {
     return { ok: false, message: outcome.message, expired: outcome.expired }
   }
 
-  const handleEnrollmentStart = async (): Promise<TwoFactorEnrollmentStartResult> => {
+  const handleEnrollmentStart = async (method: TwoFactorMethod): Promise<TwoFactorEnrollmentStartResult> => {
     if (!pendingEnrollment) return { ok: false, expired: true }
 
-    const outcome = await startTwoFactorEnrollment(pendingEnrollment.ephemeralToken)
+    const outcome = await startTwoFactorEnrollment(pendingEnrollment.ephemeralToken, method)
     if (outcome.status === "success") return { ok: true, setup: outcome.setup }
     return { ok: false, message: outcome.message, expired: outcome.expired }
   }
@@ -445,6 +448,7 @@ export default function Login() {
                   // un login nuevo: contador y campos vuelven a cero.
                   key={pendingTwoFactor.ephemeralToken}
                   username={pendingTwoFactor.username}
+                  method={pendingTwoFactor.method}
                   expiresIn={pendingTwoFactor.expiresIn}
                   onSubmit={handleTwoFactorSubmit}
                   onCancel={cancelTwoFactor}

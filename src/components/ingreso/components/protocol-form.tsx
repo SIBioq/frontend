@@ -21,6 +21,7 @@ import {
   Trash2,
   Banknote,
   Landmark,
+  Eraser,
 } from "lucide-react"
 import { Label } from "../../ui/label"
 import { Input } from "../../ui/input"
@@ -35,6 +36,7 @@ import { AnalysisTable } from "./analysis-table"
 import { TRAJO_ORDEN_OPTIONS, type TrajoOrdenStatus } from "@/lib/protocol-order"
 import { getSendMethodAction } from "@/lib/status-styles"
 import { SelectorDeCuenta } from "@/components/common/forma-de-pago"
+import { formatMonto, parseMonto, sumarMonto, sugerenciasDeMonto } from "@/lib/montos"
 import type {
   Patient,
   Doctor,
@@ -139,11 +141,13 @@ function StatusButtonGroup<T extends string>({
   options,
   value,
   onChange,
+  compact = false,
 }: {
   labelId: string
   options: Array<StatusOption<T>>
   value: T | ""
   onChange: (value: T) => void
+  compact?: boolean
 }) {
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "Home", "End"].includes(event.key)) return
@@ -187,17 +191,18 @@ function StatusButtonGroup<T extends string>({
             role="radio"
             aria-checked={isSelected}
             aria-describedby={descriptionId}
+            title={compact ? option.description : undefined}
             tabIndex={isSelected || (!value && optionIndex === 0) ? 0 : -1}
             onClick={() => onChange(option.value)}
-            className={`h-auto min-h-24 justify-start whitespace-normal rounded-md border p-3 text-left transition ${
+            className={`${compact ? "h-10 min-h-0 items-center justify-center p-2" : "h-auto min-h-24 justify-start p-3"} whitespace-normal rounded-md border text-left transition ${
               isSelected ? toneClasses[tone].selected : toneClasses[tone].unselected
             }`}
           >
-            <span className="flex w-full items-start gap-2">
-              <Icon className={`mt-0.5 h-4 w-4 flex-shrink-0 ${toneClasses[tone].icon}`} aria-hidden="true" />
+            <span className={`flex w-full ${compact ? "items-center justify-center gap-1.5" : "items-start gap-2"}`}>
+              <Icon className={`${compact ? "h-4 w-4" : "mt-0.5 h-4 w-4"} flex-shrink-0 ${toneClasses[tone].icon}`} aria-hidden="true" />
               <span className="min-w-0">
-                <span className="block text-sm font-semibold leading-tight">{option.label}</span>
-                <span id={descriptionId} className="mt-1 block text-xs leading-snug opacity-80">
+                <span className={`block font-semibold leading-tight ${compact ? "truncate text-xs" : "text-sm"}`}>{option.label}</span>
+                <span id={descriptionId} className={compact ? "sr-only" : "mt-1 block text-xs leading-snug opacity-80"}>
                   {option.description}
                 </span>
               </span>
@@ -331,8 +336,8 @@ export function ProtocolForm({
   onUnplannedTransactionsChange,
 }: ProtocolFormProps) {
   const isAnonymousPatient = Boolean(patient?.is_anonymous)
-  const enEfectivo = Number.parseFloat(pagoEfectivo) || 0
-  const porTransferencia = Number.parseFloat(pagoTransferencia) || 0
+  const enEfectivo = parseMonto(pagoEfectivo)
+  const porTransferencia = parseMonto(pagoTransferencia)
   const paidAmount = enEfectivo + porTransferencia
   const remaining = Math.max(0, totals.patientOwes - paidAmount)
   // Una transferencia sin cuenta no se puede cruzar contra ningún extracto.
@@ -361,10 +366,31 @@ export function ProtocolForm({
    * extracto es exactamente el que después no cierra.
    */
   const completarConEfectivo = () =>
-    onPagoEfectivoChange(Math.max(0, totals.patientOwes - porTransferencia).toFixed(2))
+    onPagoEfectivoChange(formatMonto(Math.max(0, totals.patientOwes - porTransferencia)))
 
   const completarConTransferencia = () =>
-    onPagoTransferenciaChange(Math.max(0, totals.patientOwes - enEfectivo).toFixed(2))
+    onPagoTransferenciaChange(formatMonto(Math.max(0, totals.patientOwes - enEfectivo)))
+
+  const sugerenciasEfectivo = sugerenciasDeMonto(Math.max(0, totals.patientOwes - enEfectivo))
+  const sugerenciasTransferencia = sugerenciasDeMonto(Math.max(0, totals.patientOwes - porTransferencia))
+  const montoExcede = (valor: number) => valor > totals.patientOwes && totals.patientOwes >= 0
+  const cambiarMonto = (valor: string, setter: (next: string) => void) => {
+    const limpio = valor.replace(/[^0-9,]/g, "")
+    const tieneComa = limpio.includes(",")
+    const [parteEntera = "", parteDecimal = ""] = limpio.split(",")
+    const digitosEnteros = parteEntera.replace(/^0+(?=\d)/, "")
+    if (!digitosEnteros && !tieneComa) {
+      setter("")
+      return
+    }
+    const entero = Number.parseInt(digitosEnteros || "0", 10)
+    const enteroFormateado = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 0 }).format(entero)
+    setter(`${enteroFormateado}${tieneComa ? `,${parteDecimal.slice(0, 2)}` : ""}`)
+  }
+  const formatearAlSalir = (valor: string, setter: (next: string) => void) => {
+    const formateado = formatMonto(valor)
+    setter(formateado || "")
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -501,6 +527,7 @@ export function ProtocolForm({
                   icon: iconoDelEnvio(method.name),
                 }))}
                 value={selectedSendMethod?.id.toString() ?? ""}
+                compact
                 onChange={(value) =>
                   onSendMethodSelect(sendMethods.find((m) => m.id.toString() === value) || null)
                 }
@@ -525,6 +552,7 @@ export function ProtocolForm({
                   options={TRAJO_ORDEN_OPTIONS}
                   value={trajoOrden}
                   onChange={onTrajoOrdenChange}
+                  compact
                 />
               </div>
               <p className="mt-3 text-xs text-gray-500">
@@ -552,6 +580,7 @@ export function ProtocolForm({
                   options={PREAUTH_OPTIONS}
                   value={preauthStatus === "not_required" ? "" : preauthStatus}
                   onChange={onPreauthStatusChange}
+                  compact
                 />
                 <p className="text-xs text-blue-800">
                   Marcá en la tabla qué análisis cubre la OOSS. Los no cubiertos se cobran particular y no vuelven
@@ -683,7 +712,7 @@ export function ProtocolForm({
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Receipt className="h-4 w-4 sm:h-5 sm:w-5 text-[#204983]" />
-              <h3 className="text-base sm:text-lg font-semibold text-[#204983]">Cobros / pagos no contemplados</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-[#204983]">Movimientos adicionales</h3>
             </div>
             <Button type="button" variant="outline" size="sm" onClick={addUnplanned} className="bg-transparent">
               <Plus className="mr-1 h-4 w-4" />
@@ -691,28 +720,28 @@ export function ProtocolForm({
             </Button>
           </div>
           <p className="text-xs text-gray-500">
-            Cargos o pagos que no encajan en los conceptos estándar (envío, transferencia, etc.). Suman al balance del
-            protocolo. No se facturan a ARCA.
+            Indicá si hay un importe adicional que se le cobra al paciente o una devolución que el laboratorio debe hacerle.
+            No se facturan a ARCA.
           </p>
           {unplannedTransactions.length > 0 && (
             <div className="space-y-2">
               {unplannedTransactions.map((item, index) => (
                 <div
                   key={index}
-                  className="grid grid-cols-1 gap-2 rounded-md border border-gray-200 bg-gray-50 p-2 sm:grid-cols-[110px_minmax(0,1fr)_120px_auto] sm:items-end"
+                  className="grid grid-cols-1 gap-2 rounded-md border border-gray-200 bg-gray-50 p-2 sm:grid-cols-[150px_minmax(0,1fr)_120px_auto] sm:items-end"
                 >
                   <div className="space-y-1">
-                    <Label className="text-xs">Tipo</Label>
+                    <Label className="text-xs">Movimiento</Label>
                     <Select
                       value={item.kind}
                       onValueChange={(v: "charge" | "payment") => updateUnplanned(index, { kind: v })}
                     >
-                      <SelectTrigger className="bg-white h-9">
-                        <SelectValue />
+                      <SelectTrigger className="h-9 w-full min-w-0 bg-white">
+                        <SelectValue className="min-w-0 overflow-hidden text-ellipsis" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="charge">Cobro</SelectItem>
-                        <SelectItem value="payment">Pago</SelectItem>
+                        <SelectItem value="charge">Cargo al paciente</SelectItem>
+                        <SelectItem value="payment">Devolución al paciente</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -728,7 +757,8 @@ export function ProtocolForm({
                   <div className="space-y-1">
                     <Label className="text-xs">Monto</Label>
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       min="0"
                       step="0.01"
                       value={item.amount}
@@ -823,13 +853,13 @@ export function ProtocolForm({
                     <div className="flex gap-2">
                       <Input
                         id="pagoEfectivo"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0,00"
                         value={pagoEfectivo}
-                        onChange={(e) => onPagoEfectivoChange(e.target.value)}
-                        className="h-10"
+                        onChange={(e) => cambiarMonto(e.target.value, onPagoEfectivoChange)}
+                        onBlur={() => formatearAlSalir(pagoEfectivo, onPagoEfectivoChange)}
+                        className={`h-10 ${montoExcede(enEfectivo) ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
                       />
                       <Button
                         type="button"
@@ -841,7 +871,16 @@ export function ProtocolForm({
                       >
                         Total
                       </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => onPagoEfectivoChange("")} className="h-10 px-2 bg-transparent" title="Limpiar efectivo" aria-label="Limpiar efectivo">
+                        <Eraser className="h-4 w-4" />
+                      </Button>
                     </div>
+                    {sugerenciasEfectivo.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {sugerenciasEfectivo.map((monto) => <Button key={monto} type="button" variant="outline" size="sm" onClick={() => onPagoEfectivoChange(sumarMonto(pagoEfectivo, monto))} className="h-7 px-2 text-xs bg-transparent">+${formatMonto(monto)}</Button>)}
+                      </div>
+                    )}
+                    {montoExcede(enEfectivo) && <p className="mt-1 text-xs text-red-600">El efectivo supera el total a pagar.</p>}
                   </div>
 
                   <div>
@@ -852,13 +891,15 @@ export function ProtocolForm({
                     <div className="flex gap-2">
                       <Input
                         id="pagoTransferencia"
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         step="0.01"
                         min="0"
-                        placeholder="0.00"
+                        placeholder="0,00"
                         value={pagoTransferencia}
-                        onChange={(e) => onPagoTransferenciaChange(e.target.value)}
-                        className="h-10"
+                        onChange={(e) => cambiarMonto(e.target.value, onPagoTransferenciaChange)}
+                        onBlur={() => formatearAlSalir(pagoTransferencia, onPagoTransferenciaChange)}
+                        className={`h-10 ${montoExcede(porTransferencia) ? "border-red-500 focus:border-red-500 focus:ring-red-500" : ""}`}
                       />
                       <Button
                         type="button"
@@ -870,7 +911,16 @@ export function ProtocolForm({
                       >
                         Total
                       </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => onPagoTransferenciaChange("")} className="h-10 px-2 bg-transparent" title="Limpiar transferencia" aria-label="Limpiar transferencia">
+                        <Eraser className="h-4 w-4" />
+                      </Button>
                     </div>
+                    {sugerenciasTransferencia.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {sugerenciasTransferencia.map((monto) => <Button key={monto} type="button" variant="outline" size="sm" onClick={() => onPagoTransferenciaChange(sumarMonto(pagoTransferencia, monto))} className="h-7 px-2 text-xs bg-transparent">+${formatMonto(monto)}</Button>)}
+                      </div>
+                    )}
+                    {montoExcede(porTransferencia) && <p className="mt-1 text-xs text-red-600">La transferencia supera el total a pagar.</p>}
 
                     {/* La cuenta aparece recién cuando hay algo transferido:
                         antes es una pregunta sobre plata que no entró. */}

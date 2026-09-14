@@ -9,12 +9,10 @@ import { toast } from "sonner"
 import { ProtocolForm } from "./components/protocol-form"
 import { PatientInfo } from "./components/patient-info"
 import { DoctorInfo, InsuranceInfo } from "./components/selection-info"
+import { EditDoctorInlineForm, EditInsuranceInlineForm, EditPatientInlineForm } from "./components/inline-edit-forms"
 import { CreatePatientForm } from "./components/create-patient-form"
-import { EditPatientDialog } from "./components/edit-patient-dialog"
 import { CreateMedicoForm } from "./components/create-medico-form"
 import { CreateObraSocialForm } from "./components/create-obra-social-form"
-import { EditMedicoDialog } from "../configuration/components/edit-medico-dialog"
-import { EditObraSocialDialog } from "../configuration/components/edit-obra-social-dialog"
 import { ProtocolSuccess } from "./components/protocol-success"
 import { useApi } from "../../hooks/use-api"
 import { CATALOG_ENDPOINTS, MEDICAL_ENDPOINTS, PROTOCOL_ENDPOINTS, PATIENT_ENDPOINTS } from "@/config/api"
@@ -28,6 +26,7 @@ import { menosMovimiento } from "@/lib/menos-movimiento"
 import { cn } from "@/lib/utils"
 import { useProtocolQuote } from "@/hooks/use-protocol-quote"
 import { useLoDeLaUltimaVez } from "@/hooks/use-lo-de-la-ultima-vez"
+import { parseMonto } from "@/lib/montos"
 import type {
   Analysis,
   Patient,
@@ -100,9 +99,7 @@ export default function IngresoPage() {
   const [selectedAnalyses, setSelectedAnalyses] = useState<SelectedAnalysis[]>([])
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
   const [selectedInsurance, setSelectedInsurance] = useState<Insurance | null>(null)
-  const [showEditPatient, setShowEditPatient] = useState(false)
-  const [showEditDoctor, setShowEditDoctor] = useState(false)
-  const [showEditInsurance, setShowEditInsurance] = useState(false)
+  const [editingResource, setEditingResource] = useState<"patient" | "doctor" | "insurance" | null>(null)
   // Lo que el paciente deja en mano y lo que transfiere, por separado: son
   // dos movimientos distintos y cada uno se concilia por su lado.
   const [pagoEfectivo, setPagoEfectivo] = useState("")
@@ -169,6 +166,7 @@ export default function IngresoPage() {
    */
   const [faseDeCreacion, setFaseDeCreacion] = useState<"idle" | "creando" | "completo">("idle")
   const botonDeCrear = useRef<HTMLButtonElement>(null)
+  const creandoProtocolo = useRef(false)
   /**
    * El formulario se limpia con retraso (ver `MS_DEL_REVELADO`) y deshacer
    * vuelve a llenarlo. Si alguien deshace antes de que corra esa limpieza, la
@@ -319,15 +317,15 @@ export default function IngresoPage() {
     }
 
     const authorizedTotal = authorizedUb * insuranceUbValue
-    const material = shouldChargeMaterial ? Number.parseFloat(extraAmounts.material_descartable_amount) || 0 : 0
-    const derivacion = shouldChargeDerivacion ? Number.parseFloat(extraAmounts.derivacion_amount) || 0 : 0
-    const coseguro = shouldChargeCoseguro ? Number.parseFloat(coseguroAmount) || 0 : 0
+    const material = shouldChargeMaterial ? parseMonto(extraAmounts.material_descartable_amount) : 0
+    const derivacion = shouldChargeDerivacion ? parseMonto(extraAmounts.derivacion_amount) : 0
+    const coseguro = shouldChargeCoseguro ? parseMonto(coseguroAmount) : 0
     const unplannedCharges = unplannedTransactions
       .filter((t) => t.kind === "charge")
-      .reduce((acc, t) => acc + (Number.parseFloat(t.amount) || 0), 0)
+      .reduce((acc, t) => acc + parseMonto(t.amount), 0)
     const unplannedPayments = unplannedTransactions
       .filter((t) => t.kind === "payment")
-      .reduce((acc, t) => acc + (Number.parseFloat(t.amount) || 0), 0)
+      .reduce((acc, t) => acc + parseMonto(t.amount), 0)
     const extrasTotal = material + derivacion + coseguro + unplannedCharges
     const total = authorizedTotal + privateTotal + extrasTotal
     const patientOwes = Math.max(0, privateTotal + extrasTotal - unplannedPayments)
@@ -343,12 +341,12 @@ export default function IngresoPage() {
   }
 
   const handleEditPatient = () => {
-    setShowEditPatient(true)
+    setEditingResource("patient")
   }
 
   const handlePatientUpdated = (updatedPatient: Patient) => {
     setCurrentPatient(updatedPatient)
-    setShowEditPatient(false)
+    setEditingResource(null)
   }
 
   const handlePatientFound = (patient: Patient) => {
@@ -617,51 +615,8 @@ export default function IngresoPage() {
     return map
   }, [quote])
 
-  const handleDoctorUpdated = async () => {
-    if (!selectedDoctor) return
-
-    try {
-      const response = await apiRequest(MEDICAL_ENDPOINTS.DOCTOR_DETAIL(selectedDoctor.id))
-      if (!response.ok) {
-        toast.error("No se pudo actualizar la vista del médico")
-        setShowEditDoctor(false)
-        return
-      }
-      const updatedDoctor: Doctor = await response.json()
-      setSelectedDoctor(updatedDoctor)
-      setDoctors((prev) => prev.map((doctor) => (doctor.id === updatedDoctor.id ? updatedDoctor : doctor)))
-    } catch (error) {
-      console.error("Error refreshing doctor:", error)
-      toast.error("No se pudo actualizar la vista del médico")
-    } finally {
-      setShowEditDoctor(false)
-    }
-  }
-
-  const handleInsuranceUpdated = async () => {
-    if (!selectedInsurance) return
-
-    try {
-      const response = await apiRequest(MEDICAL_ENDPOINTS.INSURANCE_DETAIL(selectedInsurance.id))
-      if (!response.ok) {
-        toast.error("No se pudo actualizar la vista de la obra social")
-        setShowEditInsurance(false)
-        return
-      }
-      const updatedInsurance: Insurance = await response.json()
-      setSelectedInsurance(updatedInsurance)
-      setInsurances((prev) =>
-        prev.map((insurance) => (insurance.id === updatedInsurance.id ? updatedInsurance : insurance)),
-      )
-    } catch (error) {
-      console.error("Error refreshing insurance:", error)
-      toast.error("No se pudo actualizar la vista de la obra social")
-    } finally {
-      setShowEditInsurance(false)
-    }
-  }
-
   const handleCreateProtocol = async () => {
+    if (creandoProtocolo.current) return
     const missing: string[] = []
     if (!currentPatient) missing.push("paciente")
     if (!selectedDoctor) missing.push("médico")
@@ -673,7 +628,7 @@ export default function IngresoPage() {
       missing.push("por dónde factura (Centro o Clínica)")
     }
     // Una transferencia sin cuenta no se puede cruzar contra ningún extracto.
-    if ((Number.parseFloat(pagoTransferencia) || 0) > 0 && !cuentaDeCobroId) {
+    if (parseMonto(pagoTransferencia) > 0 && !cuentaDeCobroId) {
       missing.push("a qué cuenta fue la transferencia")
     }
     if (shouldShowOrder && !trajoOrden) missing.push("estado de la orden médica")
@@ -710,11 +665,12 @@ export default function IngresoPage() {
     const sendMethodForSuccess = selectedSendMethod
 
     try {
+      creandoProtocolo.current = true
       createProgress.start()
       setFaseDeCreacion("creando")
       seDeshizoElProtocolo.current = false
-      const enEfectivo = Number.parseFloat(pagoEfectivo) || 0
-      const porTransferencia = Number.parseFloat(pagoTransferencia) || 0
+      const enEfectivo = parseMonto(pagoEfectivo)
+      const porTransferencia = parseMonto(pagoTransferencia)
       const totalValuePaid = enEfectivo + porTransferencia
 
       // UN PAGO POR FORMA.
@@ -754,11 +710,11 @@ export default function IngresoPage() {
       }
 
       if (shouldChargeMaterial) {
-        protocolData.material_descartable_amount_override = (Number.parseFloat(extraAmounts.material_descartable_amount) || 0).toFixed(2)
+        protocolData.material_descartable_amount_override = parseMonto(extraAmounts.material_descartable_amount).toFixed(2)
       }
 
       if (shouldChargeDerivacion) {
-        protocolData.derivacion_amount_override = (Number.parseFloat(extraAmounts.derivacion_amount) || 0).toFixed(2)
+        protocolData.derivacion_amount_override = parseMonto(extraAmounts.derivacion_amount).toFixed(2)
       }
 
       // Si hay OOSS seleccionada se manda; si es anónimo sin OOSS, el backend asigna Particular
@@ -782,9 +738,9 @@ export default function IngresoPage() {
         .map((t) => ({
           kind: t.kind,
           description: t.description.trim(),
-          amount: (Number.parseFloat(t.amount) || 0).toFixed(2),
+          amount: parseMonto(t.amount).toFixed(2),
         }))
-        .filter((t) => t.description !== "" && Number.parseFloat(t.amount) > 0)
+        .filter((t) => t.description !== "" && parseMonto(t.amount) > 0)
       if (cleanedUnplanned.length > 0) {
         protocolData.unplanned_transactions_input = cleanedUnplanned
       }
@@ -806,7 +762,7 @@ export default function IngresoPage() {
       const newProtocol = await protocolResponse.json()
 
       // Coseguro: monto opcional que da la OOSS. Se carga via endpoint dedicado.
-      const coseguroValue = Number.parseFloat(coseguroAmount) || 0
+      const coseguroValue = parseMonto(coseguroAmount)
       if (shouldChargeCoseguro && coseguroValue > 0) {
         try {
           const coseguroRes = await apiRequest(PROTOCOL_ENDPOINTS.SET_COSEGURO(newProtocol.id), {
@@ -872,6 +828,8 @@ export default function IngresoPage() {
       toast.error("Error al crear el protocolo", { description: getErrorMessage(error, "No se pudo completar la operación.") })
       createProgress.finish()
       setFaseDeCreacion("idle")
+    } finally {
+      creandoProtocolo.current = false
     }
   }
 
@@ -1010,10 +968,30 @@ export default function IngresoPage() {
             `}
           >
             <div className="space-y-4">
-              {currentPatient && <PatientInfo patient={currentPatient} onEdit={handleEditPatient} />}
-              {selectedDoctor && <DoctorInfo doctor={selectedDoctor} onEdit={() => setShowEditDoctor(true)} />}
+              {currentPatient && (editingResource === "patient" ? (
+                <EditPatientInlineForm patient={currentPatient} onCancel={() => setEditingResource(null)} onSaved={handlePatientUpdated} />
+              ) : (
+                <PatientInfo patient={currentPatient} onEdit={handleEditPatient} />
+              ))}
+              {selectedDoctor && (editingResource === "doctor" ? (
+                <EditDoctorInlineForm doctor={selectedDoctor} onCancel={() => setEditingResource(null)} onSaved={(doctor) => {
+                  setSelectedDoctor(doctor)
+                  setDoctors((current) => current.map((item) => item.id === doctor.id ? doctor : item))
+                  setEditingResource(null)
+                }} />
+              ) : (
+                <DoctorInfo doctor={selectedDoctor} onEdit={() => setEditingResource("doctor")} />
+              ))}
               {selectedInsurance && (
-                <InsuranceInfo insurance={selectedInsurance} onEdit={() => setShowEditInsurance(true)} />
+                editingResource === "insurance" ? (
+                  <EditInsuranceInlineForm insurance={selectedInsurance} onCancel={() => setEditingResource(null)} onSaved={(insurance) => {
+                    setSelectedInsurance(insurance)
+                    setInsurances((current) => current.map((item) => item.id === insurance.id ? insurance : item))
+                    setEditingResource(null)
+                  }} />
+                ) : (
+                  <InsuranceInfo insurance={selectedInsurance} onEdit={() => setEditingResource("insurance")} />
+                )
               )}
 
               {patientNotFound && (
@@ -1115,31 +1093,6 @@ export default function IngresoPage() {
               </Button>
             </div>
           </div>
-        )}
-
-        <EditPatientDialog
-          isOpen={showEditPatient}
-          onClose={() => setShowEditPatient(false)}
-          patient={currentPatient}
-          onPatientUpdated={handlePatientUpdated}
-        />
-
-        {selectedDoctor && (
-          <EditMedicoDialog
-            isOpen={showEditDoctor}
-            medico={selectedDoctor}
-            onClose={() => setShowEditDoctor(false)}
-            onSuccess={handleDoctorUpdated}
-          />
-        )}
-
-        {selectedInsurance && (
-          <EditObraSocialDialog
-            open={showEditInsurance}
-            onOpenChange={setShowEditInsurance}
-            obraSocial={selectedInsurance}
-            onSuccess={handleInsuranceUpdated}
-          />
         )}
 
         {successData && (

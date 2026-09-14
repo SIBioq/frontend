@@ -63,9 +63,8 @@ export default function ManagementPage() {
   const roles = rolesQuery.data?.results ?? []
   const permissions = permissionsQuery.data?.results ?? []
 
-  // Los hijos (UserManagement/RoleManagement) esperan setters estilo useState
-  // para actualizar la lista tras un CRUD propio; acá los respaldamos con la
-  // cache de React Query en vez de estado local, sin cambiar su interfaz.
+  // Los hijos esperan setters estilo useState para actualizar las listas tras
+  // sus CRUD; acá los respaldamos con la cache de React Query.
   const setUsers: Dispatch<SetStateAction<User[]>> = useCallback(
     (update) => {
       queryClient.setQueryData<PaginatedResponse<User>>(usersQueryKey, (prev) => {
