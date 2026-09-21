@@ -110,6 +110,7 @@ interface ProtocolDetailResponse {
   }
   insurance_ub_value: string
   private_ub_value: string
+  precio_particular_ub?: string | null
   // Payment fields (new API format)
   amount_due: string
   amount_pending: string
@@ -1215,7 +1216,7 @@ export function ProtocolCard({
     const response = await apiRequest(PROTOCOL_ENDPOINTS.ACTUALIZAR_PRECIO_PARTICULAR(protocol.id), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: { precio_particular: price },
+      body: { precio_particular_ub: price },
     })
     const data = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(formatApiError(data, "No se pudo actualizar el precio particular."))
@@ -1753,6 +1754,7 @@ export function ProtocolCard({
       {canUpdatePrivatePrice && <PrivatePriceDialog
         open={privatePriceDialogOpen}
         onOpenChange={setPrivatePriceDialogOpen}
+        currentPrice={protocolDetail?.precio_particular_ub}
         onSubmit={handleGuardarPrecioParticular}
       />}
 
