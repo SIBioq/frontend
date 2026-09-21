@@ -1215,7 +1215,7 @@ export function ProtocolCard({
     const response = await apiRequest(PROTOCOL_ENDPOINTS.ACTUALIZAR_PRECIO_PARTICULAR(protocol.id), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ precio_particular: price }),
+      body: { precio_particular: price },
     })
     const data = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(formatApiError(data, "No se pudo actualizar el precio particular."))
