@@ -8,10 +8,11 @@ interface PrivatePriceDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentPrice?: string | null
+  currentInsurancePrivateUbValue?: string | null
   onSubmit: (price: string) => Promise<void>
 }
 
-export function PrivatePriceDialog({ open, onOpenChange, currentPrice, onSubmit }: PrivatePriceDialogProps) {
+export function PrivatePriceDialog({ open, onOpenChange, currentPrice, currentInsurancePrivateUbValue, onSubmit }: PrivatePriceDialogProps) {
   const [price, setPrice] = useState(currentPrice ?? "")
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -52,8 +53,13 @@ export function PrivatePriceDialog({ open, onOpenChange, currentPrice, onSubmit 
         </DialogHeader>
         <div className="space-y-4">
           <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Valor actual</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Snapshot actual del protocolo</p>
             <p className="mt-0.5 text-sm font-medium text-gray-900">{currentPrice ? `$${currentPrice}` : "Sin configurar"}</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Valor vigente de la OOSS particular</p>
+            <p className="mt-0.5 text-sm font-medium text-gray-900">{currentInsurancePrivateUbValue ? `$${currentInsurancePrivateUbValue}` : "Sin configurar"}</p>
+            <p className="mt-1 text-xs text-gray-500">Informativo; no modifica este valor global.</p>
           </div>
           <div className="space-y-2">
             <label htmlFor="precio-particular-protocolo" className="text-sm font-medium text-gray-700">Nuevo valor por UB</label>

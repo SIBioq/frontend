@@ -428,8 +428,8 @@ export function ProtocolCard({
     return null
   }, [apiRequest, protocol.id])
 
-  const fetchProtocolDetail = async (): Promise<ProtocolDetailResponse | null> => {
-    if (protocolDetail) return protocolDetail
+  const fetchProtocolDetail = async (force = false): Promise<ProtocolDetailResponse | null> => {
+    if (!force && protocolDetail) return protocolDetail
 
     setLoadingDetail(true)
     try {
@@ -1221,7 +1221,13 @@ export function ProtocolCard({
     const data = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(formatApiError(data, "No se pudo actualizar el precio particular."))
     toast.success(data.detail || "Precio particular actualizado.", { duration: TOAST_DURATION })
-    await fetchProtocolDetail()
+    // El POST ya modificó el protocolo: ignorar el detalle cacheado para que
+    // snapshot, desglose, análisis y total provengan de una lectura nueva.
+    setProtocolDetail(null)
+    const refreshedDetail = await fetchProtocolDetail(true)
+    if (!refreshedDetail) {
+      throw new Error("El precio se actualizó, pero no se pudo recargar el detalle del protocolo.")
+    }
     onUpdate?.()
   }
 
@@ -1758,6 +1764,7 @@ export function ProtocolCard({
           protocolDetail?.billing_breakdown?.private_ub_value_used
           ?? protocolDetail?.precio_particular_ub
         }
+        currentInsurancePrivateUbValue={protocolDetail?.private_ub_value}
         onSubmit={handleGuardarPrecioParticular}
       />}
 

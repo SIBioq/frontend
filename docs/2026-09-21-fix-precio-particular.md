@@ -1,4 +1,4 @@
-# Corrección del precio particular por UB en protocolo
+# Hotfix del precio particular por UB en protocolo
 
 ## Pedido
 
@@ -15,13 +15,18 @@ Corregir la actualización del precio particular por UB y rediseñar su modal re
 
 ## Cambio
 
-El handler pasa `body: { precio_particular_ub: price }` y deja la serialización a `apiRequest`. El modal muestra como valor actual el snapshot `billing_breakdown.private_ub_value_used`, con fallback al override del protocolo; no usa el valor global de la obra social. El formulario usa `onSubmit` y botón `submit`, por lo que Enter guarda sin activar acciones laterales. El botón de guardado conserva el azul institucional (`#204983`). Se mantiene `canUpdatePrivatePrice` y el contrato `precio_particular_ub`. El detalle de facturación muestra el valor UB usado.
+El handler pasa `body: { precio_particular_ub: price }` y deja la serialización a `apiRequest`. Tras el POST exitoso fuerza un GET del detalle, invalidando el estado anterior antes de aplicar el resultado; si el GET falla, la card no presenta el detalle viejo como actualizado y el modal informa la recarga fallida. El modal muestra el snapshot `billing_breakdown.private_ub_value_used` (con fallback al override del protocolo) y, separado, el valor vigente de la OOSS particular `private_ub_value`. El formulario usa `onSubmit` y botón `submit`, por lo que Enter guarda. Se mantiene el botón azul y `canUpdatePrivatePrice`.
+
+## Diagnóstico de permisos y API
+
+La pantalla de administración carga permisos desde `AC_ENDPOINTS.PERMISSIONS` con paginación y búsqueda; no hay una lista estática ni un filtro frontend que elimine permisos legítimos. `ManagementPage` usa el mismo endpoint con `limit=100` para roles, y `PermissionManagement` vuelve a consultar con `limit=20`, offset y search. La configuración de API sólo define la base dinámica (`VITE_API_BASE_URL` o `window.__LABSALUD_API_BASE__`) y la ruta `/ac/permissions/`; no construye una URL de “todo junto”. No se cambió ese flujo ni se filtraron permisos.
 
 ## Validación
 
 - `npm run lint`
 - `npm run build`
+- Verificación estática dirigida de `AC_ENDPOINTS.PERMISSIONS`, `ManagementPage` y `PermissionManagement`.
 
 ## Pendientes
 
-Ninguno para este arreglo puntual. No se hizo merge, push ni deploy.
+No se agregó endpoint ni campo: ambos valores requeridos ya existen en el contrato del detalle. No se hizo merge, push ni deploy.
