@@ -67,6 +67,7 @@ interface PendingTwoFactor {
   expiresIn: number
   username: string
   method?: TwoFactorMethod
+  methods?: TwoFactorMethod[]
 }
 
 export default function Login() {
@@ -101,6 +102,7 @@ export default function Login() {
   const {
     login,
     verifyTwoFactor,
+    requestTwoFactorMethod,
     startTwoFactorEnrollment,
     confirmTwoFactorEnrollment,
     contrasenaCambiada,
@@ -242,6 +244,7 @@ export default function Login() {
         expiresIn: outcome.expiresIn,
         username,
         method: outcome.method,
+        methods: outcome.methods,
       })
     } else if (outcome.status === "two_factor_enrollment_required") {
       // Credenciales OK, pero está obligada al segundo factor y no lo tiene:
@@ -275,7 +278,7 @@ export default function Login() {
     if (fase === "incorrecto") setFase("escribiendo")
   }
 
-  const handleTwoFactorSubmit = async (code: string, rememberDevice: boolean): Promise<TwoFactorSubmitResult> => {
+  const handleTwoFactorSubmit = async (code: string, rememberDevice: boolean, method?: TwoFactorMethod): Promise<TwoFactorSubmitResult> => {
     if (!pendingTwoFactor) return { ok: false, expired: true, message: "La verificación venció." }
 
     // Igual que con la contraseña: el freno se levanta ANTES de esperar, porque
@@ -287,6 +290,7 @@ export default function Login() {
       ephemeralToken: pendingTwoFactor.ephemeralToken,
       code,
       rememberDevice,
+      method,
     })
 
     if (outcome.status === "success") {
@@ -303,6 +307,12 @@ export default function Login() {
 
     reteniendoLaSalida.current = false
     return { ok: false, message: outcome.message, expired: outcome.expired }
+  }
+
+  const handleTwoFactorMethod = async (method: TwoFactorMethod): Promise<TwoFactorSubmitResult> => {
+    if (!pendingTwoFactor) return { ok: false, expired: true }
+    const result = await requestTwoFactorMethod(pendingTwoFactor.ephemeralToken, method)
+    return result
   }
 
   const handleEnrollmentStart = async (method: TwoFactorMethod): Promise<TwoFactorEnrollmentStartResult> => {
@@ -449,8 +459,10 @@ export default function Login() {
                   key={pendingTwoFactor.ephemeralToken}
                   username={pendingTwoFactor.username}
                   method={pendingTwoFactor.method}
+                  methods={pendingTwoFactor.methods}
                   expiresIn={pendingTwoFactor.expiresIn}
                   onSubmit={handleTwoFactorSubmit}
+                  onSelectMethod={handleTwoFactorMethod}
                   onCancel={cancelTwoFactor}
                 />
               ) : panelVisible === "alta" && pendingEnrollment ? (

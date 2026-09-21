@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { AlertCircle, Laptop, ShieldCheck, ShieldOff } from "lucide-react"
+import { AlertCircle, Laptop, Mail, ShieldCheck, ShieldOff, Smartphone } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -100,6 +100,12 @@ export function TwoFactorSection() {
     void queryClient.invalidateQueries({ queryKey: TWO_FACTOR_STATUS_KEY })
   }
 
+  const activeMethods = status?.methods?.length
+    ? status.methods
+    : status?.enabled && status.method
+      ? [status.method]
+      : []
+
   const handleRevoke = async (device: TrustedDevice) => {
     setRevokingId(device.id)
     try {
@@ -167,19 +173,27 @@ export function TwoFactorSection() {
                   {status?.enabled && status.confirmed_at && (
                     <span className="text-xs text-gray-500">desde {formatUtcDateTime(status.confirmed_at)}</span>
                   )}
-                  {status?.enabled && (
-                    <Badge variant="outline" className="text-xs">
-                      {status.method === "email" ? "Código por correo" : "App autenticadora"}
-                    </Badge>
-                  )}
+                  {activeMethods.includes("totp") && <Badge variant="outline" className="text-xs"><Smartphone className="mr-1 h-3 w-3" />App autenticadora</Badge>}
+                  {activeMethods.includes("email") && <Badge variant="outline" className="text-xs"><Mail className="mr-1 h-3 w-3" />Código por correo</Badge>}
                 </div>
                 <p className="mt-1 text-sm text-gray-600">
                   {status?.enabled
-                    ? `${status.method === "email" ? "Al iniciar sesión se te pide el código enviado por correo" : "Al iniciar sesión en un equipo nuevo se te pide el código de la app"}. En un equipo de confianza no se vuelve a pedir hasta que venza la ventana de 8 horas.`
+                    ? `${activeMethods.length > 1 ? "Al iniciar sesión podés elegir entre la app y el correo" : activeMethods[0] === "email" ? "Al iniciar sesión se te pide el código enviado por correo" : "Al iniciar sesión en un equipo nuevo se te pide el código de la app"}. En un equipo de confianza no se vuelve a pedir hasta que venza la ventana de 8 horas.`
                     : "Sumá un código de 6 dígitos desde tu celular al iniciar sesión."}
                 </p>
               </div>
-              {status?.enabled ? (
+              <div className="flex shrink-0 gap-2">
+              {activeMethods.length < 2 && (
+                <Button
+                  type="button"
+                  onClick={() => setSetupOpen(true)}
+                  className="bg-[#204983] hover:bg-[#1a3d6f]"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  {status?.enabled ? "Agregar método" : "Activar"}
+                </Button>
+              )}
+              {status?.enabled && (
                 <Button
                   type="button"
                   variant="outline"
@@ -189,16 +203,8 @@ export function TwoFactorSection() {
                   <ShieldOff className="h-4 w-4" />
                   Desactivar
                 </Button>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={() => setSetupOpen(true)}
-                  className="shrink-0 bg-[#204983] hover:bg-[#1a3d6f]"
-                >
-                  <ShieldCheck className="h-4 w-4" />
-                  Activar
-                </Button>
               )}
+              </div>
             </div>
 
             {status?.enabled && (
@@ -240,7 +246,7 @@ export function TwoFactorSection() {
         )}
       </CardContent>
 
-      <TwoFactorSetupDialog open={setupOpen} onOpenChange={setSetupOpen} onConfirmed={invalidateStatus} />
+      <TwoFactorSetupDialog open={setupOpen} onOpenChange={setSetupOpen} onConfirmed={invalidateStatus} activeMethods={activeMethods} />
       <TwoFactorDisableDialog open={disableOpen} onOpenChange={setDisableOpen} onDisabled={invalidateStatus} />
     </Card>
   )

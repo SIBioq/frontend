@@ -53,6 +53,7 @@ export const AUTH_ENDPOINTS = {
   // Segundo factor (TOTP). TOKEN_2FA cierra el login en dos pasos y, como el
   // login, va SIN Authorization: todavía no hay access token.
   TOKEN_2FA: buildApiUrl("/auth/token/2fa/"),
+  TOKEN_2FA_CHALLENGE: buildApiUrl("/auth/token/2fa/challenge/"),
   TWO_FACTOR_STATUS: buildApiUrl("/auth/2fa/status/"),
   TWO_FACTOR_SETUP: buildApiUrl("/auth/2fa/setup/"),
   TWO_FACTOR_CONFIRM: buildApiUrl("/auth/2fa/confirm/"),

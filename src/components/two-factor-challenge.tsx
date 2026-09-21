@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useCallback, useRef, useState } from "react"
-import { AlertCircle, ArrowLeft, Check, KeyRound, ShieldCheck, TimerReset } from "lucide-react"
+import { AlertCircle, ArrowLeft, Check, KeyRound, Mail, ShieldCheck, Smartphone, TimerReset } from "lucide-react"
 import { CodeInput } from "@/components/ui/code-input"
 import { formatCountdown, useExpiryCountdown } from "@/hooks/use-expiry-countdown"
 import type { TwoFactorMethod } from "@/types"
@@ -19,20 +19,27 @@ interface TwoFactorChallengeProps {
   /** Segundos de vida que le quedaban al `ephemeral_token` cuando llegó. */
   expiresIn: number
   method?: TwoFactorMethod
-  onSubmit: (code: string, rememberDevice: boolean) => Promise<TwoFactorSubmitResult>
+  methods?: TwoFactorMethod[]
+  onSubmit: (code: string, rememberDevice: boolean, method?: TwoFactorMethod) => Promise<TwoFactorSubmitResult>
+  onSelectMethod: (method: TwoFactorMethod) => Promise<TwoFactorSubmitResult>
   /** Volver al formulario de usuario y contraseña. */
   onCancel: () => void
 }
 
 const CODE_LENGTH = 6
 
-export function TwoFactorChallenge({ username, expiresIn, method = "totp", onSubmit, onCancel }: TwoFactorChallengeProps) {
+export function TwoFactorChallenge({ username, expiresIn, method = "totp", methods = [method], onSubmit, onSelectMethod, onCancel }: TwoFactorChallengeProps) {
+  const availableMethods = Array.from(new Set(methods))
+  const [selectedMethod, setSelectedMethod] = useState<TwoFactorMethod | null>(
+    availableMethods.length === 1 ? availableMethods[0] : null,
+  )
   const [code, setCode] = useState("")
   const [recoveryCode, setRecoveryCode] = useState("")
   const [useRecovery, setUseRecovery] = useState(false)
   const [rememberDevice, setRememberDevice] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isVerifying, setIsVerifying] = useState(false)
+  const [isSelecting, setIsSelecting] = useState(false)
   // El código era el correcto. La pantalla se queda así —en verde y sin poder
   // tocar nada— mientras el panel se encoge hasta la navbar: la sesión ya está
   // abierta y volver a habilitar los campos sería ofrecer algo que ya no hace
@@ -52,7 +59,7 @@ export function TwoFactorChallenge({ username, expiresIn, method = "totp", onSub
       setError(null)
 
       try {
-        const result = await onSubmit(trimmed, rememberDevice)
+        const result = await onSubmit(trimmed, rememberDevice, selectedMethod || undefined)
         if (result.ok) {
           setLogrado(true)
           return
@@ -69,8 +76,22 @@ export function TwoFactorChallenge({ username, expiresIn, method = "totp", onSub
         setIsVerifying(false)
       }
     },
-    [expired, markExpired, onSubmit, rememberDevice],
+    [expired, markExpired, onSubmit, rememberDevice, selectedMethod],
   )
+
+  const selectMethod = async (nextMethod: TwoFactorMethod) => {
+    if (isSelecting || expired) return
+    setIsSelecting(true)
+    setError(null)
+    const result = await onSelectMethod(nextMethod)
+    setIsSelecting(false)
+    if (!result.ok) {
+      if (result.expired) markExpired()
+      setError(result.message || "No pudimos preparar ese método de verificación.")
+      return
+    }
+    setSelectedMethod(nextMethod)
+  }
 
   const handleRecoverySubmit = (event: React.FormEvent) => {
     event.preventDefault()
@@ -120,7 +141,9 @@ export function TwoFactorChallenge({ username, expiresIn, method = "totp", onSub
             <>Ingresá uno de tus códigos de recuperación</>
           ) : (
             <>
-              {method === "email"
+              {selectedMethod === null
+                ? <>Elegí cómo querés verificar la cuenta de <strong>{username}</strong></>
+                : selectedMethod === "email"
                 ? <>Escribí el código de 6 dígitos que enviamos al correo de <strong>{username}</strong></>
                 : <>Abrí tu app de autenticación y escribí el código de 6 dígitos de <strong>{username}</strong></>}
             </>
@@ -138,7 +161,23 @@ export function TwoFactorChallenge({ username, expiresIn, method = "totp", onSub
         </div>
       )}
 
-      {useRecovery ? (
+      {!useRecovery && selectedMethod === null ? (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {availableMethods.includes("totp") && (
+            <button type="button" disabled={isSelecting} onClick={() => void selectMethod("totp")} className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition hover:border-[#204983] hover:bg-[#204983]/5 disabled:opacity-50">
+              <Smartphone className="h-5 w-5 text-[#204983]" />
+              <span><strong className="block text-sm text-gray-800">App autenticadora</strong><small className="text-xs text-gray-500">Usar el código del celular</small></span>
+            </button>
+          )}
+          {availableMethods.includes("email") && (
+            <button type="button" disabled={isSelecting} onClick={() => void selectMethod("email")} className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 text-left transition hover:border-[#204983] hover:bg-[#204983]/5 disabled:opacity-50">
+              <Mail className="h-5 w-5 text-[#204983]" />
+              <span><strong className="block text-sm text-gray-800">Correo electrónico</strong><small className="text-xs text-gray-500">Enviar un código por email</small></span>
+            </button>
+          )}
+          {isSelecting && <p className="col-span-full text-center text-sm text-gray-500">Preparando el método...</p>}
+        </div>
+      ) : useRecovery ? (
         <form onSubmit={handleRecoverySubmit} className="space-y-4">
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -251,6 +290,16 @@ export function TwoFactorChallenge({ username, expiresIn, method = "totp", onSub
         >
           {useRecovery ? "Usar el código de la app" : "No tengo el celular: usar un código de recuperación"}
         </button>
+        {!useRecovery && selectedMethod && availableMethods.length > 1 && (
+          <button
+            type="button"
+            onClick={() => { setSelectedMethod(null); setCode(""); setError(null) }}
+            disabled={isVerifying || logrado}
+            className="text-sm text-[#204983] transition-colors hover:underline disabled:opacity-50"
+          >
+            Elegir otro método
+          </button>
+        )}
         <button
           type="button"
           onClick={onCancel}
