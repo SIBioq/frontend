@@ -37,8 +37,8 @@ import type { SortState } from "@/components/common/data-table"
 import { useApi } from "../../hooks/use-api"
 import { useApiQuery } from "@/hooks/use-api-query"
 import { useApiInfiniteQuery, flattenPages } from "@/hooks/use-api-infinite-query"
-import { NavegadorDeDias } from "./components/navegador-de-dias"
-import { comoFechaCorta } from "@/lib/dias"
+import { DateRangePicker } from "../ui/date-range-picker"
+import { comoFechaCorta, hoy } from "@/lib/dias"
 import { guardarOrdenDeLaLista } from "@/hooks/use-protocol-list-nav"
 import { useInfiniteScroll } from "../../hooks/use-infinite-scroll"
 import { useDebounce } from "../../hooks/use-debounce"
@@ -197,7 +197,9 @@ export default function ProtocolosPage() {
   // El día que se está mirando, o null para el listado completo. Arranca en
   // null: entrar a Protocolos sigue mostrando todo, y ver un día es algo que
   // se pide, no algo que se hereda de la sesión anterior.
-  const [dia, setDia] = useState<string | null>(null)
+  const [fechaDesde, setFechaDesde] = useState("")
+  const [fechaHasta, setFechaHasta] = useState("")
+  const dia = fechaDesde && fechaHasta && fechaDesde === fechaHasta ? fechaDesde : null
 
   // Los separadores de día solo tienen sentido con la lista en orden
   // cronológico. Ordenada por apellido, las fechas quedan salteadas y una
@@ -210,8 +212,8 @@ export default function ProtocolosPage() {
       const params = new URLSearchParams({
         limit: "20",
         offset: offset.toString(),
-        // Vista tabla densa: serializer slim del backend (sin breakdown de pago,
-        // sin auditoría, sin unplanned). Mucho más liviano por fila.
+        // Vista tabla densa: serializer slim del backend, con el resumen de
+        // auditoría pero sin el desglose completo de pagos y cargos.
         view: "table",
       })
 
@@ -240,13 +242,16 @@ export default function ProtocolosPage() {
 
       // El corte del día lo hace el backend en la zona del laboratorio. Traer
       // todo y filtrar acá sería pedir miles de filas para tirarlas.
-      if (dia) {
-        params.append("fecha", dia)
+      if (fechaDesde && fechaHasta && fechaDesde === fechaHasta) {
+        params.append("fecha", fechaDesde)
+      } else {
+        if (fechaDesde) params.append("fecha_desde", fechaDesde)
+        if (fechaHasta) params.append("fecha_hasta", fechaHasta)
       }
 
       return `${PROTOCOL_ENDPOINTS.PROTOCOLS}?${params.toString()}`
     },
-    [debouncedSearchTerm, statusFilter, isPrintedFilter, paymentStatusFilter, sort, dia],
+    [debouncedSearchTerm, statusFilter, isPrintedFilter, paymentStatusFilter, sort, fechaDesde, fechaHasta],
   )
 
   // queryKey estable por combinación de filtros: cachea cada vista (ej. volver
@@ -261,7 +266,8 @@ export default function ProtocolosPage() {
     isPrintedFilter,
     paymentStatusFilter,
     sort ? `${sort.dir}:${sort.field}` : "",
-    dia ?? "",
+    fechaDesde,
+    fechaHasta,
   ] as const
 
   const protocolsQuery = useApiInfiniteQuery<ProtocolListItem>({
@@ -824,7 +830,21 @@ export default function ProtocolosPage() {
               </div>
             )}
           </div>
-          <NavegadorDeDias dia={dia} onChange={setDia} className="w-full lg:w-auto lg:shrink-0" />
+          <DateRangePicker
+            desde={fechaDesde}
+            hasta={fechaHasta}
+            onChange={(desde, hasta) => {
+              setFechaDesde(desde)
+              setFechaHasta(hasta)
+            }}
+            onLimpiar={() => {
+              setFechaDesde("")
+              setFechaHasta("")
+            }}
+            max={hoy()}
+            placeholder="Fechas de análisis"
+            className="w-full lg:w-auto lg:shrink-0"
+          />
 
           <div className="lg:shrink-0">
             <Popover>
@@ -970,18 +990,24 @@ export default function ProtocolosPage() {
           <div className="p-8 sm:p-12 text-center">
             <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-              {dia ? `Sin protocolos el ${comoFechaCorta(dia)}` : "No se encontraron protocolos"}
+              {dia
+                ? `Sin protocolos el ${comoFechaCorta(dia)}`
+                : fechaDesde || fechaHasta
+                  ? "Sin protocolos en ese rango"
+                  : "No se encontraron protocolos"}
             </h3>
             <p className="text-sm sm:text-base text-gray-600 mb-6">
               {dia
-                ? "Probá con otro día usando las flechas, o cancelá el filtro para ver todos."
+                ? "Probá con otra fecha o limpiá el filtro para ver todos."
+                : fechaDesde || fechaHasta
+                  ? "Probá con otro rango de fechas o limpiá el filtro."
                 : searchTerm || hasAnyStatusFilter || isPrintedFilter !== "all" || paymentStatusFilter !== "all"
                   ? "Intenta ajustar los filtros de búsqueda"
                   : "Aún no hay protocolos registrados en el sistema"}
             </p>
             <Button onClick={handleNewProtocol} className="bg-[#204983] hover:bg-[#1a3d6b] text-white">
               <Plus className="h-4 w-4 mr-2" />
-              {dia ? "Nuevo protocolo" : "Crear Primer Protocolo"}
+              {dia || fechaDesde || fechaHasta ? "Nuevo protocolo" : "Crear Primer Protocolo"}
             </Button>
           </div>
         ) : (

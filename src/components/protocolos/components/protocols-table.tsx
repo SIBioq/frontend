@@ -306,7 +306,7 @@ export function ProtocolsTable({
       id: "audit",
       compact: true,
       header: "Auditoría",
-      responsive: "hidden lg:table-cell",
+      responsive: "hidden md:table-cell",
       skeleton: auditSkeleton,
       cell: (p) =>
         p.creation?.user || p.last_change?.user ? (

@@ -646,6 +646,92 @@ export interface ProtocolStatus {
 export type TrajoOrdenStatus = "no_trajo" | "incompleta" | "completa"
 export type PreauthStatus = "not_required" | "no_trajo" | "incompleta" | "completa"
 
+/** Regla de descuento que quedó congelada al crear o repreciar el protocolo. */
+export interface ProtocolAnalysisDiscount {
+  threshold_ub: string | null
+  threshold_inclusive: boolean | null
+  percentage_at_or_above: string | null
+  applied_percentage: string | null
+  amount: string | null
+}
+
+/**
+ * Precio particular histórico de una práctica. Nunca se reconstruye con los
+ * valores actuales del nomenclador: estos datos explican lo cobrado en ESTE
+ * protocolo.
+ */
+export interface ProtocolAnalysisPrivatePricing {
+  mode: "ub" | "fixed" | null
+  ub_quantity: string | null
+  ub_unit_value: string | null
+  gross_amount: string | null
+  discount: ProtocolAnalysisDiscount
+  /** Referencia particular aun si esta línea la cubre la OOSS. */
+  amount: string | null
+  /** Cero cuando la práctica está autorizada por la OOSS. */
+  patient_amount: string | null
+  snapshot_source: "creation" | "added" | "repricing" | "legacy_backfill" | null
+  snapshotted_at: string | null
+}
+
+export interface ProtocolBillingUnplannedItem {
+  id: number
+  description: string
+  amount: string
+  created_at: string | null
+}
+
+export interface ProtocolBillingRegularPaymentItem {
+  id: number
+  type: "pago" | "devolucion"
+  amount: string
+  payment_method: FormaDePago
+  payment_account_id: number | null
+  created_at: string | null
+}
+
+export interface ProtocolBillingAnalyses {
+  private_ub_below_threshold_amount: string | null
+  private_ub_at_or_above_threshold_amount: string | null
+  private_fixed_amount: string | null
+  volume_discount_amount: string | null
+  patient_total: string
+  insurance_authorized_ub: string
+  /** Se conoce recién al cerrar la presentación de la OOSS. */
+  insurance_amount: null
+}
+
+export interface ProtocolBillingCharges {
+  coseguro: string
+  material: string
+  derivation: string
+  unplanned: { total: string; items: ProtocolBillingUnplannedItem[] }
+  subtotal_before_minimum: string
+  particular_minimum: string | null
+  minimum_adjustment: string
+  total_due: string
+  arca_billable_amount: string
+}
+
+export interface ProtocolBillingPayments {
+  regular: { total: string; items: ProtocolBillingRegularPaymentItem[] }
+  unplanned: { total: string; items: ProtocolBillingUnplannedItem[] }
+  total: string
+  rounding: string
+  /** Positivo: debe el paciente. Negativo: debe el laboratorio. */
+  balance: string
+  amount_to_return: string
+}
+
+/** Desglose normalizado: cargos y pagos son movimientos distintos. */
+export interface ProtocolBillingBreakdown {
+  version: number | null
+  origin: "snapshot" | "mixed" | "legacy"
+  analyses: ProtocolBillingAnalyses
+  charges: ProtocolBillingCharges
+  payments: ProtocolBillingPayments
+}
+
 export interface ProtocolDetail {
   id: number
   analysis: number
@@ -668,6 +754,7 @@ export interface ProtocolDetail {
    * snapshot: es lo que cobró ESTE protocolo, que puede no ser el precio de hoy.
    */
   precio_fijo?: string | null
+  private_pricing?: ProtocolAnalysisPrivatePricing | null
   is_urgent: boolean
   is_active: boolean
 }
@@ -725,6 +812,9 @@ export interface Protocol {
   /** Lo que se le descontó al particular por volumen. Ya está restado de
    *  `analyses_amount_due`; va aparte para que el total cierre con las partes. */
   descuento_por_volumen?: string
+  /** Diferencia agregada para alcanzar el mínimo particular configurado. */
+  ajuste_minimo_particular?: string
+  minimo_particular?: string
   coseguro_amount?: string
   material_descartable_amount?: string
   derivacion_amount?: string
@@ -732,6 +822,7 @@ export interface Protocol {
   pagos?: PagoDelProtocolo[]
   extras_total?: string
   private_amount_due?: string
+  billing_breakdown?: ProtocolBillingBreakdown | null
   /** Cuántos componentes no se cobraron por estar incluidos en un módulo presente. */
   nbu?: Nbu | null
   // Returned by protocol create response

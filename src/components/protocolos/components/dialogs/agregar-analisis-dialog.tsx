@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Loader2, Minus, Plus } from "lucide-react"
 
 import { AnalysisSearch } from "@/components/ingreso/components/analysis-search"
+import { usePreciosFijos } from "@/hooks/use-precios-fijos"
+import { useProtocolQuote } from "@/hooks/use-protocol-quote"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -45,6 +47,7 @@ import type { SelectedAnalysis } from "@/types"
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  insuranceId: number | null
   /**
    * Los que el protocolo ya tiene: id del ANÁLISIS y su código.
    *
@@ -53,12 +56,33 @@ type Props = {
    * bioquímicos arriba de la lista.
    */
   yaEstan: { id: number; code: string }[]
-  onAgregar: (analysisIds: number[]) => Promise<void>
+  /** Devuelve los ids que el servidor no pudo agregar para conservarlos en la revisión. */
+  onAgregar: (analysisIds: number[]) => Promise<number[]>
 }
 
-export function AgregarAnalisisDialog({ open, onOpenChange, yaEstan, onAgregar }: Props) {
+const formatNumber = (value: string | null | undefined) =>
+  Number.parseFloat(value ?? "0").toLocaleString("es-AR", { maximumFractionDigits: 2 })
+
+const ubLabel = (value: string | null | undefined, source: string) => {
+  const quantity = Number.parseFloat(value ?? "")
+  return Number.isFinite(quantity) && quantity > 0
+    ? `${formatNumber(value)} UB ${source}`
+    : "UB no disponible"
+}
+
+const formatMoney = (value: string | null | undefined) =>
+  `$${Number.parseFloat(value ?? "0").toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+export function AgregarAnalisisDialog({ open, onOpenChange, insuranceId, yaEstan, onAgregar }: Props) {
   const [elegidos, setElegidos] = useState<SelectedAnalysis[]>([])
   const [guardando, setGuardando] = useState(false)
+  const { habilitados: preciosFijosHabilitados } = usePreciosFijos()
+  const quoteInput = useMemo(
+    () => (open ? elegidos.map((a) => ({ analysis_id: a.id, is_authorized: false })) : []),
+    [elegidos, open],
+  )
+  const { quote, loading: cotizando, error: errorDeCotizacion } = useProtocolQuote(insuranceId, quoteInput)
+  const cotizacionPorId = new Map(quote?.details.map((item) => [item.analysis_id, item]))
 
   const cerrar = (abierto: boolean) => {
     if (!abierto) setElegidos([])
@@ -69,9 +93,15 @@ export function AgregarAnalisisDialog({ open, onOpenChange, yaEstan, onAgregar }
     if (elegidos.length === 0) return
     setGuardando(true)
     try {
-      await onAgregar(elegidos.map((a) => a.id))
-      setElegidos([])
-      onOpenChange(false)
+      const noAgregados = await onAgregar(elegidos.map((a) => a.id))
+      if (noAgregados.length === 0) {
+        setElegidos([])
+        onOpenChange(false)
+      } else {
+        setElegidos((actuales) => actuales.filter((a) => noAgregados.includes(a.id)))
+      }
+    } catch {
+      // El contenedor informa el error; el diálogo conserva la selección.
     } finally {
       setGuardando(false)
     }
@@ -98,8 +128,8 @@ export function AgregarAnalisisDialog({ open, onOpenChange, yaEstan, onAgregar }
         <DialogHeader>
           <DialogTitle>Agregar análisis</DialogTitle>
           <DialogDescription>
-            Se agregan al final de la lista. El precio y la autorización se
-            recalculan con la obra social del protocolo.
+            Se agregan al final como particulares. Podés cambiar la cobertura
+            después; el importe y el saldo definitivos se actualizan al guardar.
           </DialogDescription>
         </DialogHeader>
 
@@ -113,23 +143,62 @@ export function AgregarAnalisisDialog({ open, onOpenChange, yaEstan, onAgregar }
         />
 
         {elegidos.length > 0 && (
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <p className="mb-2 text-xs font-medium text-gray-600">
-              Se van a agregar {elegidos.length}:
-            </p>
+          <section className="overflow-hidden rounded-lg border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">Para agregar</h3>
+              <span className="text-xs tabular-nums text-slate-500">{elegidos.length} análisis</span>
+            </div>
             {/* CADA UNO SE PUEDE SACAR DE ACÁ
                 ==============================
                 Agregar el análisis equivocado es de las cosas más fáciles de
                 hacer en esta pantalla: se busca por código y un dígito de más
                 trae otra práctica. Sin esto había que cancelar el diálogo
                 entero y volver a cargar los que sí estaban bien. */}
-            <ul className="max-h-48 space-y-1 overflow-y-auto">
-              {elegidos.map((a) => (
-                <li
-                  key={a.id}
-                  className="flex items-center justify-between gap-2 rounded px-1 py-0.5 text-sm text-gray-800 hover:bg-white"
-                >
-                  <span className="min-w-0 break-words">· {a.name}</span>
+            <ul className="max-h-56 divide-y divide-slate-100 overflow-y-auto">
+              {elegidos.map((a) => {
+                const precio = cotizacionPorId.get(a.id)
+                const precioFijo = precio?.precio_fijo != null || (preciosFijosHabilitados && a.cobra_precio_fijo)
+                return <li key={a.id} className="flex items-start gap-3 px-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                      <span className="font-mono text-[13px] font-medium text-slate-600">{a.code}</span>
+                      <span className="min-w-0 break-words text-sm font-semibold text-slate-800">{a.name}</span>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-600">
+                      {precioFijo && precio && !cotizando ? (
+                        <span className="font-medium tabular-nums text-slate-800">
+                          Precio fijo particular estimado {formatMoney(precio.patient_amount)}
+                        </span>
+                      ) : (
+                        <>
+                          <span>
+                            {precioFijo
+                              ? `Precio fijo de catálogo${a.precio_particular ? ` ${formatMoney(a.precio_particular)}` : ""}`
+                              : precio?.private_ub ? ubLabel(precio.private_ub, "aplicadas") : ubLabel(a.bio_unit, "de catálogo")}
+                          </span>
+                          {cotizando ? (
+                            <span className="text-slate-400">Calculando importe…</span>
+                          ) : precio ? (
+                            <span className="font-medium tabular-nums text-slate-800">Particular estimado {formatMoney(precio.patient_amount)}</span>
+                          ) : errorDeCotizacion ? (
+                            <span className="text-amber-700">No se pudo estimar</span>
+                          ) : (
+                            <span className="text-slate-400">Cotización pendiente</span>
+                          )}
+                        </>
+                      )}
+                      {precio && Number.parseFloat(precio.descuento ?? "0") > 0 && (
+                        <span className="text-emerald-700">Descuento incluido</span>
+                      )}
+                    </div>
+                    {(a.is_urgent || a.is_obsolete || a.requires_derivacion) && (
+                      <div className="mt-1 flex flex-wrap gap-x-2 text-[11px] font-medium">
+                        {a.is_urgent && <span className="text-rose-700">Urgente</span>}
+                        {a.is_obsolete && <span className="text-amber-700">En desuso</span>}
+                        {a.requires_derivacion && <span className="text-slate-600">Requiere derivación</span>}
+                      </div>
+                    )}
+                  </div>
                   <Button
                     type="button"
                     variant="ghost"
@@ -138,14 +207,19 @@ export function AgregarAnalisisDialog({ open, onOpenChange, yaEstan, onAgregar }
                     disabled={guardando}
                     aria-label={`Quitar ${a.name} de la lista`}
                     title="Quitar de la lista"
-                    className="h-7 w-7 shrink-0 p-0 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                    className="h-7 w-7 shrink-0 p-0 text-slate-400 hover:bg-red-50 hover:text-red-600"
                   >
                     <Minus className="h-4 w-4" />
                   </Button>
                 </li>
-              ))}
+              })}
             </ul>
-          </div>
+            <p className="border-t border-slate-100 px-3 py-2 text-[11px] leading-snug text-slate-500">
+              {errorDeCotizacion
+                ? "No se pudo cotizar: el servidor podría omitir un análisis al guardar. Revisá el resultado del agregado."
+                : "Los importes son estimaciones por análisis con precios actuales; no representan el nuevo total ni el saldo del protocolo."}
+            </p>
+          </section>
         )}
 
         <DialogFooter>

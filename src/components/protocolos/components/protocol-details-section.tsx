@@ -6,10 +6,17 @@ import { Badge } from "../../ui/badge"
 import { Button } from "../../ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type {
-  PagoDelProtocolo, PaymentStatus, Nbu, TrajoOrdenStatus, PreauthStatus,
+  PagoDelProtocolo,
+  PaymentStatus,
+  Nbu,
+  TrajoOrdenStatus,
+  PreauthStatus,
+  ProtocolBillingBreakdown as BillingBreakdown,
+  ProtocolDetail,
 } from "@/types"
 import { getTrajoOrdenInfo } from "@/lib/protocol-order"
 import { getPaymentStatusInfo, getPreauthStatusInfo } from "@/lib/status-styles"
+import { ProtocolBillingBreakdown } from "./protocol-billing-breakdown"
 
 interface ProtocolDetailsSectionProps {
   patientName: string
@@ -32,10 +39,14 @@ interface ProtocolDetailsSectionProps {
   preauthStatus?: PreauthStatus
   isInPatient?: boolean
   analysesAmountDue?: string
+  volumeDiscount?: string
+  minimumAdjustment?: string
   coseguroAmount?: string
   materialDescartableAmount?: string
   derivacionAmount?: string
   extrasTotal?: string
+  billingBreakdown?: BillingBreakdown | null
+  details?: ProtocolDetail[]
   nbu?: Nbu | null
   showOrderButton?: boolean
   orderDisabledReason?: string
@@ -71,10 +82,14 @@ export function ProtocolDetailsSection({
   preauthStatus,
   isInPatient,
   analysesAmountDue,
+  volumeDiscount,
+  minimumAdjustment,
   coseguroAmount,
   materialDescartableAmount,
   derivacionAmount,
   extrasTotal,
+  billingBreakdown,
+  details = [],
   nbu,
   showOrderButton = false,
   orderDisabledReason,
@@ -100,17 +115,8 @@ export function ProtocolDetailsSection({
 }: ProtocolDetailsSectionProps) {
   const paymentStatusInfo = getPaymentStatusInfo(paymentStatus)
 
-  const due = Number.parseFloat(amountDue || "0")
-  const pending = Number.parseFloat(amountPending || "0")
-  const paid = Number.parseFloat(patientPaid || "0")
-  const toReturn = Number.parseFloat(amountToReturn || "0")
   const vuelto = Number.parseFloat(redondeo || "0")
-  const analyses = Number.parseFloat(analysesAmountDue || "0")
   const coseguro = Number.parseFloat(coseguroAmount || "0")
-  const material = Number.parseFloat(materialDescartableAmount || "0")
-  const derivacion = Number.parseFloat(derivacionAmount || "0")
-  const extras = Number.parseFloat(extrasTotal || "0")
-  const hasExtras = coseguro > 0 || material > 0 || derivacion > 0
   const nbuName = nbu && typeof nbu === "object" && "name" in nbu ? nbu.name : null
   const trajoOrdenInfo = getTrajoOrdenInfo(trajoOrden)
   const preauthInfo = getPreauthStatusInfo(preauthStatus)
@@ -324,41 +330,28 @@ export function ProtocolDetailsSection({
           </div>
         )}
 
-        {(analyses > 0 || hasExtras) && (
-          <div className="rounded-md border border-gray-200 bg-gray-50 p-3 space-y-1.5">
-            <p className="text-xs font-semibold text-gray-700">Desglose de importes</p>
-            {analyses > 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600">Análisis particulares</span>
-                <span className="font-medium">${analyses.toFixed(2)}</span>
-              </div>
-            )}
-            {coseguro > 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600">Coseguro</span>
-                <span className="font-medium">${coseguro.toFixed(2)}</span>
-              </div>
-            )}
-            {material > 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600">Material descartable</span>
-                <span className="font-medium">${material.toFixed(2)}</span>
-              </div>
-            )}
-            {derivacion > 0 && (
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600">Derivación</span>
-                <span className="font-medium">${derivacion.toFixed(2)}</span>
-              </div>
-            )}
-            {extras > 0 && (
-              <div className="flex items-center justify-between text-xs pt-1 border-t border-gray-200">
-                <span className="text-gray-600">Total extras</span>
-                <span className="font-medium">${extras.toFixed(2)}</span>
-              </div>
-            )}
-          </div>
-        )}
+        <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+          <p className="mb-2 text-xs font-semibold text-gray-700">Desglose de facturación</p>
+          <ProtocolBillingBreakdown
+            breakdown={billingBreakdown}
+            details={details}
+            pagos={pagos}
+            unplannedTransactions={unplannedTransactions}
+            legacy={{
+              analysesAmountDue,
+              volumeDiscount,
+              coseguroAmount,
+              materialDescartableAmount,
+              derivacionAmount,
+              minimumAdjustment,
+              extrasTotal,
+              amountDue,
+              patientPaid,
+              amountPending,
+              amountToReturn,
+            }}
+          />
+        </div>
 
         {/* Transacciones no contempladas (cargos/pagos extra). Siempre permitimos
             abrir el gestor con onOpenUnplanned, aún sin transacciones cargadas. */}
@@ -380,71 +373,11 @@ export function ProtocolDetailsSection({
                 {unplannedTransactions.length > 0 ? "Gestionar" : "Agregar"}
               </Button>
             </div>
-            {unplannedTransactions.length === 0 ? (
-              <p className="text-xs text-gray-500">Sin movimientos cargados.</p>
-            ) : (
-              <div className="space-y-1">
-                {unplannedTransactions.map((tx) => (
-                  <div key={tx.id} className="flex items-start justify-between gap-2 text-xs">
-                    <div className="min-w-0 flex-1">
-                      <span
-                        className={`mr-1 font-semibold uppercase ${
-                          tx.kind === "charge" ? "text-rose-700" : "text-emerald-700"
-                        }`}
-                      >
-                        {tx.kind === "charge" ? "Cobro" : "Pago"}
-                      </span>
-                      <span className="text-gray-700 break-words">{tx.description}</span>
-                    </div>
-                    <span className="shrink-0 font-medium text-gray-900">
-                      ${Number.parseFloat(tx.amount).toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-                {(unplannedChargesTotal || unplannedPaymentsTotal) && (
-                  <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-violet-200 text-xs">
-                    {unplannedChargesTotal && (
-                      <span className="text-gray-600">
-                        Cobros: <strong className="text-rose-700">${Number.parseFloat(unplannedChargesTotal).toFixed(2)}</strong>
-                      </span>
-                    )}
-                    {unplannedPaymentsTotal && (
-                      <span className="text-gray-600">
-                        Pagos: <strong className="text-emerald-700">${Number.parseFloat(unplannedPaymentsTotal).toFixed(2)}</strong>
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center gap-3 text-sm">
-          <DollarSign className="h-4 w-4 text-gray-400 flex-shrink-0" />
-          <span className="text-gray-600 w-28 flex-shrink-0">Total a pagar:</span>
-          <span className="font-medium">${due.toFixed(2)}</span>
-        </div>
-
-        <div className="flex items-center gap-3 text-sm">
-          <DollarSign className="h-4 w-4 text-gray-400 flex-shrink-0" />
-          <span className="text-gray-600 w-28 flex-shrink-0">Pagado:</span>
-          <span className="font-medium text-emerald-600">${paid.toFixed(2)}</span>
-        </div>
-
-        {pending > 0 && (
-          <div className="flex items-center gap-3 text-sm">
-            <DollarSign className="h-4 w-4 text-orange-500 flex-shrink-0" />
-            <span className="text-gray-600 w-28 flex-shrink-0">Pendiente:</span>
-            <span className="font-medium text-orange-600">${pending.toFixed(2)}</span>
-          </div>
-        )}
-
-        {toReturn > 0 && (
-          <div className="flex items-center gap-3 text-sm">
-            <DollarSign className="h-4 w-4 text-amber-500 flex-shrink-0" />
-            <span className="text-gray-600 w-28 flex-shrink-0">A devolver:</span>
-            <span className="font-medium text-amber-600">${toReturn.toFixed(2)}</span>
+            <p className="text-xs text-gray-500">
+              {unplannedTransactions.length === 0
+                ? "Sin movimientos cargados."
+                : `${unplannedTransactions.length} ${unplannedTransactions.length === 1 ? "movimiento" : "movimientos"} · cargos ${Number.parseFloat(unplannedChargesTotal || "0").toFixed(2)} · pagos ${Number.parseFloat(unplannedPaymentsTotal || "0").toFixed(2)}`}
+            </p>
           </div>
         )}
 

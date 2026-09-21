@@ -8,7 +8,6 @@ import {
   X,
   AlertTriangle,
   FileText,
-  Landmark,
   RefreshCw,
   Wallet,
 } from "lucide-react"
@@ -37,17 +36,14 @@ interface ProtocolActionsProps {
   editDisabledReason?: string
   reportsDisabledReason?: string
   cancelDisabledReason?: string
-  arcaDisabledReason?: string
   coseguroDisabledReason?: string
   isCancelling: boolean
   isUncancelling?: boolean
-  isArcaBilling?: boolean
   onViewAnalysis: () => void
   onEdit: () => void
   onReports: () => void
   onCancel: () => void
   onUncancel?: () => void
-  onArcaBilling: () => void
   onSetCoseguro?: () => void
 }
 
@@ -62,17 +58,14 @@ export function ProtocolActions({
   editDisabledReason,
   reportsDisabledReason,
   cancelDisabledReason,
-  arcaDisabledReason,
   coseguroDisabledReason,
   isCancelling,
   isUncancelling = false,
-  isArcaBilling = false,
   onViewAnalysis,
   onEdit,
   onReports,
   onCancel,
   onUncancel,
-  onArcaBilling,
   onSetCoseguro,
 }: ProtocolActionsProps) {
   const renderDisabledTooltip = (reason: string | undefined, children: React.ReactNode) => {
@@ -138,23 +131,6 @@ export function ProtocolActions({
           >
             <FileText className="h-4 w-4 mr-1" />
             Reportes
-          </Button>,
-        )}
-        {renderDisabledTooltip(
-          arcaDisabledReason,
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-amber-700 border-amber-500 hover:bg-amber-600 hover:text-white bg-transparent"
-            onClick={(e) => {
-              e.stopPropagation()
-              if (arcaDisabledReason) return
-              onArcaBilling()
-            }}
-            disabled={isArcaBilling || Boolean(arcaDisabledReason)}
-          >
-            {isArcaBilling ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Landmark className="h-4 w-4 mr-1" />}
-            Facturar ARCA
           </Button>,
         )}
         {showCoseguro && renderDisabledTooltip(

@@ -27,6 +27,7 @@ export function useProtocolQuote(
   const { apiRequest } = useApi()
   const [quote, setQuote] = useState<QuoteResult | null>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(false)
 
   // Clave estable para el debounce (evita recotizar por renders sin cambios).
   const key = useMemo(
@@ -45,11 +46,13 @@ export function useProtocolQuote(
     if (!dets || dets.length === 0) {
       setQuote(null)
       setLoading(false)
+      setError(false)
       return
     }
 
     let cancelled = false
     setLoading(true)
+    setError(false)
     apiRequest(PROTOCOL_ENDPOINTS.QUOTE, {
       method: "POST",
       body: {
@@ -58,12 +61,18 @@ export function useProtocolQuote(
         details: dets,
       },
     })
-      .then(async (res) => (res.ok ? ((await res.json()) as QuoteResult) : null))
+      .then(async (res) => {
+        if (!res.ok) throw new Error("No se pudo cotizar el protocolo")
+        return (await res.json()) as QuoteResult
+      })
       .then((data) => {
         if (!cancelled) setQuote(data)
       })
       .catch(() => {
-        if (!cancelled) setQuote(null)
+        if (!cancelled) {
+          setQuote(null)
+          setError(true)
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false)
@@ -75,5 +84,5 @@ export function useProtocolQuote(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedKey])
 
-  return { quote, loading }
+  return { quote, loading, error }
 }
