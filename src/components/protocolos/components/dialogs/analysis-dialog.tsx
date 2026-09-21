@@ -5,6 +5,7 @@ import { Badge } from "../../../ui/badge"
 import { Switch } from "../../../ui/switch"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import type { ProtocolDetail } from "@/types"
+import { AnalysisPriceSummary } from "../analysis-price-summary"
 
 interface AnalysisDialogProps {
   open: boolean
@@ -116,8 +117,8 @@ export function AnalysisDialog({
                       </Badge>
                     )}
                   </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">UB: {detail.ub}</span>
+                  <div className="flex justify-between items-center text-sm gap-2">
+                    <div className="flex flex-col"><span className="text-gray-500">UB: {detail.ub}</span><AnalysisPriceSummary detail={detail} /></div>
                     {!isPrivateProtocol && (
                       <div className="flex items-center gap-2">
                         <span className="text-gray-500 text-xs">Autorizado:</span>
@@ -151,7 +152,7 @@ export function AnalysisDialog({
                       <td className="px-2 lg:px-3 py-2.5 text-xs lg:text-sm">
                         <div className="break-words leading-tight">{detail.name}</div>
                       </td>
-                      <td className="px-2 lg:px-3 py-2.5 text-xs lg:text-sm">{detail.ub}</td>
+                      <td className="px-2 lg:px-3 py-2.5 text-xs lg:text-sm"><div>{detail.ub}</div><AnalysisPriceSummary detail={detail} /></td>
                       {!isPrivateProtocol && (
                         <td className="px-2 lg:px-3 py-2.5 text-center">
                           <div className="flex items-center justify-center gap-1">

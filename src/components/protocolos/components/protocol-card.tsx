@@ -56,6 +56,7 @@ import {
   OrderStatusDialog,
   ArcaBillingDialog,
   UnplannedTransactionsDialog,
+  PrivatePriceDialog,
 } from "./dialogs"
 import type { ArcaPayload } from "./dialogs"
 import { ProtocolHistoryDialog } from "./dialogs/protocol-history-dialog"
@@ -211,7 +212,7 @@ export function ProtocolCard({
   // Imprimir / previsualizar / descargar / enviar informes pide permiso.
   // Consultar el protocolo NO: el resto de la card queda igual que siempre.
   const canPrintReports = hasPermission(PERMISSIONS.MANAGE_PRINTS.codename)
-  const canUpdatePrivatePrice = hasPermission(PERMISSIONS.UPDATE_PROTOCOL_PRIVATE_PRICE.codename)
+  const canUpdatePrivatePrice = Boolean(hasPermission(PERMISSIONS.UPDATE_PROTOCOL_PRIVATE_PRICE.codename))
   const navigate = useNavigate()
   const [isExpanded, setIsExpanded] = useState(pageMode)
   const [protocolDetail, setProtocolDetail] = useState<ProtocolDetailResponse | null>(initialDetail)
@@ -248,6 +249,7 @@ export function ProtocolCard({
   const [orderStatusDialogOpen, setOrderStatusDialogOpen] = useState(false)
   const [isProcessingOrderStatus, setIsProcessingOrderStatus] = useState(false)
   const [arcaDialogOpen, setArcaDialogOpen] = useState(false)
+  const [privatePriceDialogOpen, setPrivatePriceDialogOpen] = useState(false)
 
   // Dialog states
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
@@ -1203,17 +1205,23 @@ export function ProtocolCard({
     setObraSocialDialogOpen(true)
   }
 
-  const handleActualizarPrecioParticular = async () => {
-    if (!window.confirm("¿Actualizar el precio particular solo de este protocolo? Esto puede cambiar el saldo.")) return
-    try {
-      const response = await apiRequest(PROTOCOL_ENDPOINTS.ACTUALIZAR_PRECIO_PARTICULAR(protocol.id), { method: "POST" })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.detail || "No se pudo actualizar el precio particular.")
-      toast.success(data.detail || "Precio particular actualizado.", { duration: TOAST_DURATION })
-      await fetchProtocolDetail()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo actualizar el precio particular.", { duration: TOAST_DURATION })
-    }
+  const handleActualizarPrecioParticular = () => {
+    if (!canUpdatePrivatePrice) return
+    setPrivatePriceDialogOpen(true)
+  }
+
+  const handleGuardarPrecioParticular = async (price: string) => {
+    if (!canUpdatePrivatePrice) throw new Error("No tenés permiso para actualizar el precio particular.")
+    const response = await apiRequest(PROTOCOL_ENDPOINTS.ACTUALIZAR_PRECIO_PARTICULAR(protocol.id), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ precio_particular: price }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(formatApiError(data, "No se pudo actualizar el precio particular."))
+    toast.success(data.detail || "Precio particular actualizado.", { duration: TOAST_DURATION })
+    await fetchProtocolDetail()
+    onUpdate?.()
   }
 
   const handleCambiarObraSocial = async (
@@ -1741,6 +1749,12 @@ export function ProtocolCard({
         onRegularize={handleRegularizeBalance}
         isProcessing={isProcessingPayment}
       />
+
+      {canUpdatePrivatePrice && <PrivatePriceDialog
+        open={privatePriceDialogOpen}
+        onOpenChange={setPrivatePriceDialogOpen}
+        onSubmit={handleGuardarPrecioParticular}
+      />}
 
       <AnalysisDialog
         open={analysisDialogOpen}
