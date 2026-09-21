@@ -211,6 +211,7 @@ export function ProtocolCard({
   // Imprimir / previsualizar / descargar / enviar informes pide permiso.
   // Consultar el protocolo NO: el resto de la card queda igual que siempre.
   const canPrintReports = hasPermission(PERMISSIONS.MANAGE_PRINTS.codename)
+  const canUpdatePrivatePrice = hasPermission(PERMISSIONS.UPDATE_PROTOCOL_PRIVATE_PRICE.codename)
   const navigate = useNavigate()
   const [isExpanded, setIsExpanded] = useState(pageMode)
   const [protocolDetail, setProtocolDetail] = useState<ProtocolDetailResponse | null>(initialDetail)
@@ -1202,6 +1203,19 @@ export function ProtocolCard({
     setObraSocialDialogOpen(true)
   }
 
+  const handleActualizarPrecioParticular = async () => {
+    if (!window.confirm("¿Actualizar el precio particular solo de este protocolo? Esto puede cambiar el saldo.")) return
+    try {
+      const response = await apiRequest(PROTOCOL_ENDPOINTS.ACTUALIZAR_PRECIO_PARTICULAR(protocol.id), { method: "POST" })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.detail || "No se pudo actualizar el precio particular.")
+      toast.success(data.detail || "Precio particular actualizado.", { duration: TOAST_DURATION })
+      await fetchProtocolDetail()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo actualizar el precio particular.", { duration: TOAST_DURATION })
+    }
+  }
+
   const handleCambiarObraSocial = async (
     insuranceId: number | null,
     billingEntityId: number | null,
@@ -1524,6 +1538,7 @@ export function ProtocolCard({
           onEntidadDeFacturacion={handleAbrirEntidad}
           onMedico={handleAbrirMedico}
           onObraSocial={handleAbrirObraSocial}
+          onActualizarPrecioParticular={handleActualizarPrecioParticular}
           onHistory={() => setHistoryDialogOpen(true)}
           onUnplanned={handleOpenUnplanned}
           onToggleAuthorization={handleToggleAuthorization}
@@ -1537,6 +1552,7 @@ export function ProtocolCard({
           onGoValidation={() => navigate(`/validacion/${protocol.id}`)}
           onGoPatient={() => (protocol.patient?.id ? navigate(`/pacientes/${protocol.patient.id}`) : navigate("/pacientes"))}
           isEditable={isEditable}
+          canUpdatePrivatePrice={canUpdatePrivatePrice}
           showReports={showReports}
           reportsDisabledReason={reportsDisabledReason}
           canBeCancelled={canBeCancelled}

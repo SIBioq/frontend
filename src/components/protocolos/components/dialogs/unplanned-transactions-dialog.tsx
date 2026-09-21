@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Banknote, Landmark, Loader2, Plus, Receipt, Trash2 } from "lucide-react"
+import { Loader2, Plus, Receipt, Trash2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -13,15 +13,7 @@ import {
 import { Button } from "../../../ui/button"
 import { Input } from "../../../ui/input"
 import { Label } from "../../../ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../../ui/select"
 import { Skeleton } from "../../../ui/skeleton"
-import { FormaDePago } from "@/components/common/forma-de-pago"
 import { toast } from "sonner"
 import { useApi } from "../../../../hooks/use-api"
 import { PROTOCOL_ENDPOINTS, TOAST_DURATION } from "@/config/api"
@@ -41,11 +33,9 @@ interface UnplannedTransactionsDialogProps {
 }
 
 const FORMULARIO_VACIO = {
-  kind: "charge" as "charge" | "payment",
+  kind: "charge" as const,
   description: "",
   amount: "",
-  formaDePago: "",
-  cuentaId: "",
 }
 
 const formatMoney = (value: string | number) => {
@@ -74,12 +64,6 @@ export function UnplannedTransactionsDialog({
   //
   // Y en el pago es obligatoria: entró plata y hay que saber si al cajón o a
   // una cuenta.
-  const esPago = form.kind === "payment"
-  const pagoCompleto =
-    !esPago ||
-    form.formaDePago === "efectivo" ||
-    (form.formaDePago === "transferencia" && !!form.cuentaId)
-
   const fetchItems = useCallback(async () => {
     setLoading(true)
     try {
@@ -118,31 +102,17 @@ export function UnplannedTransactionsDialog({
     }
     // El backend también lo rechaza; se pide antes para no perder la carga
     // entera por un campo.
-    if (!pagoCompleto) {
-      toast.error(
-        form.formaDePago === "transferencia"
-          ? "Elegí a qué cuenta entró la transferencia"
-          : "Elegí cómo entró el pago",
-        { duration: TOAST_DURATION },
-      )
-      return
-    }
     try {
       setSubmitting(true)
       const response = await apiRequest(PROTOCOL_ENDPOINTS.UNPLANNED_LIST(protocolId), {
         method: "POST",
         body: {
-          kind: form.kind,
+          kind: "charge",
           description,
           amount: amount.toFixed(2),
           // Un cobro va sin nada de esto, y una transferencia es la única que
           // lleva cuenta: mandar la vieja guardaría algo que contradice la
           // pantalla.
-          payment_method: esPago ? form.formaDePago : "",
-          payment_account:
-            esPago && form.formaDePago === "transferencia" && form.cuentaId
-              ? Number(form.cuentaId)
-              : null,
         },
       })
       if (!response.ok) {
@@ -185,48 +155,23 @@ export function UnplannedTransactionsDialog({
   const chargesTotal = items
     .filter((t) => t.kind === "charge")
     .reduce((acc, t) => acc + (Number.parseFloat(t.amount) || 0), 0)
-  const paymentsTotal = items
-    .filter((t) => t.kind === "payment")
-    .reduce((acc, t) => acc + (Number.parseFloat(t.amount) || 0), 0)
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[560px] max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-[560px] overflow-y-auto p-4 sm:w-[95vw] sm:p-6">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex min-w-0 items-start gap-2 text-left">
             <Receipt className="h-5 w-5 text-violet-600" />
-            Pagos / cobros no contemplados — Protocolo #{protocolId}
+            <span className="break-words">Cobros no contemplados — Protocolo #{protocolId}</span>
           </DialogTitle>
           <DialogDescription>
-            Cargos o pagos que no encajan en los conceptos estándar. Suman al balance y aparecen en el desglose. No se facturan a ARCA.
+            Cargos que aumentan el saldo del paciente y no encajan en los conceptos estándar. No se facturan a ARCA.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
           {isEditable && (
             <form onSubmit={handleAdd} className="space-y-3 rounded-md border border-gray-200 bg-gray-50 p-3">
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[120px_minmax(0,1fr)_120px]">
-                <div className="space-y-1.5">
-                  <Label htmlFor="unplanned-kind" className="text-xs">Tipo</Label>
-                  <Select
-                    value={form.kind}
-                    onValueChange={(v: "charge" | "payment") =>
-                      setForm((p) =>
-                        v === "payment"
-                          ? { ...p, kind: v }
-                          : { ...p, kind: v, formaDePago: "", cuentaId: "" },
-                      )
-                    }
-                  >
-                    <SelectTrigger id="unplanned-kind" className="bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="charge">Cobro</SelectItem>
-                      <SelectItem value="payment">Pago</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
                 <div className="space-y-1.5">
                   <Label htmlFor="unplanned-desc" className="text-xs">Descripción</Label>
                   <Input
@@ -254,19 +199,9 @@ export function UnplannedTransactionsDialog({
               {/* Cómo entró la plata. La del protocolo es la del cobro del
                   mostrador: un pago que llega después puede entrar por otro
                   lado, y al conciliar hay que poder encontrarlo. */}
-              {esPago && (
-                <FormaDePago
-                  formaDePago={form.formaDePago}
-                  cuentaId={form.cuentaId}
-                  onFormaChange={(forma) => setForm((p) => ({ ...p, formaDePago: forma }))}
-                  onCuentaChange={(id) => setForm((p) => ({ ...p, cuentaId: id }))}
-                  disabled={submitting}
-                />
-              )}
-
               <Button
                 type="submit"
-                disabled={submitting || !pagoCompleto}
+                disabled={submitting}
                 className="w-full bg-violet-600 hover:bg-violet-700"
               >
                 {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
@@ -278,11 +213,7 @@ export function UnplannedTransactionsDialog({
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-gray-600">
               <span>{items.length} transacción{items.length === 1 ? "" : "es"}</span>
-              <span>
-                Cobros: <strong className="text-rose-700">{formatMoney(chargesTotal)}</strong>
-                {" · "}
-                Pagos: <strong className="text-emerald-700">{formatMoney(paymentsTotal)}</strong>
-              </span>
+              <span className="text-right">Cargos al paciente: <strong className="text-rose-700">{formatMoney(chargesTotal)}</strong></span>
             </div>
             {loading ? (
               <div className="space-y-2">
@@ -303,34 +234,17 @@ export function UnplannedTransactionsDialog({
                       tx.kind === "charge" ? "border-rose-200 bg-rose-50/50" : "border-emerald-200 bg-emerald-50/50"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 text-xs font-semibold uppercase">
                           <span
                             className={tx.kind === "charge" ? "text-rose-700" : "text-emerald-700"}
                           >
-                            {tx.kind === "charge" ? "Cobro" : "Pago"}
+                            {tx.kind === "charge" ? "Cargo al paciente" : "Pago histórico recibido"}
                           </span>
                           <span className="text-gray-900">{formatMoney(tx.amount)}</span>
                         </div>
                         <p className="text-sm text-gray-800 break-words">{tx.description}</p>
-                        {tx.payment_method === "transferencia" ? (
-                          <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-sky-800">
-                            <Landmark className="h-3 w-3" />
-                            Transferencia
-                            {tx.payment_account_detail
-                              ? ` · ${tx.payment_account_detail.nombre}`
-                              : ""}
-                            {tx.payment_account_detail?.alias
-                              ? ` (${tx.payment_account_detail.alias})`
-                              : ""}
-                          </p>
-                        ) : tx.payment_method === "efectivo" ? (
-                          <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-emerald-800">
-                            <Banknote className="h-3 w-3" />
-                            Efectivo
-                          </p>
-                        ) : null}
                         {tx.created_by && (
                           <p className="mt-1 text-[10px] text-gray-500">
                             {tx.created_by.first_name || tx.created_by.username}
@@ -342,7 +256,7 @@ export function UnplannedTransactionsDialog({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2 text-xs text-red-700 hover:bg-red-100"
+                          className="h-7 shrink-0 self-end px-2 text-xs text-red-700 hover:bg-red-100 sm:self-start"
                           onClick={() => handleDelete(tx.id)}
                           disabled={deletingId === tx.id}
                         >

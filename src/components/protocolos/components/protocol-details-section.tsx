@@ -101,7 +101,6 @@ export function ProtocolDetailsSection({
   coseguroDisabledReason,
   unplannedTransactions = [],
   unplannedChargesTotal,
-  unplannedPaymentsTotal,
   onOpenUnplanned,
   onOpenHistoryDialog,
   onSetOrder,
@@ -353,12 +352,12 @@ export function ProtocolDetailsSection({
           />
         </div>
 
-        {/* Transacciones no contempladas (cargos/pagos extra). Siempre permitimos
+        {/* Cobros no contemplados. Siempre permitimos
             abrir el gestor con onOpenUnplanned, aún sin transacciones cargadas. */}
         {onOpenUnplanned && (
           <div className="rounded-lg border border-violet-100 bg-violet-50/40 p-3 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-gray-700">Cobros / pagos no contemplados</p>
+              <p className="text-xs font-semibold text-gray-700">Cobros no contemplados</p>
               <Button
                 type="button"
                 variant="outline"
@@ -370,13 +369,13 @@ export function ProtocolDetailsSection({
                 }}
                 data-no-expand
               >
-                {unplannedTransactions.length > 0 ? "Gestionar" : "Agregar"}
+                {unplannedTransactions.length > 0 ? "Gestionar cobros" : "Agregar cobro"}
               </Button>
             </div>
             <p className="text-xs text-gray-500">
               {unplannedTransactions.length === 0
                 ? "Sin movimientos cargados."
-                : `${unplannedTransactions.length} ${unplannedTransactions.length === 1 ? "movimiento" : "movimientos"} · cargos ${Number.parseFloat(unplannedChargesTotal || "0").toFixed(2)} · pagos ${Number.parseFloat(unplannedPaymentsTotal || "0").toFixed(2)}`}
+                : `${unplannedTransactions.length} ${unplannedTransactions.length === 1 ? "movimiento" : "movimientos"} · cargos ${Number.parseFloat(unplannedChargesTotal || "0").toFixed(2)}`}
             </p>
           </div>
         )}

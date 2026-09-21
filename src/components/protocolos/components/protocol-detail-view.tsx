@@ -100,6 +100,7 @@ export interface ProtocolDetailViewProps {
   onEntidadDeFacturacion: () => void
   onMedico: () => void
   onObraSocial: () => void
+  onActualizarPrecioParticular: () => void
   onHistory: () => void
   onUnplanned: () => void
   onToggleAuthorization: (detail: ProtocolDetailType) => void
@@ -115,6 +116,7 @@ export interface ProtocolDetailViewProps {
   onGoPatient: () => void
   // flags
   isEditable: boolean
+  canUpdatePrivatePrice: boolean
   showReports: boolean
   /** Si viene, el botón de Reportes se muestra deshabilitado con este motivo. */
   reportsDisabledReason?: string
@@ -199,6 +201,7 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
     onEntidadDeFacturacion,
     onMedico,
     onObraSocial,
+    onActualizarPrecioParticular,
     onHistory,
     onUnplanned,
     onToggleAuthorization,
@@ -212,6 +215,7 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
     onGoValidation,
     onGoPatient,
     isEditable,
+    canUpdatePrivatePrice,
     showReports,
     reportsDisabledReason,
     canBeCancelled,
@@ -477,16 +481,23 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
           icon={Shield}
           title="Obra social"
           actions={
-            isEditable && (
+            (isEditable || canUpdatePrivatePrice) && (
               <div className="flex items-center gap-1">
                 {/* CAMBIAR LA OBRA SOCIAL ES OTRA COSA QUE EDITAR EL PROTOCOLO.
                     Rehace los precios del protocolo entero, así que tiene su
                     propio diálogo con su propio aviso, y no un campo más en una
                     lista de campos sueltos. */}
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-[#204983]" onClick={onObraSocial}>
-                  <Pencil className="mr-1 h-3.5 w-3.5" />
-                  Cambiar
-                </Button>
+                {isEditable && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-[#204983]" onClick={onObraSocial}>
+                    <Pencil className="mr-1 h-3.5 w-3.5" />
+                    Cambiar
+                  </Button>
+                )}
+                {canUpdatePrivatePrice && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-[#204983]" onClick={onActualizarPrecioParticular}>
+                    Actualizar precio particular
+                  </Button>
+                )}
               </div>
             )
           }
@@ -603,7 +614,7 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
             <div className="grid grid-cols-2 gap-2">
               <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onUnplanned}>
                 <Plus className="mr-1 h-3.5 w-3.5" />
-                Pago/cargo extra
+                Cobro no contemplado
               </Button>
               {showCoseguroAction && (
                 <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onCoseguro}>

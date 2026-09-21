@@ -96,7 +96,7 @@ function fallbackPayments(
       .filter((item) => item.kind === "payment")
       .map((payment) => ({
         key: `extra-${payment.id}`,
-        label: payment.description || "Pago extra",
+        label: `Pago adicional recibido del paciente${payment.description ? `: ${payment.description}` : ""}`,
         amount: payment.amount,
         method: payment.payment_method,
       })),
@@ -147,7 +147,11 @@ export function ProtocolBillingBreakdown({
     { key: "minimum", label: "Ajuste hasta mínimo particular", amount: legacy.minimumAdjustment },
     ...unplannedTransactions
       .filter((item) => item.kind === "charge")
-      .map((item) => ({ key: `extra-${item.id}`, label: item.description || "Cargo extra", amount: item.amount })),
+      .map((item) => ({
+        key: `extra-${item.id}`,
+        label: `Cargo adicional al paciente${item.description ? `: ${item.description}` : ""}`,
+        amount: item.amount,
+      })),
   ].filter((item): item is { key: string; label: string; amount: string } => nonZero(item.amount))
 
   // extras_total ya contiene los cargos anteriores. Solo aparece si una
@@ -171,7 +175,7 @@ export function ProtocolBillingBreakdown({
         })),
         ...payments.unplanned.items.map((payment) => ({
           key: `extra-${payment.id}`,
-          label: payment.description || "Pago extra",
+          label: `Pago adicional recibido del paciente${payment.description ? `: ${payment.description}` : ""}`,
           amount: payment.amount,
         })),
       ]
@@ -243,7 +247,11 @@ export function ProtocolBillingBreakdown({
             {nonZero(charges.material) && <Row label="Material descartable" value={money(charges.material)} />}
             {nonZero(charges.derivation) && <Row label="Derivación" value={money(charges.derivation)} />}
             {charges.unplanned.items.map((charge) => (
-              <Row key={`charge-${charge.id}`} label={charge.description || "Cargo extra"} value={money(charge.amount)} />
+              <Row
+                key={`charge-${charge.id}`}
+                label={`Cargo adicional al paciente${charge.description ? `: ${charge.description}` : ""}`}
+                value={money(charge.amount)}
+              />
             ))}
             {nonZero(charges.minimum_adjustment) && (
               <Row

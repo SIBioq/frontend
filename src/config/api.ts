@@ -169,6 +169,7 @@ export const PROTOCOL_ENDPOINTS = {
   PROTOCOLOS_DESACTUALIZADOS: buildApiUrl("/protocols/protocols/desactualizados/"),
   /** Aplica los precios de hoy a los protocolos elegidos. */
   REPRECAR_PROTOCOLOS: buildApiUrl("/protocols/protocols/reprecar/"),
+  ACTUALIZAR_PRECIO_PARTICULAR: (id: number) => buildApiUrl(`/protocols/protocols/${id}/actualizar-precio-particular/`),
   /** Corregir o anular UNO: la forma vive en el pago, no en el protocolo. */
   PROTOCOL_PAGO: (protocolId: number, pagoId: number) =>
     buildApiUrl(`/protocols/protocols/${protocolId}/pagos/${pagoId}/`),
