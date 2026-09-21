@@ -36,8 +36,12 @@ import { getPreauthStatusInfo, getSendMethodInfo } from "@/lib/status-styles"
 import { isActoBioquimico } from "@/lib/codigos-analisis"
 import { cn } from "@/lib/utils"
 import { MensajesDeWhatsApp } from "./mensajes-de-whatsapp"
+import { AnalysisPriceSummary } from "./analysis-price-summary"
+import { ProtocolBillingBreakdown } from "./protocol-billing-breakdown"
 import type {
+  PagoDelProtocolo,
   ProtocolAuditEvent,
+  ProtocolBillingBreakdown as BillingBreakdown,
   ProtocolDetail as ProtocolDetailType,
   UnplannedTransaction,
 } from "@/types"
@@ -61,11 +65,15 @@ export interface ProtocolDetailViewData {
   amount_pending?: string
   amount_to_return?: string
   analyses_amount_due?: string
+  descuento_por_volumen?: string
+  ajuste_minimo_particular?: string
   coseguro_amount?: string
   material_descartable_amount?: string
   derivacion_amount?: string
   extras_total?: string
   unplanned_transactions?: UnplannedTransaction[]
+  pagos?: PagoDelProtocolo[]
+  billing_breakdown?: BillingBreakdown | null
   trajo_orden?: string
   preauth_status?: string
   preauth_reference?: string
@@ -86,7 +94,6 @@ export interface ProtocolDetailViewProps {
   onPayment: () => void
   onCancel: () => void
   onUncancel: () => void
-  onArca: () => void
   onOrderStatus: () => void
   onPreauth: () => void
   onCoseguro: () => void
@@ -123,11 +130,6 @@ export interface ProtocolDetailViewProps {
   showPreauthAction: boolean
   showCoseguroAction: boolean
 }
-
-const money = (v?: string | null) =>
-  `$${Number.parseFloat(v || "0").toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-
-const nonZero = (v?: string | null) => Math.abs(Number.parseFloat(v || "0")) > 0.001
 
 function orderStatusInfo(s?: string) {
   if (s === "completa") return { label: "Completa", cls: "bg-emerald-100 text-emerald-700" }
@@ -178,47 +180,6 @@ function Row({ label, value, strong }: { label: ReactNode; value: ReactNode; str
   )
 }
 
-/**
- * La UB de una práctica dentro del protocolo, y de qué nomenclador salió.
- *
- * POR QUÉ NO ES UN SOLO NÚMERO
- * ============================
- * Cada análisis tiene una cantidad de UB por nomenclador, y un protocolo usa
- * dos: el de Particular y el que usa la obra social. Cuál corre lo decide el
- * interruptor de la fila.
- *
- * Se muestra porque es de dónde sale el precio. Cuando alguien pregunta por qué
- * un análisis salió lo que salió, o por qué el mismo análisis vale distinto en
- * dos protocolos, la respuesta casi siempre es ésta —y hasta ahora había que ir
- * a buscarla al nomenclador.
- *
- * El aclarador dice de dónde salió: una obra social puede no nombrar la
- * práctica, y ahí se cobra por el nomenclador particular. Ver `get_ub` en
- * `laboratory/protocols/serializers.py`.
- */
-function ubDeLaFila(d: ProtocolDetailType, isPrivate: boolean) {
-  // Un análisis cobrado a precio fijo no salió de ningún nomenclador. Mostrar
-  // su UB acá contestaría con un número que no participó del precio, que es
-  // justo lo contrario de para qué está esta explicación.
-  if (d.precio_fijo && (isPrivate || !d.is_authorized)) {
-    return {
-      valor: `$${d.precio_fijo}`,
-      detalle: "Precio fijo cargado en el análisis: no se cobró por UB",
-    }
-  }
-  if (isPrivate || !d.is_authorized) {
-    return { valor: d.ub, detalle: "UB del nomenclador particular" }
-  }
-  if (d.ub_obra_social) {
-    return { valor: d.ub, detalle: "UB del nomenclador de la obra social" }
-  }
-  return {
-    valor: d.ub,
-    detalle:
-      "El nomenclador de la obra social no nombra esta práctica: se toma la UB de Particular",
-  }
-}
-
 export function ProtocolDetailView(props: ProtocolDetailViewProps) {
   const {
     detail,
@@ -232,7 +193,6 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
     onPayment,
     onCancel,
     onUncancel,
-    onArca,
     onOrderStatus,
     onPreauth,
     onCoseguro,
@@ -270,8 +230,6 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
   const IconoDeEnvio =
     envio.accion === "whatsapp" ? MessageCircle : envio.accion === "email" ? Mail : Printer
   const unplanned = detail.unplanned_transactions ?? []
-  const balancePending = Number.parseFloat(detail.amount_pending || "0")
-  const toReturn = Number.parseFloat(detail.amount_to_return || "0")
   // El total a pagar del paciente. Se mira este y no el saldo: un protocolo
   // cobrado y saldado SÍ tiene movimientos en el libro, y hay que poder ir.
   const totalAPagar = Number.parseFloat(detail.private_amount_due ?? detail.amount_due ?? "0")
@@ -401,7 +359,7 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
           {details.length === 0 ? (
             <p className="py-6 text-center text-sm text-gray-400">Sin análisis cargados</p>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100">
               <ListaOrdenable
                 items={details}
                 getId={(d) => d.id}
@@ -409,150 +367,83 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
                 disabled={!isEditable || !onReordenarAnalisis}
               >
                 {(d, manija) => {
-                const isBillingAct = isActoBioquimico(d.code)
-                const ub = ubDeLaFila(d, isPrivate)
-                // Las etiquetas del análisis. Se arman una vez y se dibujan en
-                // dos lugares distintos —pegadas al nombre en escritorio, en su
-                // propio renglón en el teléfono— porque no es lo mismo tener
-                // 900 px de ancho que 300.
-                const etiquetas = (
-                  <>
-                    {ub.valor && (
-                      <Badge
-                        variant="outline"
-                        title={ub.detalle}
-                        className="shrink-0 border-slate-200 font-mono text-[11px] text-slate-500"
-                      >
-                        UB {ub.valor}
-                      </Badge>
-                    )}
-                    {isBillingAct && (
-                      <Badge variant="outline" className="shrink-0 border-slate-200 text-slate-500">
-                        Sin resultado
-                      </Badge>
-                    )}
-                    {d.is_urgent && <Badge className="shrink-0 bg-rose-100 text-rose-700">Urgente</Badge>}
-                  </>
-                )
-                // EN UN TELÉFONO LA FILA ES UNA TARJETA DE DOS RENGLONES.
-                //
-                // Todo esto —quitar, manija, código, nombre, la UB, "Sin
-                // resultado", "Urgente", y del otro lado "Cubre OOSS" con su
-                // interruptor— entraba en un renglón solo porque en escritorio
-                // sobra ancho. En 360 px lo fijo ya se come el renglón entero:
-                // el nombre se achicaba hasta desaparecer y las etiquetas
-                // terminaban dibujadas ENCIMA del interruptor.
-                //
-                // Abajo de `sm` es una grilla de dos columnas:
-                //
-                //     [−] [⋮⋮] [880001] Hemograma completo con
-                //                       fórmula
-                //     [UB 5] [Urgente]        Cubre OOSS  (o)
-                //
-                // El nombre entero arriba (hasta dos renglones, después corta),
-                // las etiquetas abajo a la izquierda y la cobertura abajo a la
-                // derecha. Cada fila tiene la misma forma, que es lo que hace
-                // que una lista de doce análisis se lea de un vistazo.
-                //
-                // En `sm` y para arriba el `li` vuelve a ser flex, el bloque de
-                // etiquetas de abajo desaparece con `sm:hidden` y queda
-                // exactamente la fila de siempre.
-                return (
-                <li className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 py-2.5 sm:flex sm:items-center sm:justify-between sm:gap-3">
-                  <div className="col-span-2 flex min-w-0 items-start gap-2.5 sm:col-span-1 sm:items-center">
-                    {/* El menos va primero de todo, como pediste: la acción de
-                        sacar tiene que estar en el mismo lugar en cada fila y
-                        no perdida entre los datos. */}
-                    {isEditable && onQuitarAnalisis && (
-                      <button
-                        type="button"
-                        onClick={() => onQuitarAnalisis(d)}
-                        disabled={quitandoDetalle === d.id || details.length <= 1}
-                        title={
-                          details.length <= 1
-                            ? "Es el único análisis: cancelá el protocolo en su lugar"
-                            : "Quitar del protocolo"
-                        }
-                        className="shrink-0 rounded-full border border-rose-200 p-0.5 text-rose-600
-                                   transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
-                        aria-label={`Quitar ${d.name}`}
-                      >
-                        {quitandoDetalle === d.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Minus className="h-4 w-4" />
+                  const resultStatus = d.is_valid
+                    ? { label: "Validado", color: "text-emerald-700", dot: "bg-emerald-500" }
+                    : d.is_loaded
+                      ? { label: "Resultados sin validar", color: "text-amber-700", dot: "bg-amber-500" }
+                      : { label: "Sin cargar", color: "text-slate-500", dot: "bg-slate-400" }
+                  return (
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 py-3 sm:grid-cols-[minmax(0,1fr)_10rem] sm:items-center sm:gap-x-5">
+                      <div className="col-span-2 flex min-w-0 items-start gap-1.5 sm:col-span-1 sm:gap-2">
+                        {isEditable && onQuitarAnalisis && (
+                          <button
+                            type="button"
+                            onClick={() => onQuitarAnalisis(d)}
+                            disabled={quitandoDetalle === d.id || details.length <= 1}
+                            title={details.length <= 1
+                              ? "Es el único análisis: cancelá el protocolo en su lugar"
+                              : "Quitar del protocolo"}
+                            className="shrink-0 rounded-full border border-rose-200 p-0.5 text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label={`Quitar ${d.name}`}
+                          >
+                            {quitandoDetalle === d.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Minus className="h-4 w-4" />}
+                          </button>
                         )}
-                      </button>
-                    )}
-                    {manija}
-                    <span
-                      title={
-                        isBillingAct
-                          ? "Acto de facturación: no lleva resultado"
-                          : d.is_valid
-                            ? "Resultado validado"
-                            : d.is_loaded
-                              ? "Resultado cargado, sin validar"
-                              : "Resultado sin cargar"
-                      }
-                      className={cn(
-                        "rounded px-1.5 py-0.5 font-mono text-xs font-medium",
-                        isBillingAct
-                          ? "bg-slate-100 text-slate-500"
-                          : d.is_valid
-                            ? "bg-emerald-100 text-emerald-700"
-                            : d.is_loaded
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-gray-100 text-gray-500",
-                      )}
-                    >
-                      {d.code}
-                    </span>
-                    {/* EL NOMBRE LARGO SE PARTE, NO DESBORDA.
-                        `min-w-0` es lo que deja que achique: sin eso un item de
-                        flex nunca baja del ancho de su contenido. En escritorio
-                        esto era `sm:flex-none sm:truncate`, que es la
-                        combinación que no corta nada —`flex-none` no achica, y
-                        sin ancho al que achicar el `truncate` no tiene dónde
-                        poner los puntos suspensivos—, así que un análisis de
-                        nombre largo empujaba la fila y se salía de la tarjeta.
-                        Ahora se comporta igual que en el teléfono: dos
-                        renglones y recién ahí corta. */}
-                    <span
-                      title={d.name}
-                      className="min-w-0 flex-1 text-sm font-medium text-gray-800 line-clamp-2"
-                    >
-                      {d.name}
-                    </span>
-                    <span className="hidden shrink-0 items-center gap-2.5 sm:flex">{etiquetas}</span>
-                  </div>
+                        {manija}
+                        <div className="grid min-w-0 flex-1 grid-cols-[3.75rem_minmax(0,1fr)] items-start gap-x-2.5 gap-y-0.5">
+                          <span
+                            className={cn(
+                              "font-mono text-[13px] font-semibold leading-snug",
+                              isActoBioquimico(d.code) ? "text-slate-600" : resultStatus.color,
+                            )}
+                          >
+                            {d.code}
+                          </span>
+                          <span className="min-w-0 break-words text-left text-sm font-semibold leading-snug text-slate-800">
+                            {d.name}
+                          </span>
+                          <div className="col-start-2 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+                            <AnalysisPriceSummary detail={d} />
+                            {d.is_urgent && (
+                              <span className="text-xs font-medium text-rose-700">Urgente</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
 
-                  {/* Las etiquetas, en su propio renglón y solo en el teléfono. */}
-                  <div className="flex flex-wrap items-center gap-1.5 sm:hidden">{etiquetas}</div>
-                  {isPrivate ? (
-                    <Badge className="shrink-0 justify-self-end bg-amber-100 text-amber-700">Particular</Badge>
-                  ) : (
-                    <div className="flex shrink-0 items-center justify-self-end gap-2">
-                      <span className={cn("text-xs", d.is_authorized ? "text-emerald-600" : "text-amber-600")}>
-                        {d.is_authorized ? "Cubre OOSS" : "Particular"}
-                      </span>
-                      {updatingDetailId === d.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                      ) : (
-                        <Switch
-                          checked={d.is_authorized}
-                          disabled={!isEditable}
-                          onCheckedChange={() => onToggleAuthorization(d)}
-                          className="scale-90 data-[state=checked]:bg-emerald-500"
-                        />
-                      )}
+                      <div className="col-span-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-slate-100 pt-2 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:flex-col sm:items-end sm:justify-center sm:border-l sm:border-t-0 sm:py-1 sm:pl-4">
+                        {!isActoBioquimico(d.code) && (
+                          <span className={cn("inline-flex items-center gap-1.5 text-right text-xs font-medium", resultStatus.color)}>
+                            <span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", resultStatus.dot)} />
+                            {resultStatus.label}
+                          </span>
+                        )}
+                        {!isPrivate && (
+                          <div className="flex items-center gap-2">
+                            <span className={cn("whitespace-nowrap text-xs", d.is_authorized ? "text-emerald-700" : "text-slate-600")}>
+                              {d.is_authorized ? "Cubre OOSS" : "Particular"}
+                            </span>
+                            {updatingDetailId === d.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                            ) : (
+                              <Switch
+                                checked={d.is_authorized}
+                                disabled={!isEditable}
+                                onCheckedChange={() => onToggleAuthorization(d)}
+                                aria-label={`${d.is_authorized ? "Quitar" : "Asignar"} cobertura de obra social a ${d.name}`}
+                                className="scale-90 data-[state=checked]:bg-emerald-500"
+                              />
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </li>
-                )
-              }}
+                  )
+                }}
               </ListaOrdenable>
-            </ul>
+            </div>
           )}
 
           {/* El botón de agregar, al final de la lista. */}
@@ -684,39 +575,25 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
             </div>
           )}
 
-          {nonZero(detail.analyses_amount_due) && <Row label="Análisis particulares" value={money(detail.analyses_amount_due)} />}
-          {nonZero(detail.coseguro_amount) && <Row label="Coseguro" value={money(detail.coseguro_amount)} />}
-          {nonZero(detail.material_descartable_amount) && <Row label="Material descartable" value={money(detail.material_descartable_amount)} />}
-          {nonZero(detail.derivacion_amount) && <Row label="Derivación" value={money(detail.derivacion_amount)} />}
-
-          {unplanned.length > 0 && (
-            <div className="mt-1 border-t border-gray-100 pt-1">
-              {unplanned.map((t) => (
-                <Row
-                  key={t.id}
-                  label={
-                    <span className="flex items-center gap-1">
-                      <span className={cn("inline-block h-1.5 w-1.5 rounded-full", t.kind === "charge" ? "bg-red-400" : "bg-emerald-400")} />
-                      {t.description}
-                    </span>
-                  }
-                  value={<span className={t.kind === "charge" ? "text-red-600" : "text-emerald-600"}>{t.kind === "charge" ? "+" : "−"}{money(t.amount)}</span>}
-                />
-              ))}
-            </div>
-          )}
-
-          <div className="mt-1 border-t border-gray-100 pt-1">
-            <Row label="Total a pagar" value={money(detail.private_amount_due ?? detail.amount_due)} strong />
-            <Row label="Pagado" value={<span className="text-emerald-600">{money(detail.patient_paid)}</span>} />
-            {balancePending > 0 ? (
-              <Row label="Saldo" value={<span className="font-semibold text-red-600">Debe {money(detail.amount_pending)}</span>} />
-            ) : toReturn > 0 ? (
-              <Row label="A favor del paciente" value={<span className="font-semibold text-amber-600">{money(detail.amount_to_return)}</span>} />
-            ) : (
-              <Row label="Saldo" value={<span className="font-medium text-emerald-600">Saldado</span>} />
-            )}
-          </div>
+          <ProtocolBillingBreakdown
+            breakdown={detail.billing_breakdown}
+            details={details}
+            pagos={detail.pagos}
+            unplannedTransactions={unplanned}
+            legacy={{
+              analysesAmountDue: detail.analyses_amount_due,
+              volumeDiscount: detail.descuento_por_volumen,
+              coseguroAmount: detail.coseguro_amount,
+              materialDescartableAmount: detail.material_descartable_amount,
+              derivacionAmount: detail.derivacion_amount,
+              minimumAdjustment: detail.ajuste_minimo_particular,
+              extrasTotal: detail.extras_total,
+              amountDue: detail.private_amount_due ?? detail.amount_due,
+              patientPaid: detail.patient_paid,
+              amountPending: detail.amount_pending,
+              amountToReturn: detail.amount_to_return,
+            }}
+          />
 
           <div className="mt-3 grid grid-cols-1 gap-2">
             <Button size="sm" className="bg-[#204983] hover:bg-[#1a3d6f]" onClick={onPayment}>
@@ -735,11 +612,6 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
                 </Button>
               )}
             </div>
-            <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onArca}>
-              <Receipt className="mr-1 h-3.5 w-3.5" />
-              Facturar a ARCA
-            </Button>
-
             {/* AL LIBRO, FILTRADO POR ESTE PROTOCOLO.
                 Va con las otras acciones de plata porque es una más: desde ahí
                 se corrigen los cargos, los montos cobrados y la forma de pago

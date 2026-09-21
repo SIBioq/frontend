@@ -58,7 +58,7 @@ export type LoginOutcome =
   | { status: "two_factor_required"; ephemeralToken: string; expiresIn: number; method: TwoFactorMethod }
   /** Está obligada a tener segundo factor y todavía no se enroló: falta el alta. */
   | { status: "two_factor_enrollment_required"; ephemeralToken: string; expiresIn: number }
-  | { status: "error" }
+  | { status: "error"; message?: string }
 
 export type TwoFactorOutcome =
   | { status: "success"; mustChangePassword: boolean }
@@ -408,7 +408,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           error("Error de inicio de sesión", {
             description: formatApiError(errorData, "Credenciales inválidas"),
           })
-          return { status: "error" }
+          return { status: "error", message: formatApiError(errorData, "No se pudo iniciar sesión.") }
         }
 
         const data: AuthResponse | TwoFactorRequiredResponse | TwoFactorEnrollmentRequiredResponse =
@@ -446,7 +446,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         error("No se pudo iniciar sesión", {
           description: getErrorMessage(fallo, "No se pudo completar el inicio de sesión."),
         })
-        return { status: "error" }
+        return { status: "error", message: getErrorMessage(fallo, "No se pudo completar el inicio de sesión.") }
       } finally {
         setIsLoading(false)
       }
