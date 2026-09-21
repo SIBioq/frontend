@@ -27,6 +27,8 @@ La pantalla de administración carga permisos desde `AC_ENDPOINTS.PERMISSIONS` c
 - `npm run build`
 - Verificación estática dirigida de `AC_ENDPOINTS.PERMISSIONS`, `ManagementPage` y `PermissionManagement`.
 
-## Pendientes
+## Backend asociado
 
-No se agregó endpoint ni campo: ambos valores requeridos ya existen en el contrato del detalle. No se hizo merge, push ni deploy.
+El detalle expone `private_ub_value` como valor vigente de la OOSS activa cuyo nombre es `Particular`, separado del snapshot del protocolo. El backend lo implementa en `11beaab`.
+
+No se hizo merge, push ni deploy.
