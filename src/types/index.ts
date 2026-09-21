@@ -727,6 +727,7 @@ export interface ProtocolBillingPayments {
 export interface ProtocolBillingBreakdown {
   version: number | null
   origin: "snapshot" | "mixed" | "legacy"
+  private_ub_value_used?: string | null
   analyses: ProtocolBillingAnalyses
   charges: ProtocolBillingCharges
   payments: ProtocolBillingPayments
@@ -798,6 +799,7 @@ export interface Protocol {
   }
   insurance_ub_value?: string
   private_ub_value?: string
+  precio_particular_ub?: string | null
   // Payment fields (new API format)
   amount_due?: string
   amount_pending?: string

@@ -190,6 +190,7 @@ export function ProtocolBillingBreakdown({
     <div className={cn("space-y-3", className)}>
       <div>
         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Análisis</p>
+        {breakdown?.private_ub_value_used != null && <Row label="Valor UB particular usado" value={money(breakdown.private_ub_value_used)} />}
         {completeAnalysisHistory && analyses ? (
           <div className="divide-y divide-gray-100">
             {nonZero(analyses.private_ub_below_threshold_amount) && (
