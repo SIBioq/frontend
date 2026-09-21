@@ -55,6 +55,8 @@ type FilaAgrupada = {
   pagos?: PagoEnLibro[]
   /** Solo en los gastos e ingresos cargados a mano. */
   tipo_de_movimiento?: string
+  forma_de_pago?: string
+  fuera_de_rango?: boolean
   movimiento_de_caja_id?: number
   detalle?: string
   usuario?: string
@@ -114,6 +116,38 @@ const haceDias = (dias: number) => {
   const mes = String(fecha.getMonth() + 1).padStart(2, "0")
   const dia = String(fecha.getDate()).padStart(2, "0")
   return `${fecha.getFullYear()}-${mes}-${dia}`
+}
+
+const montoNumerico = (valor?: string) => {
+  const numero = Number.parseFloat(valor ?? "")
+  return Number.isFinite(numero) ? numero : 0
+}
+
+/** Desglosa movimientos reales, sin netear una devolución contra un cobro. */
+function resumirFlujos(movimientos: FilaAgrupada[]) {
+  const flujos = movimientos.flatMap((fila) =>
+    fila.protocolo && fila.pagos?.length
+      ? fila.pagos.map((pago) => ({
+          monto: (pago.tipo === "devolucion" ? -1 : 1) * montoNumerico(pago.monto),
+          forma: pago.forma_de_pago,
+        }))
+      : [{ monto: montoNumerico(fila.total), forma: fila.forma_de_pago ?? "" }],
+  )
+
+  return flujos.reduce(
+    (totales, flujo) => {
+      if (flujo.monto > 0) {
+        totales.entradas += flujo.monto
+        if (flujo.forma === "efectivo") totales.efectivo += flujo.monto
+        else if (flujo.forma === "transferencia") totales.transferencia += flujo.monto
+        else totales.sinEspecificar += flujo.monto
+      } else {
+        totales.salidas += flujo.monto
+      }
+      return totales
+    },
+    { entradas: 0, efectivo: 0, transferencia: 0, sinEspecificar: 0, salidas: 0 },
+  )
 }
 
 export default function LibroDiarioPage() {
@@ -254,17 +288,12 @@ export default function LibroDiarioPage() {
     return true
   }
 
-  // El neto del período, para no tener que sumar a mano lo que ya está en
-  // pantalla. Entradas y salidas por separado: un neto de cero puede ser "no
-  // pasó nada" o "entraron cien mil y salieron cien mil", y no son lo mismo.
-  const entradas = movimientos
-    .map((m) => Number.parseFloat(m.total))
-    .filter((n) => n > 0)
-    .reduce((a, b) => a + b, 0)
-  const salidas = movimientos
-    .map((m) => Number.parseFloat(m.total))
-    .filter((n) => n < 0)
-    .reduce((a, b) => a + b, 0)
+  // `?protocolo=` puede añadir una fila fuera del rango sólo para señalarla.
+  // No debe inflar los totales del período, incluso si su último pago coincide
+  // con el rango pero quedó fuera del recorte de la lista.
+  const movimientosDelResumen = movimientos.filter((fila) => !fila.fuera_de_rango)
+  const { entradas, efectivo, transferencia, sinEspecificar, salidas } =
+    resumirFlujos(movimientosDelResumen)
 
   // UNA FILA POR PROTOCOLO, QUE SE ABRE
   //
@@ -422,7 +451,18 @@ export default function LibroDiarioPage() {
 
         {!consulta.isLoading && movimientos.length > 0 ? (
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <Resumen titulo="Entró" valor={plata(String(entradas))} tono="entra" />
+            <Resumen
+              titulo="Entró"
+              valor={plata(String(entradas))}
+              tono="entra"
+              desglose={[
+                { titulo: "Efectivo", valor: plata(String(efectivo)) },
+                { titulo: "Transferencia", valor: plata(String(transferencia)) },
+                ...(sinEspecificar > 0
+                  ? [{ titulo: "Sin especificar", valor: plata(String(sinEspecificar)) }]
+                  : []),
+              ]}
+            />
             <Resumen titulo="Salió" valor={plata(String(salidas))} tono="sale" />
             <Resumen titulo="Neto" valor={plata(String(entradas + salidas))} tono="neto" />
           </div>
@@ -631,10 +671,12 @@ function Resumen({
   titulo,
   valor,
   tono,
+  desglose,
 }: {
   titulo: string
   valor: string
   tono: "entra" | "sale" | "neto"
+  desglose?: { titulo: string; valor: string }[]
 }) {
   const color = {
     entra: "text-emerald-700",
@@ -646,6 +688,16 @@ function Resumen({
     <div className="rounded-lg border border-gray-200 bg-gray-50/60 p-4">
       <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{titulo}</div>
       <div className={`mt-1 text-xl font-semibold tabular-nums ${color}`}>{valor}</div>
+      {desglose && (
+        <div className="mt-3 space-y-1.5 border-t border-gray-200 pt-2 text-xs text-gray-600">
+          {desglose.map((linea) => (
+            <div key={linea.titulo} className="flex items-center justify-between gap-2">
+              <span>{linea.titulo}</span>
+              <span className="font-medium tabular-nums text-gray-800">{linea.valor}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

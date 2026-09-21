@@ -3,10 +3,9 @@
 import type React from "react"
 
 import { useState, useRef, useEffect } from "react"
-import { Search, TestTube, Package, Plus } from "lucide-react"
+import { Search, TestTube, Plus } from "lucide-react"
 import { Input } from "../../ui/input"
 import { Button } from "../../ui/button"
-import { Badge } from "../../ui/badge"
 import { useApi } from "../../../hooks/use-api"
 import { useDebounce } from "../../../hooks/use-debounce"
 import { useInfiniteScroll } from "../../../hooks/use-infinite-scroll"
@@ -48,6 +47,16 @@ interface PaginatedResponse<T> {
 const ALTO_MINIMO_DEL_DESPLEGABLE = 176
 const ALTO_MAXIMO_DEL_DESPLEGABLE = 352
 const AIRE_CONTRA_EL_BORDE = 16
+
+const formatMoney = (value?: string) =>
+  `$${Number.parseFloat(value ?? "0").toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+const formatCatalogUb = (value?: string) => {
+  const quantity = Number.parseFloat(value ?? "")
+  return Number.isFinite(quantity) && quantity > 0
+    ? `${quantity.toLocaleString("es-AR", { maximumFractionDigits: 2 })} UB de catálogo`
+    : "UB no disponible"
+}
 
 const buscarCoincidenciaDeCodigo = (analyses: Analysis[], code: string): Analysis | null => {
   for (const candidato of candidatosDeCodigo(code)) {
@@ -438,6 +447,26 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
         return
       }
 
+      // Si Enter llega antes del debounce o mientras responde el servidor,
+      // `orderedResults` todavía contiene frecuentes o una búsqueda anterior.
+      // Nunca agregar el primer ítem de esa lista para un texto nuevo.
+      if (term && (term !== debouncedSearchTerm || isSearching)) {
+        latestSearchId.current += 1
+        try {
+          const response = await apiRequest(
+            `${CATALOG_ENDPOINTS.ANALYSIS}?search=${encodeURIComponent(term)}&is_active=true&limit=20&offset=0`,
+          )
+          if (!response.ok) throw new Error("Búsqueda no disponible")
+          const data: PaginatedResponse<Analysis> = await response.json()
+          const first = data.results.find((analysis) => !selectedAnalyses.some((selected) => selected.id === analysis.id))
+          if (first) await handleAddAnalysis(first)
+          else toast.error(`No encontramos un análisis disponible para "${term}"`)
+        } catch {
+          toast.error("No se pudo buscar el análisis. Intentá de nuevo.")
+        }
+        return
+      }
+
       // Texto: agregar el análisis resaltado.
       if (orderedResults.length > 0) {
         handleAddAnalysis(orderedResults[highlightedIndex] ?? orderedResults[0])
@@ -509,31 +538,25 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
               // (TSH, T3, T4 libre)"). Sin `min-w-0` el bloque de la izquierda
               // no achica, y en un teléfono el botón de agregar se iba afuera
               // del desplegable: el resultado se veía pero no se podía elegir.
-              className={`flex items-center justify-between gap-2 p-3 border-b border-gray-100 last:border-b-0 ${
-                index === highlightedIndex ? "bg-[#204983]/10" : "hover:bg-gray-50"
+              className={`flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-2.5 last:border-b-0 ${
+                index === highlightedIndex ? "bg-blue-50" : "hover:bg-slate-50"
               }`}
             >
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-                <Package className="h-4 w-4 shrink-0 text-[#204983]" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium break-words">{analysis.name}</div>
-                  <div className="text-xs text-gray-500">
-                    Código: {analysis.code || "N/A"} |{" "}
-                    {preciosFijosHabilitados && analysis.cobra_precio_fijo
-                      ? `Precio fijo: $${analysis.precio_particular ?? "0.00"}`
-                      : `UB: ${analysis.bio_unit}`}
-                  </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                  <span className="font-mono text-[13px] font-medium text-slate-600">{analysis.code || "Sin código"}</span>
+                  <span className="min-w-0 break-words text-sm font-semibold text-slate-800">{analysis.name}</span>
                 </div>
-                {analysis.is_urgent && (
-                  <Badge variant="destructive" className="shrink-0 text-xs">
-                    Urgente
-                  </Badge>
-                )}
-                {analysis.is_obsolete && (
-                  <Badge variant="outline" className="shrink-0 bg-amber-50 text-amber-700 text-xs">
-                    En desuso
-                  </Badge>
-                )}
+                <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-slate-600">
+                  <span>
+                    {preciosFijosHabilitados && analysis.cobra_precio_fijo
+                      ? `Precio fijo de catálogo: ${formatMoney(analysis.precio_particular)}`
+                      : formatCatalogUb(analysis.bio_unit)}
+                  </span>
+                  {analysis.is_urgent && <span className="font-medium text-rose-700">Urgente</span>}
+                  {analysis.is_obsolete && <span className="font-medium text-amber-700">En desuso</span>}
+                  {analysis.requires_derivacion && <span>Requiere derivación</span>}
+                </div>
               </div>
               <Button
                 type="button"
@@ -541,7 +564,7 @@ export function AnalysisSearch({ selectedAnalyses, onAnalysisChange }: AnalysisS
                 size="sm"
                 onClick={() => handleAddAnalysis(analysis)}
                 aria-label={`Agregar ${analysis.name}`}
-                className="shrink-0 border-[#204983] text-[#204983] hover:bg-[#204983] hover:text-white"
+                className="h-8 w-8 shrink-0 border-slate-300 p-0 text-[#204983] hover:border-[#204983] hover:bg-blue-50"
               >
                 <Plus className="h-4 w-4" />
               </Button>

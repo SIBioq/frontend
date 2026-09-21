@@ -33,6 +33,7 @@ import type {
   PreauthStatus,
   ReportSignature,
   ProtocolAuditEvent,
+  ProtocolBillingBreakdown,
 } from "@/types"
 
 // Componentes modulares
@@ -117,6 +118,8 @@ interface ProtocolDetailResponse {
   redondeo?: string
   // Pricing breakdown (new fields)
   analyses_amount_due?: string
+  descuento_por_volumen?: string
+  ajuste_minimo_particular?: string
   coseguro_amount?: string
   material_descartable_amount?: string
   derivacion_amount?: string
@@ -125,6 +128,7 @@ interface ProtocolDetailResponse {
   unplanned_charges_total?: string
   unplanned_payments_total?: string
   private_amount_due?: string
+  billing_breakdown?: ProtocolBillingBreakdown | null
   nbu?: { id: number; name: string } | null
   payment_status: PaymentStatus
   billing_status?: BillingStatus
@@ -550,28 +554,6 @@ export function ProtocolCard({
     } finally {
       setIsCancelling(false)
     }
-  }
-
-  // El detalle del protocolo ya no embebe la URL del PDF: se pide aparte al
-  // bloque arca-detail/ (solo tiene sentido si el protocolo ya está facturado).
-  const fetchArcaInvoicePdfUrl = useCallback(async () => {
-    try {
-      const res = await apiRequest(PROTOCOL_ENDPOINTS.ARCA_DETAIL(protocol.id))
-      if (res.ok) {
-        const data = await res.json()
-        setArcaInvoicePdfUrl(data.arca_invoice_pdf_url ?? null)
-      }
-    } catch (error) {
-      console.error("Error fetching ARCA detail:", error)
-    }
-  }, [apiRequest, protocol.id])
-
-  const handleOpenArcaDialog = async () => {
-    const detail = protocolDetail ?? (await fetchProtocolDetail())
-    if (detail?.is_arca_billed) {
-      await fetchArcaInvoicePdfUrl()
-    }
-    setArcaDialogOpen(true)
   }
 
   const handleArcaBilling = async (payload: ArcaPayload): Promise<boolean> => {
@@ -1029,7 +1011,7 @@ export function ProtocolCard({
   }
 
   const handleAgregarAnalisis = async (analysisIds: number[]) => {
-    if (analysisIds.length === 0) return
+    if (analysisIds.length === 0) return []
     try {
       const response = await apiRequest(PROTOCOL_ENDPOINTS.DETAILS_ADD(protocol.id), {
         method: "POST",
@@ -1039,15 +1021,32 @@ export function ProtocolCard({
         const errorData = await response.json().catch(() => ({}))
         throw new Error(extractErrorMessage(errorData, "No se pudo agregar el análisis"))
       }
+      const result = await response.json() as {
+        added_detail_ids?: number[]
+        skipped?: { analysis?: number; detail?: string }[]
+      }
+      const skipped = result.skipped ?? []
+      const skippedIds = skipped.some((item) => item.analysis == null)
+        ? analysisIds
+        : analysisIds.filter((id) => skipped.some((item) => item.analysis === id))
       await refreshProtocolDetail()
       onUpdate?.()
-      toast.success(
-        analysisIds.length === 1 ? "Análisis agregado" : `${analysisIds.length} análisis agregados`,
-        { duration: TOAST_DURATION },
-      )
+      if (skipped.length > 0) {
+        toast.warning(`${result.added_detail_ids?.length ?? analysisIds.length - skipped.length} agregados; ${skipped.length} sin agregar`, {
+          description: skipped.map((item) => item.detail).filter(Boolean).join(" · "),
+          duration: TOAST_DURATION,
+        })
+      } else {
+        toast.success(
+          analysisIds.length === 1 ? "Análisis agregado" : `${analysisIds.length} análisis agregados`,
+          { duration: TOAST_DURATION },
+        )
+      }
+      return skippedIds
     } catch (error) {
       toast.error(getErrorMessage(error, "No se pudo agregar el análisis"),
         { duration: TOAST_DURATION })
+      throw error
     }
   }
 
@@ -1460,7 +1459,6 @@ export function ProtocolCard({
     : !canPrintReports
       ? PERMISSION_MESSAGES.MANAGE_PRINTS
       : undefined
-  const arcaDisabledReason = isCancelled ? "No se puede facturar ARCA para un protocolo cancelado." : undefined
   const canUncancel =
     isCancelled &&
     (user?.is_superuser ||
@@ -1520,7 +1518,6 @@ export function ProtocolCard({
           onPayment={handleOpenPaymentDialog}
           onCancel={handleCancelProtocol}
           onUncancel={handleUncancelProtocol}
-          onArca={handleOpenArcaDialog}
           onOrderStatus={handleOpenOrderStatusDialog}
           onPreauth={handleOpenPreauthDialog}
           onCoseguro={handleOpenCoseguroDialog}
@@ -1659,10 +1656,14 @@ export function ProtocolCard({
                   isInPatient={protocolDetail?.is_in_patient}
                   redondeo={protocolDetail?.redondeo}
                   analysesAmountDue={protocolDetail?.analyses_amount_due}
+                  volumeDiscount={protocolDetail?.descuento_por_volumen}
+                  minimumAdjustment={protocolDetail?.ajuste_minimo_particular}
                   coseguroAmount={protocolDetail?.coseguro_amount}
                   materialDescartableAmount={protocolDetail?.material_descartable_amount}
                   derivacionAmount={protocolDetail?.derivacion_amount}
                   extrasTotal={protocolDetail?.extras_total}
+                  billingBreakdown={protocolDetail?.billing_breakdown}
+                  details={protocolDetail?.details}
                   nbu={protocolDetail?.nbu}
                   showOrderButton={showOrderAction}
                   orderDisabledReason={orderDisabledReason}
@@ -1694,17 +1695,14 @@ export function ProtocolCard({
                   editDisabledReason={editDisabledReason}
                   reportsDisabledReason={reportsDisabledReason}
                   cancelDisabledReason={cancelDisabledReason}
-                  arcaDisabledReason={arcaDisabledReason}
                   coseguroDisabledReason={coseguroDisabledReason}
                   isCancelling={isCancelling}
                   isUncancelling={isUncancelling}
-                  isArcaBilling={isArcaBilling}
                   onViewAnalysis={handleAnalysisDialog}
                   onEdit={handleOpenEditDialog}
                   onReports={handleOpenReportDialog}
                   onCancel={handleCancelProtocol}
                   onUncancel={handleUncancelProtocol}
-                  onArcaBilling={handleOpenArcaDialog}
                   onSetCoseguro={handleOpenCoseguroDialog}
                 />
               </>
@@ -1757,6 +1755,7 @@ export function ProtocolCard({
       <AgregarAnalisisDialog
         open={agregarAnalisisAbierto}
         onOpenChange={setAgregarAnalisisAbierto}
+        insuranceId={protocolDetail?.insurance?.id ?? protocol.insurance?.id ?? null}
         yaEstan={(protocolDetail?.details ?? []).map((d) => ({
           id: d.analysis,
           code: d.code,

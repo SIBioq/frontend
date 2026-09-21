@@ -259,7 +259,7 @@ export default function Login() {
       })
     } else if (outcome.status === "error") {
       reteniendoLaSalida.current = false
-      setError("Usuario o contraseña incorrectos. Revisá los datos e intentá de nuevo.")
+      setError(outcome.message || "Usuario o contraseña incorrectos. Revisá los datos e intentá de nuevo.")
       setFase("incorrecto")
     } else if (outcome.mustChangePassword) {
       // La sesión ya está abierta, pero el servidor contesta 403 a todo lo que
