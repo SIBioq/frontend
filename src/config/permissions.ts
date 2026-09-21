@@ -88,6 +88,11 @@ export const PERMISSIONS = {
     name: "Puede cargar y modificar resultados",
   },
 
+  UPDATE_PROTOCOL_PRIVATE_PRICE: {
+    codename: "actualizar_precio_particular_protocolo",
+    name: "Puede actualizar el precio particular de un protocolo",
+  },
+
   MANAGE_PRINTS: {
     codename: "gestionar_impresiones",
     name: "Puede imprimir y enviar protocolos",
