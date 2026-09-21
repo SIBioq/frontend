@@ -15,7 +15,7 @@ Corregir la actualización del precio particular por UB y rediseñar su modal re
 
 ## Cambio
 
-El handler pasa `body: { precio_particular_ub: price }` y deja la serialización a `apiRequest`. El modal muestra valor actual, alcance “Solo este protocolo” y ayuda sobre OOSS, catálogo y otros protocolos; conserva el permiso previo al envío y es responsive. El detalle de facturación muestra el valor UB usado.
+El handler pasa `body: { precio_particular_ub: price }` y deja la serialización a `apiRequest`. El modal muestra como valor actual el snapshot `billing_breakdown.private_ub_value_used`, con fallback al override del protocolo; no usa el valor global de la obra social. El formulario usa `onSubmit` y botón `submit`, por lo que Enter guarda sin activar acciones laterales. El botón de guardado conserva el azul institucional (`#204983`). Se mantiene `canUpdatePrivatePrice` y el contrato `precio_particular_ub`. El detalle de facturación muestra el valor UB usado.
 
 ## Validación
 

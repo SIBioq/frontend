@@ -1754,7 +1754,10 @@ export function ProtocolCard({
       {canUpdatePrivatePrice && <PrivatePriceDialog
         open={privatePriceDialogOpen}
         onOpenChange={setPrivatePriceDialogOpen}
-        currentPrice={protocolDetail?.precio_particular_ub}
+        currentPrice={
+          protocolDetail?.billing_breakdown?.private_ub_value_used
+          ?? protocolDetail?.precio_particular_ub
+        }
         onSubmit={handleGuardarPrecioParticular}
       />}
 

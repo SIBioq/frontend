@@ -45,6 +45,7 @@ export function PrivatePriceDialog({ open, onOpenChange, currentPrice, onSubmit 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] max-w-md rounded-xl p-5 sm:p-6">
+        <form onSubmit={(event) => { event.preventDefault(); void submit() }}>
         <DialogHeader>
           <DialogTitle className="text-base text-[#204983] sm:text-lg">Actualizar precio particular por UB</DialogTitle>
           <DialogDescription>Definí cuánto vale una UB particular para calcular este protocolo.</DialogDescription>
@@ -63,11 +64,12 @@ export function PrivatePriceDialog({ open, onOpenChange, currentPrice, onSubmit 
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
-          <Button type="button" onClick={submit} disabled={saving}>
+          <Button type="submit" className="bg-[#204983] hover:bg-[#1a3d6f]" disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Guardar precio
           </Button>
         </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )
