@@ -15,6 +15,7 @@ import { ENTRADA_ABAJO } from "@/lib/entrada"
 import { useQueryClient } from "@tanstack/react-query"
 import { PROTOCOL_ENDPOINTS, REPORTING_ENDPOINTS } from "@/config/api"
 import type { Protocol, ProtocolListItem, ReportSignature, SendMethod } from "@/types"
+import { formatUtcDateTime } from "@/lib/format-utils"
 
 // El detalle completo no expone `balance` directo (sí amount_pending /
 // amount_to_return). Lo reconstruimos para la cabecera del card.
@@ -58,6 +59,7 @@ export default function ProtocolDetailPage() {
     : signaturesQuery.data?.results || []
 
   const detail = detailQuery.data
+  const fechaCreacion = detail?.creation?.date ?? detail?.created_at
 
   useTituloDePestana(tituloDeDetalle("Protocolo", detail?.patient))
 
@@ -94,7 +96,10 @@ export default function ProtocolDetailPage() {
         Protocolos
       </Link>
       <ChevronRight className="h-4 w-4 text-gray-400" />
-      <span className="font-medium text-gray-700">#{id}</span>
+      <span className="font-medium text-gray-700">
+        #{id}
+        {fechaCreacion ? ` · ${formatUtcDateTime(fechaCreacion)}` : ""}
+      </span>
     </nav>
   )
 

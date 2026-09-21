@@ -58,6 +58,7 @@ export interface ProtocolDetailViewData {
   /** A qué entidad se le presenta ESTE protocolo. Solo la eligen las obras
    *  sociales que facturan por Centro o por Clínica según la preautorización. */
   billing_entity?: { id: number; name: string } | null
+  precio_particular_ub?: string | null
   // Pago (desglose)
   amount_due?: string
   private_amount_due?: string
