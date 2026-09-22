@@ -125,6 +125,19 @@ const montoNumerico = (valor?: string) => {
   return Number.isFinite(numero) ? numero : 0
 }
 
+const textoMedioDePago = (
+  forma: string | undefined,
+  cuenta?: string,
+  alias?: string,
+) => {
+  if (forma === "transferencia") {
+    const detalle = [cuenta, alias].filter(Boolean).join(" · ")
+    return detalle ? `Transferencia · ${detalle}` : "Transferencia · cuenta no informada"
+  }
+  if (forma === "efectivo") return "Efectivo"
+  return "Medio sin especificar"
+}
+
 /** Desglosa movimientos reales, sin netear una devolución contra un cobro. */
 function resumirFlujos(movimientos: FilaAgrupada[]) {
   const flujos = movimientos.flatMap((fila) =>
@@ -555,11 +568,11 @@ export default function LibroDiarioPage() {
                                 <Banknote className="h-3 w-3 text-emerald-600" />
                               ) : null}
                               <span>
-                                {fila.forma_de_pago === "transferencia"
-                                  ? `Transferencia${fila.cuenta_de_cobro ? ` · ${fila.cuenta_de_cobro}` : ""}`
-                                  : fila.forma_de_pago === "efectivo"
-                                    ? "Efectivo"
-                                    : "Medio sin especificar"}
+                                {textoMedioDePago(
+                                  fila.forma_de_pago,
+                                  fila.cuenta_de_cobro,
+                                  fila.cuenta_alias,
+                                )}
                               </span>
                             </div>
                           </>
@@ -589,11 +602,11 @@ export default function LibroDiarioPage() {
                               {pago.tipo === "devolucion" ? "−" : ""}
                               {plata(pago.monto)}
                               <span>
-                                {pago.forma_de_pago === "transferencia"
-                                  ? `Transferencia${pago.cuenta_de_cobro ? ` · ${pago.cuenta_de_cobro}` : ""}`
-                                  : pago.forma_de_pago === "efectivo"
-                                    ? "Efectivo"
-                                    : "Medio sin especificar"}
+                                {textoMedioDePago(
+                                  pago.forma_de_pago,
+                                  pago.cuenta_de_cobro,
+                                  pago.cuenta_alias,
+                                )}
                               </span>
                             </span>
                           ))}
