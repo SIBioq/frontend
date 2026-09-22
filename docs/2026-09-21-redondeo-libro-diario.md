@@ -13,6 +13,8 @@ egreso del libro diario fue en efectivo o por transferencia.
   asentado el total recibido.
 - Los gastos e ingresos manuales muestran efectivo, transferencia y cuenta
   cuando corresponde.
+- Los cobros de protocolos muestran explícitamente esa misma discriminación en
+  cada pago, incluida la cuenta de la transferencia.
 
 ## Validación
 

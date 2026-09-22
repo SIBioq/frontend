@@ -588,6 +588,13 @@ export default function LibroDiarioPage() {
                               )}
                               {pago.tipo === "devolucion" ? "−" : ""}
                               {plata(pago.monto)}
+                              <span>
+                                {pago.forma_de_pago === "transferencia"
+                                  ? `Transferencia${pago.cuenta_de_cobro ? ` · ${pago.cuenta_de_cobro}` : ""}`
+                                  : pago.forma_de_pago === "efectivo"
+                                    ? "Efectivo"
+                                    : "Medio sin especificar"}
+                              </span>
                             </span>
                           ))}
                         </div>
