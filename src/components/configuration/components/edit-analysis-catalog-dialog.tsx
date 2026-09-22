@@ -39,6 +39,7 @@ export const EditAnalysisCatalogDialog: React.FC<EditAnalysisCatalogDialogProps>
   const [code, setCode] = useState("")
   const [name, setName] = useState("")
   const [isUrgent, setIsUrgent] = useState(false)
+  const [llevaResultado, setLlevaResultado] = useState(true)
   const [requiresDerivacion, setRequiresDerivacion] = useState(false)
   const { habilitados: preciosFijosHabilitados } = usePreciosFijos()
   const [cobraPrecioFijo, setCobraPrecioFijo] = useState(false)
@@ -71,6 +72,7 @@ export const EditAnalysisCatalogDialog: React.FC<EditAnalysisCatalogDialogProps>
       setCode(analysis.code.toString())
       setName(analysis.name)
       setIsUrgent(analysis.is_urgent)
+      setLlevaResultado(analysis.lleva_resultado)
       setRequiresDerivacion(analysis.requires_derivacion ?? false)
       setCobraPrecioFijo(analysis.cobra_precio_fijo ?? false)
       setPrecioParticular(analysis.precio_particular ?? "")
@@ -127,6 +129,9 @@ export const EditAnalysisCatalogDialog: React.FC<EditAnalysisCatalogDialogProps>
       if (code.trim() !== analysis.code) analysisUpdateData.code = code.trim()
       if (name !== analysis.name) analysisUpdateData.name = name
       if (isUrgent !== analysis.is_urgent) analysisUpdateData.is_urgent = isUrgent
+      if (llevaResultado !== analysis.lleva_resultado) {
+        analysisUpdateData.lleva_resultado = llevaResultado
+      }
       if (requiresDerivacion !== (analysis.requires_derivacion ?? false)) {
         analysisUpdateData.requires_derivacion = requiresDerivacion
       }
@@ -294,6 +299,22 @@ export const EditAnalysisCatalogDialog: React.FC<EditAnalysisCatalogDialogProps>
               id="edit-requiresDerivacion"
               checked={requiresDerivacion}
               onCheckedChange={setRequiresDerivacion}
+            />
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div>
+              <Label htmlFor="edit-llevaResultado" className="font-medium">
+                Lleva resultado
+              </Label>
+              <p className="text-sm text-gray-500">
+                Si se desactiva, la práctica aparece en el protocolo, pero no se carga, valida ni incluye en el informe clínico.
+              </p>
+            </div>
+            <Switch
+              id="edit-llevaResultado"
+              checked={llevaResultado}
+              onCheckedChange={setLlevaResultado}
             />
           </div>
 
