@@ -38,6 +38,8 @@ export default function ProtocolDetailPage() {
     queryKey: ["protocols", "detail", id],
     url: PROTOCOL_ENDPOINTS.PROTOCOL_DETAIL(Number(id)),
     enabled: Boolean(id),
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   })
 
   const sendMethodsQuery = useApiQuery<{ results?: SendMethod[] } | SendMethod[]>({

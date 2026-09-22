@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils"
 import { useProtocolQuote } from "@/hooks/use-protocol-quote"
 import { useLoDeLaUltimaVez } from "@/hooks/use-lo-de-la-ultima-vez"
 import { parseMonto } from "@/lib/montos"
+import { RoundingConfirmDialog } from "@/components/protocolos/components/dialogs/rounding-confirm-dialog"
 import type {
   Analysis,
   Patient,
@@ -104,6 +105,7 @@ export default function IngresoPage() {
   // dos movimientos distintos y cada uno se concilia por su lado.
   const [pagoEfectivo, setPagoEfectivo] = useState("")
   const [pagoTransferencia, setPagoTransferencia] = useState("")
+  const [confirmandoRedondeo, setConfirmandoRedondeo] = useState(false)
   const [selectedSendMethod, setSelectedSendMethod] = useState<SendMethod | null>(null)
   const [affiliateNumber, setAffiliateNumber] = useState("")
   // Solo se usa para las OOSS que facturan segun la preautorizacion
@@ -615,7 +617,7 @@ export default function IngresoPage() {
     return map
   }, [quote])
 
-  const handleCreateProtocol = async () => {
+  const handleCreateProtocol = async (decision?: "redondear" | "justo") => {
     if (creandoProtocolo.current) return
     const missing: string[] = []
     if (!currentPatient) missing.push("paciente")
@@ -669,9 +671,25 @@ export default function IngresoPage() {
       createProgress.start()
       setFaseDeCreacion("creando")
       seDeshizoElProtocolo.current = false
-      const enEfectivo = parseMonto(pagoEfectivo)
-      const porTransferencia = parseMonto(pagoTransferencia)
+      let enEfectivo = parseMonto(pagoEfectivo)
+      let porTransferencia = parseMonto(pagoTransferencia)
+      const saldo = calculateTotals().patientOwes
       const totalValuePaid = enEfectivo + porTransferencia
+      if (!decision && totalValuePaid > saldo) {
+        setConfirmandoRedondeo(true)
+        creandoProtocolo.current = false
+    createProgress.reset()
+        setFaseDeCreacion("idle")
+        return
+      }
+      setConfirmandoRedondeo(false)
+      if (decision === "justo") {
+        let diferencia = Math.max(0, totalValuePaid - saldo)
+        const quitarEfectivo = Math.min(enEfectivo, diferencia)
+        enEfectivo -= quitarEfectivo
+        diferencia -= quitarEfectivo
+        porTransferencia = Math.max(0, porTransferencia - diferencia)
+      }
 
       // UN PAGO POR FORMA.
       //
@@ -694,7 +712,7 @@ export default function IngresoPage() {
         patient: currentPatient.id,
         doctor: selectedDoctor.id,
         send_method: selectedSendMethod.id,
-        value_paid: totalValuePaid.toFixed(2),
+        value_paid: (enEfectivo + porTransferencia).toFixed(2),
         details: selectedAnalyses.map((analysis) => ({
           analysis: analysis.id,
           is_authorized: treatAsPrivate || preauthStatus === "no_trajo" ? false : analysis.is_authorized,
@@ -836,7 +854,7 @@ export default function IngresoPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen w-full py-2 sm:py-4 lg:py-6">
-        <div className="w-full">
+      <div className="w-full">
           {/* Header skeleton */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 sm:p-6 mb-4 sm:mb-6 lg:mb-8">
             <div className="text-center">
@@ -1036,7 +1054,7 @@ export default function IngresoPage() {
             >
               <Button
                 ref={botonDeCrear}
-                onClick={handleCreateProtocol}
+                onClick={() => void handleCreateProtocol()}
                 disabled={!currentPatient || faseDeCreacion !== "idle"}
                 aria-busy={faseDeCreacion === "creando"}
                 className={cn(
@@ -1108,6 +1126,13 @@ export default function IngresoPage() {
             origen={origenDelVerde}
           />
         )}
+        <RoundingConfirmDialog
+          open={confirmandoRedondeo}
+          diferencia={Math.max(0, parseMonto(pagoEfectivo) + parseMonto(pagoTransferencia) - calculateTotals().patientOwes)}
+          onOpenChange={setConfirmandoRedondeo}
+          onRedondear={() => void handleCreateProtocol("redondear")}
+          onCobrarJusto={() => void handleCreateProtocol("justo")}
+        />
       </div>
     </div>
   )

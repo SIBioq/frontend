@@ -56,6 +56,8 @@ type FilaAgrupada = {
   /** Solo en los gastos e ingresos cargados a mano. */
   tipo_de_movimiento?: string
   forma_de_pago?: string
+  cuenta_de_cobro?: string
+  cuenta_alias?: string
   fuera_de_rango?: boolean
   movimiento_de_caja_id?: number
   detalle?: string
@@ -546,6 +548,20 @@ export default function LibroDiarioPage() {
                               {fila.tipo_de_movimiento === "ingreso" ? "Ingreso" : "Gasto"}
                             </span>
                             <div className="truncate text-xs text-gray-600">{fila.detalle}</div>
+                            <div className="mt-1 flex items-center gap-1 text-[11px] text-gray-500">
+                              {fila.forma_de_pago === "transferencia" ? (
+                                <Landmark className="h-3 w-3 text-sky-600" />
+                              ) : fila.forma_de_pago === "efectivo" ? (
+                                <Banknote className="h-3 w-3 text-emerald-600" />
+                              ) : null}
+                              <span>
+                                {fila.forma_de_pago === "transferencia"
+                                  ? `Transferencia${fila.cuenta_de_cobro ? ` · ${fila.cuenta_de_cobro}` : ""}`
+                                  : fila.forma_de_pago === "efectivo"
+                                    ? "Efectivo"
+                                    : "Medio sin especificar"}
+                              </span>
+                            </div>
                           </>
                         )}
                       </div>

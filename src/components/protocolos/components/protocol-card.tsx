@@ -1764,6 +1764,11 @@ export function ProtocolCard({
           protocolDetail?.billing_breakdown?.private_ub_value_used
           ?? protocolDetail?.precio_particular_ub
         }
+        currentBillingPrice={
+          protocolDetail?.billing_breakdown?.private_ub_value_used
+          ?? protocolDetail?.precio_particular_ub
+          ?? protocolDetail?.private_ub_value
+        }
         currentInsurancePrivateUbValue={protocolDetail?.private_ub_value}
         onSubmit={handleGuardarPrecioParticular}
       />}

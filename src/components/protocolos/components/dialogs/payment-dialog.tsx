@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Loader2, DollarSign, ArrowDownLeft, ArrowUpRight } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../../ui/dialog"
+import { RoundingConfirmDialog } from "./rounding-confirm-dialog"
 import { Button } from "../../../ui/button"
 import { Input } from "../../../ui/input"
 import { Label } from "../../../ui/label"
@@ -47,6 +48,7 @@ export function PaymentDialog({
   // el arqueo tiene que poder cuadrar contra el libro.
   const [forma, setForma] = useState("")
   const [cuenta, setCuenta] = useState("")
+  const [confirmandoRedondeo, setConfirmandoRedondeo] = useState(false)
   const pagoCompleto = forma === "efectivo" || (forma === "transferencia" && !!cuenta)
 
   const pending = Number.parseFloat(amountPending || "0")
@@ -75,6 +77,17 @@ export function PaymentDialog({
     if (isNaN(value) || value <= 0) return
     if (!pagoCompleto) return
 
+    if (operation === "patient_paid" && value > pending) {
+      setConfirmandoRedondeo(true)
+      return
+    }
+
+    await registrar(value)
+  }
+
+  const registrar = async (value: number) => {
+    if (isNaN(value) || value <= 0 || !pagoCompleto) return
+
     const success = await onRegularize(value, operation, forma, cuenta)
     if (success) {
       setAmount("")
@@ -82,6 +95,12 @@ export function PaymentDialog({
       setCuenta("")
       onOpenChange(false)
     }
+  }
+
+  const cobrarJusto = async () => {
+    setConfirmandoRedondeo(false)
+    setAmount(pending.toFixed(2))
+    await registrar(pending)
   }
 
   const handleClose = (isOpen: boolean) => {
@@ -193,8 +212,7 @@ export function PaymentDialog({
                 type="number"
                 step="0.01"
                 min="0.01"
-                max={maxAmount}
-                placeholder={`Máximo: $${maxAmount.toFixed(2)}`}
+                placeholder={`Saldo pendiente: $${maxAmount.toFixed(2)}`}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 disabled={maxAmount <= 0}
@@ -213,7 +231,7 @@ export function PaymentDialog({
             </div>
             {maxAmount > 0 && (
               <p className="text-xs text-gray-500">
-                Ingrese un monto entre $0.01 y ${maxAmount.toFixed(2)}
+                Ingrese el saldo pendiente o un monto mayor si el paciente paga de más.
               </p>
             )}
             {maxAmount <= 0 && (
@@ -246,7 +264,6 @@ export function PaymentDialog({
               isProcessing ||
               !amount ||
               Number.parseFloat(amount) <= 0 ||
-              Number.parseFloat(amount) > maxAmount ||
               !pagoCompleto
             }
             className={`w-full sm:w-auto ${
@@ -269,6 +286,8 @@ export function PaymentDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <RoundingConfirmDialog open={confirmandoRedondeo} diferencia={Number.parseFloat(amount || "0") - pending} isProcessing={isProcessing} onOpenChange={setConfirmandoRedondeo} onRedondear={() => { setConfirmandoRedondeo(false); void registrar(Number.parseFloat(amount)) }} onCobrarJusto={cobrarJusto} />
     </Dialog>
   )
 }

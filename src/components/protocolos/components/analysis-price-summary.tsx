@@ -12,7 +12,7 @@ const money = (value?: string | null) =>
 const compactNumber = (value?: string | null) =>
   asNumber(value).toLocaleString("es-AR", { maximumFractionDigits: 2 })
 
-const snapshotLabel = (source: ProtocolAnalysisPrivatePricing["snapshot_source"]) => {
+const pricingHistoryLabel = (source: ProtocolAnalysisPrivatePricing["snapshot_source"]) => {
   if (source === "creation") return "guardado al crear el protocolo"
   if (source === "added") return "guardado al agregar el análisis"
   if (source === "repricing") return "guardado al repreciar el protocolo"
@@ -49,9 +49,9 @@ export function AnalysisPriceSummary({
   const appliedPercentage = pricing?.discount.applied_percentage
   const discounted = pricing?.mode === "ub" && appliedPercentage != null && asNumber(appliedPercentage) < 100
   const explanation = pricing?.mode === "ub"
-    ? `${compactNumber(quantity)} UB × ${money(pricing.ub_unit_value)} = ${money(pricing.gross_amount)} · ${snapshotLabel(pricing.snapshot_source)}`
+    ? `${compactNumber(quantity)} UB × ${money(pricing.ub_unit_value)} = ${money(pricing.gross_amount)} · ${pricingHistoryLabel(pricing.snapshot_source)}`
     : pricing?.mode === "fixed"
-      ? `Precio fijo ${snapshotLabel(pricing.snapshot_source)}`
+      ? `Precio fijo ${pricingHistoryLabel(pricing.snapshot_source)}`
       : "Precio del protocolo"
 
   return (

@@ -9,6 +9,7 @@ import {
 
 import { SelectorDeCuenta } from "@/components/common/forma-de-pago"
 import { UnplannedTransactionsDialog } from "@/components/protocolos/components/dialogs/unplanned-transactions-dialog"
+import { RoundingConfirmDialog } from "@/components/protocolos/components/dialogs/rounding-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -77,6 +78,7 @@ export function CorreccionDelCobro({ protocolId, onCambio }: Props) {
   const [corrigiendo, setCorrigiendo] = useState<PagoDelProtocolo | null>(null)
   const [anulando, setAnulando] = useState<PagoDelProtocolo | null>(null)
   const [guardandoAnulacion, setGuardandoAnulacion] = useState(false)
+  const [confirmandoRedondeo, setConfirmandoRedondeo] = useState(false)
 
   const [cargos, setCargos] = useState({ material: "", derivacion: "", coseguro: "" })
   const [cobro, setCobro] = useState({ efectivo: "", transferencia: "", cuentaId: "" })
@@ -215,19 +217,35 @@ export function CorreccionDelCobro({ protocolId, onCambio }: Props) {
   const faltaCuenta = porTransferencia > 0 && !cobro.cuentaId
   const puedeCobrar = (enEfectivo > 0 || porTransferencia > 0) && !faltaCuenta && !guardandoCobro
 
-  const registrarCobro = async () => {
+  const registrarCobro = async (decision?: "redondear" | "justo") => {
     if (!puedeCobrar) return
+    const pendiente = Number.parseFloat(protocolo?.amount_pending || "0") || 0
+    const total = enEfectivo + porTransferencia
+    if (!decision && pendiente > 0 && total > pendiente) {
+      setConfirmandoRedondeo(true)
+      return
+    }
+    setConfirmandoRedondeo(false)
+    let efectivo = enEfectivo
+    let transferencia = porTransferencia
+    if (decision === "justo") {
+      let diferencia = Math.max(0, total - pendiente)
+      const quitarEfectivo = Math.min(efectivo, diferencia)
+      efectivo -= quitarEfectivo
+      diferencia -= quitarEfectivo
+      transferencia = Math.max(0, transferencia - diferencia)
+    }
     setGuardandoCobro(true)
     try {
       // Un pago por forma, igual que en el ingreso: son dos movimientos y cada
       // uno se concilia por su lado.
       const aCrear = [
-        ...(enEfectivo > 0
-          ? [{ amount: enEfectivo.toFixed(2), payment_method: "efectivo" }]
+        ...(efectivo > 0
+          ? [{ amount: efectivo.toFixed(2), payment_method: "efectivo" }]
           : []),
-        ...(porTransferencia > 0
+        ...(transferencia > 0
           ? [{
-              amount: porTransferencia.toFixed(2),
+              amount: transferencia.toFixed(2),
               payment_method: "transferencia",
               payment_account: Number(cobro.cuentaId),
             }]
@@ -498,7 +516,7 @@ export function CorreccionDelCobro({ protocolId, onCambio }: Props) {
         <div className="flex justify-end">
           <Button
             size="sm"
-            onClick={registrarCobro}
+            onClick={() => void registrarCobro()}
             disabled={!puedeCobrar}
             className="bg-emerald-600 hover:bg-emerald-700"
           >
@@ -574,6 +592,15 @@ export function CorreccionDelCobro({ protocolId, onCambio }: Props) {
         protocolId={protocolId}
         isEditable
         onChanged={refrescar}
+      />
+
+      <RoundingConfirmDialog
+        open={confirmandoRedondeo}
+        diferencia={Math.max(0, enEfectivo + porTransferencia - (Number.parseFloat(protocolo.amount_pending || "0") || 0))}
+        isProcessing={guardandoCobro}
+        onOpenChange={setConfirmandoRedondeo}
+        onRedondear={() => void registrarCobro("redondear")}
+        onCobrarJusto={() => void registrarCobro("justo")}
       />
     </div>
   )
