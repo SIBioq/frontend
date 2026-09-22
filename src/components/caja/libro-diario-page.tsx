@@ -434,7 +434,7 @@ export default function LibroDiarioPage() {
                 type="text"
                 value={buscado}
                 onChange={(evento) => setBuscado(evento.target.value)}
-                placeholder="Protocolo o paciente…"
+                placeholder="Protocolo, paciente o descripción…"
                 aria-label="Buscar en el libro diario"
                 autoComplete="off"
                 spellCheck={false}
