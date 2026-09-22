@@ -193,8 +193,7 @@ export function PaymentDialog({
                 type="number"
                 step="0.01"
                 min="0.01"
-                max={maxAmount}
-                placeholder={`Máximo: $${maxAmount.toFixed(2)}`}
+                placeholder={`Saldo pendiente: $${maxAmount.toFixed(2)}`}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 disabled={maxAmount <= 0}
@@ -213,7 +212,7 @@ export function PaymentDialog({
             </div>
             {maxAmount > 0 && (
               <p className="text-xs text-gray-500">
-                Ingrese un monto entre $0.01 y ${maxAmount.toFixed(2)}
+                Ingrese el saldo pendiente o un monto mayor si el paciente paga de más.
               </p>
             )}
             {maxAmount <= 0 && (
