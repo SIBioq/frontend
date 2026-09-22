@@ -8,21 +8,23 @@ interface PrivatePriceDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   currentPrice?: string | null
+  currentBillingPrice?: string | null
   currentInsurancePrivateUbValue?: string | null
   onSubmit: (price: string) => Promise<void>
 }
 
-export function PrivatePriceDialog({ open, onOpenChange, currentPrice, currentInsurancePrivateUbValue, onSubmit }: PrivatePriceDialogProps) {
-  const [price, setPrice] = useState(currentPrice ?? "")
+export function PrivatePriceDialog({ open, onOpenChange, currentPrice, currentBillingPrice, currentInsurancePrivateUbValue, onSubmit }: PrivatePriceDialogProps) {
+  const effectivePrice = currentBillingPrice ?? currentPrice ?? currentInsurancePrivateUbValue
+  const [price, setPrice] = useState(effectivePrice ?? "")
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (open) {
-      setPrice(currentPrice ?? "")
+      setPrice(effectivePrice ?? "")
       setError(null)
     }
-  }, [currentPrice, open])
+  }, [effectivePrice, open])
 
   const submit = async () => {
     const normalized = price.trim().replace(",", ".")
@@ -53,8 +55,13 @@ export function PrivatePriceDialog({ open, onOpenChange, currentPrice, currentIn
         </DialogHeader>
         <div className="space-y-4">
           <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Precio usado por facturación</p>
+            <p className="mt-0.5 text-sm font-medium text-gray-900">{effectivePrice ? `$${effectivePrice}` : "Sin configurar"}</p>
+            <p className="mt-1 text-xs text-gray-500">Es el valor que se está aplicando para calcular este protocolo.</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Precio guardado en este protocolo</p>
-            <p className="mt-0.5 text-sm font-medium text-gray-900">{currentPrice ? `$${currentPrice}` : "Sin configurar"}</p>
+            <p className="mt-0.5 text-sm font-medium text-gray-900">{currentPrice ? `$${currentPrice}` : "Sin configurar; se usa el valor vigente"}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Valor vigente de la OOSS particular</p>
@@ -68,7 +75,7 @@ export function PrivatePriceDialog({ open, onOpenChange, currentPrice, currentIn
           <div className="flex gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-[#204983]"><Info className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="font-medium">Alcance: Solo este protocolo</p><p className="mt-1 text-blue-900/75">No modifica la obra social, el catálogo ni otros protocolos.</p></div></div>
           {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
         </div>
-        <DialogFooter>
+        <DialogFooter className="mt-5">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
           <Button type="submit" className="bg-[#204983] hover:bg-[#1a3d6f]" disabled={saving}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

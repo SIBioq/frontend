@@ -1,7 +1,7 @@
 # Graph Report - frontend  (2026-09-21)
 
 ## Corpus Check
-- 349 files · ~260,387 words
+- 349 files · ~260,495 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `7194e1d3`
+- Built from commit: `3f4fb06b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -161,8 +161,8 @@ Cohesion: 0.03
 Nodes (65): AnalysisCategory, AnalysisPanel, ApiResponse, AppConfig, ApplicationInfo, AvailableAnalysis, BaseEntity, BillingOossControlItem (+57 more)
 
 ### Community 4 - "Forma de Pago y Facturación ARCA"
-Cohesion: 0.08
-Nodes (47): Persona, Props, CuentaElegible, FormaDePago(), Props, SelectorDeCuentaProps, BillingEntitySelectProps, initialValidation (+39 more)
+Cohesion: 0.09
+Nodes (44): Persona, Props, CuentaElegible, FormaDePago(), Props, SelectorDeCuentaProps, BillingEntitySelectProps, initialValidation (+36 more)
 
 ### Community 5 - "Primitivas UI (sheet, accordion)"
 Cohesion: 0.06
@@ -201,8 +201,8 @@ Cohesion: 0.22
 Nodes (18): ResultsQueueTable(), ANALYTICS_ENDPOINTS, RESULTS_ENDPOINTS, usePersistedState(), appendStatusParams(), getStatusFilterState(), hasAnyStatusFilter(), normalizeStatusFilter() (+10 more)
 
 ### Community 14 - "Valores de Referencia y Determinaciones"
-Cohesion: 0.11
-Nodes (35): PermissionManagementProps, extractErrorMessage(), RoleManagementProps, RoleWithDetails, UserManagementProps, extractErrorMessage(), CreateUserDialog(), CreateUserDialogProps (+27 more)
+Cohesion: 0.10
+Nodes (38): PermissionManagementProps, extractErrorMessage(), RoleManagementProps, RoleWithDetails, UserManagementProps, extractErrorMessage(), CreateUserDialog(), CreateUserDialogProps (+30 more)
 
 ### Community 15 - "Navbar y Menú de Usuario"
 Cohesion: 0.10
@@ -241,8 +241,8 @@ Cohesion: 0.19
 Nodes (15): NextInQueuePill(), NextInQueuePillProps, ProtocolMiniHeaderSkeleton(), ProtocolDetailSkeleton(), useQueueNav(), useTituloDePestana(), nombreParaLaPestana(), SECCIONES_DE_DETALLE (+7 more)
 
 ### Community 24 - "Menús Desplegables y Acciones en Lote"
-Cohesion: 0.15
-Nodes (15): buildCodesByNumber(), buildResultCodeMap(), calculateFormulaValue(), evaluateExpression(), extraerNumero(), formatFormulaNumber(), FormulaAnalysis, FormulaCalculation (+7 more)
+Cohesion: 0.13
+Nodes (17): applyFormulaCalculations(), buildCodesByNumber(), buildResultCodeMap(), calculateFormulaValue(), evaluateExpression(), extraerNumero(), formatFormulaNumber(), FormulaAnalysis (+9 more)
 
 ### Community 25 - "Entidades de Facturación"
 Cohesion: 0.19
@@ -270,7 +270,7 @@ Nodes (28): AuthContext, AuthProvider(), AuthProviderProps, ConfirmTwoFactorEnro
 
 ### Community 31 - "Pantalla de Configuración"
 Cohesion: 0.09
-Nodes (30): CATEGORY_META, HistoryList(), HistoryListProps, ObjectHistoryDialogProps, TimelineResponse, ACTION_LABEL, AuditCard(), AuditCardProps (+22 more)
+Nodes (29): CATEGORY_META, HistoryList(), HistoryListProps, ObjectHistoryDialogProps, TimelineResponse, ACTION_LABEL, AuditCard(), AuditCardProps (+21 more)
 
 ### Community 32 - "Utilidades"
 Cohesion: 0.15
@@ -285,8 +285,8 @@ Cohesion: 0.11
 Nodes (13): RequestLogPanel(), RequestLogPanelProps, STATUS_FILTERS, BLOCKS_KEY(), SecurityBlocksPanel(), SUPERADMIN_ENDPOINTS, formatBytes(), formatMs() (+5 more)
 
 ### Community 35 - "Tipos Compartidos"
-Cohesion: 0.17
-Nodes (11): Props, ResumenDeResultados(), ProtocolResultsLoaderProps, ProtocolValidationLoader(), ProtocolValidationLoaderProps, esCancelado(), ResultsProtocolHeader, useProtocolResults() (+3 more)
+Cohesion: 0.23
+Nodes (8): Props, ResumenDeResultados(), ProtocolValidationLoader(), ProtocolValidationLoaderProps, esCancelado(), ResultsProtocolHeader, useProtocolResults(), SubmoduloEvaluado
 
 ### Community 36 - "Utilidades (2)"
 Cohesion: 0.22
@@ -306,7 +306,7 @@ Nodes (14): ContingenciaPage(), DIARIO_KEY, ESTADOS, Pendiente, PendientesDelSer
 
 ### Community 40 - "Pantalla de Protocolos (2)"
 Cohesion: 0.12
-Nodes (17): AuditTimelineMini(), AuditTimelineMiniProps, ListaOrdenable(), Props, AnalysisPriceSummary(), asNumber(), compactNumber(), money() (+9 more)
+Nodes (16): AuditTimelineMini(), AuditTimelineMiniProps, ListaOrdenable(), Props, AnalysisPriceSummary(), asNumber(), compactNumber(), money() (+8 more)
 
 ### Community 41 - "Configuración TypeScript (node)"
 Cohesion: 0.11
@@ -377,8 +377,8 @@ Cohesion: 0.08
 Nodes (25): A1 🔴 Performance del cálculo de pago (N×9 → N×1), A2 🔴 N+1 de `unplanned_transactions` en la lista, A3 🟡 Orden por columna, A4 🟡 Ordenar por saldo (`balance`), A5 🟡 Serializer slim para la tabla, A6 🟢 Quitar auditoría del listado, A. Listado de protocolos — `GET /protocols/protocols/`, B1 🟢 Evitar requests extra en el header del detalle (anti-waterfall) (+17 more)
 
 ### Community 58 - "Pantalla de Configuración (4)"
-Cohesion: 0.17
-Nodes (11): ProtocolResultsLoader(), PERMISSION_MESSAGES, PermissionDescriptor, PermissionKey, PERMISSIONS, PermissionValue, Campos, VACIA (+3 more)
+Cohesion: 0.16
+Nodes (12): ProtocolResultsLoader(), ProtocolResultsLoaderProps, PERMISSION_MESSAGES, PermissionDescriptor, PermissionKey, PERMISSIONS, PermissionValue, Campos (+4 more)
 
 ### Community 59 - "Utilidades (7)"
 Cohesion: 0.20
@@ -417,8 +417,8 @@ Cohesion: 0.11
 Nodes (20): AuditAvatars(), AuditAvatarsProps, AuditInfo, formatDateTime(), sizeClasses, textSizeClasses, AnalysisCatalog, AnalysisListProps (+12 more)
 
 ### Community 68 - "Pantalla de Protocolos (5)"
-Cohesion: 0.17
-Nodes (22): ProtocolDetailResponse, ProtocolDetailViewData, ProtocolDetailsSection(), ProtocolDetailsSectionProps, getStateColor(), ProtocolHeader(), ProtocolHeaderProps, ProtocolSuccess() (+14 more)
+Cohesion: 0.15
+Nodes (24): ProtocolDetailResponse, ProtocolDetailViewData, ProtocolDetailsSection(), ProtocolDetailsSectionProps, getStateColor(), ProtocolHeader(), ProtocolHeaderProps, ProtocolSuccess() (+16 more)
 
 ### Community 69 - "Utilidades (10)"
 Cohesion: 0.09
