@@ -145,24 +145,46 @@ function resumirFlujos(movimientos: FilaAgrupada[]) {
       ? fila.pagos.map((pago) => ({
           monto: (pago.tipo === "devolucion" ? -1 : 1) * montoNumerico(pago.monto),
           forma: pago.forma_de_pago,
+          cuenta: pago.cuenta_de_cobro,
+          alias: pago.cuenta_alias,
         }))
-      : [{ monto: montoNumerico(fila.total), forma: fila.forma_de_pago ?? "" }],
+      : [{
+          monto: montoNumerico(fila.total),
+          forma: fila.forma_de_pago ?? "",
+          cuenta: fila.cuenta_de_cobro,
+          alias: fila.cuenta_alias,
+        }],
   )
 
-  return flujos.reduce(
+  const totales = flujos.reduce(
     (totales, flujo) => {
+      const detalle = textoMedioDePago(flujo.forma, flujo.cuenta, flujo.alias)
+      const importe = Math.abs(flujo.monto)
       if (flujo.monto > 0) {
         totales.entradas += flujo.monto
         if (flujo.forma === "efectivo") totales.efectivo += flujo.monto
         else if (flujo.forma === "transferencia") totales.transferencia += flujo.monto
         else totales.sinEspecificar += flujo.monto
+        totales.entradasPorOrigen.set(detalle, (totales.entradasPorOrigen.get(detalle) ?? 0) + importe)
       } else {
         totales.salidas += flujo.monto
+        totales.salidasPorOrigen.set(detalle, (totales.salidasPorOrigen.get(detalle) ?? 0) + importe)
       }
       return totales
     },
-    { entradas: 0, efectivo: 0, transferencia: 0, sinEspecificar: 0, salidas: 0 },
+    {
+      entradas: 0, efectivo: 0, transferencia: 0, sinEspecificar: 0, salidas: 0,
+      entradasPorOrigen: new Map<string, number>(),
+      salidasPorOrigen: new Map<string, number>(),
+    },
   )
+  const listar = (origenes: Map<string, number>) =>
+    Array.from(origenes, ([titulo, valor]) => ({ titulo, valor: plata(String(valor)) }))
+  return {
+    ...totales,
+    entradasDetalle: listar(totales.entradasPorOrigen),
+    salidasDetalle: listar(totales.salidasPorOrigen),
+  }
 }
 
 export default function LibroDiarioPage() {
@@ -307,7 +329,7 @@ export default function LibroDiarioPage() {
   // No debe inflar los totales del período, incluso si su último pago coincide
   // con el rango pero quedó fuera del recorte de la lista.
   const movimientosDelResumen = movimientos.filter((fila) => !fila.fuera_de_rango)
-  const { entradas, efectivo, transferencia, sinEspecificar, salidas } =
+  const { entradas, salidas, entradasDetalle, salidasDetalle } =
     resumirFlujos(movimientosDelResumen)
 
   // UNA FILA POR PROTOCOLO, QUE SE ABRE
@@ -470,15 +492,14 @@ export default function LibroDiarioPage() {
               titulo="Entró"
               valor={plata(String(entradas))}
               tono="entra"
-              desglose={[
-                { titulo: "Efectivo", valor: plata(String(efectivo)) },
-                { titulo: "Transferencia", valor: plata(String(transferencia)) },
-                ...(sinEspecificar > 0
-                  ? [{ titulo: "Sin especificar", valor: plata(String(sinEspecificar)) }]
-                  : []),
-              ]}
+              desglose={entradasDetalle}
             />
-            <Resumen titulo="Salió" valor={plata(String(salidas))} tono="sale" />
+            <Resumen
+              titulo="Salió"
+              valor={plata(String(salidas))}
+              tono="sale"
+              desglose={salidasDetalle}
+            />
             <Resumen titulo="Neto" valor={plata(String(entradas + salidas))} tono="neto" />
           </div>
         ) : null}
