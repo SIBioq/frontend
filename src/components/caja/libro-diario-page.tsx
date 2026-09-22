@@ -62,6 +62,7 @@ type FilaAgrupada = {
   movimiento_de_caja_id?: number
   detalle?: string
   usuario?: string
+  registrado_por?: string
 }
 
 /** Un pago del protocolo, tal como lo manda el libro. */
@@ -74,6 +75,7 @@ type PagoEnLibro = {
   cuenta_de_cobro_id: number | null
   cuenta_de_cobro: string
   cuenta_alias: string
+  registrado_por?: string
 }
 
 type Respuesta = {
@@ -124,6 +126,8 @@ const montoNumerico = (valor?: string) => {
   const numero = Number.parseFloat(valor ?? "")
   return Number.isFinite(numero) ? numero : 0
 }
+
+const autorInformado = (autor?: string) => autor?.trim() || "No informado"
 
 const textoMedioDePago = (
   forma: string | undefined,
@@ -609,6 +613,16 @@ export default function LibroDiarioPage() {
                                 )}
                               </span>
                             </div>
+                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
+                              <span>
+                                <span className="font-medium text-gray-600">Lo hizo:</span>{" "}
+                                {autorInformado(fila.usuario)}
+                              </span>
+                              <span>
+                                <span className="font-medium text-gray-600">Registrado por:</span>{" "}
+                                {autorInformado(fila.registrado_por)}
+                              </span>
+                            </div>
                           </>
                         )}
                       </div>
@@ -689,13 +703,79 @@ export default function LibroDiarioPage() {
                       ) : null}
                     </button>
 
-                    {/* El detalle completo, para mirar y para corregir. */}
-                    {estaAbierta && esProtocolo && puedeCorregir ? (
-                      <div className="border-t border-[#204983]/20 p-3">
-                        <CorreccionDelCobro
-                          protocolId={fila.protocolo as number}
-                          onCambio={() => consulta.refetch()}
-                        />
+                    {/* El detalle de lectura no depende del permiso para corregir. */}
+                    {estaAbierta && esProtocolo ? (
+                      <div className="space-y-3 border-t border-[#204983]/20 p-3">
+                        <section aria-labelledby={`movimientos-${fila.id}`}>
+                          <h3
+                            id={`movimientos-${fila.id}`}
+                            className="mb-2 text-sm font-semibold text-gray-800"
+                          >
+                            Pagos y devoluciones
+                          </h3>
+                          {fila.pagos?.length ? (
+                            <ul className="space-y-2">
+                              {fila.pagos.map((pago) => {
+                                const momentoPago = pago.momento ? cuando(pago.momento) : null
+                                const esDevolucion = pago.tipo === "devolucion"
+
+                                return (
+                                  <li
+                                    key={pago.id}
+                                    className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2"
+                                  >
+                                    <div className="min-w-0 space-y-0.5 text-xs text-gray-600">
+                                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                        <span
+                                          className={`font-medium ${
+                                            esDevolucion ? "text-amber-800" : "text-gray-800"
+                                          }`}
+                                        >
+                                          {esDevolucion ? "Devolución" : "Pago"}
+                                        </span>
+                                        {momentoPago ? (
+                                          <time dateTime={pago.momento} className="text-gray-500">
+                                            {momentoPago.dia} · {momentoPago.hora}
+                                          </time>
+                                        ) : null}
+                                      </div>
+                                      <div>
+                                        {textoMedioDePago(
+                                          pago.forma_de_pago,
+                                          pago.cuenta_de_cobro,
+                                          pago.cuenta_alias,
+                                        )}
+                                      </div>
+                                      <div>
+                                        <span className="font-medium text-gray-700">
+                                          Registrado por:
+                                        </span>{" "}
+                                        {autorInformado(pago.registrado_por)}
+                                      </div>
+                                    </div>
+                                    <span
+                                      className={`shrink-0 text-sm font-semibold tabular-nums ${
+                                        esDevolucion ? "text-amber-800" : "text-emerald-700"
+                                      }`}
+                                    >
+                                      {esDevolucion ? "−" : "+"}
+                                      {plata(pago.monto)}
+                                    </span>
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          ) : (
+                            <p className="text-xs text-gray-500">No hay pagos ni devoluciones.</p>
+                          )}
+                        </section>
+
+                        {puedeCorregir ? (
+                          <CorreccionDelCobro
+                            protocolId={fila.protocolo as number}
+                            onCambio={() => consulta.refetch()}
+                          />
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
