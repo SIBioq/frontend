@@ -4,3 +4,4 @@
 |---|---|
 | [2026-09-21-fix-precio-particular.md](2026-09-21-fix-precio-particular.md) | Hotfix de refetch, snapshot y precio OOSS particular |
 | [2026-09-21-sobrepago-redondeo.md](2026-09-21-sobrepago-redondeo.md) | Permitir sobrepago en registrar pago para aplicar redondeo |
+| [2026-09-21-confirmacion-redondeo-y-refresco.md](2026-09-21-confirmacion-redondeo-y-refresco.md) | Confirmar redondeo y refrescar protocolo al volver del libro diario |

@@ -3,6 +3,10 @@
 import { useState, useEffect } from "react"
 import { Loader2, DollarSign, ArrowDownLeft, ArrowUpRight } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../../ui/dialog"
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "../../../ui/alert-dialog"
 import { Button } from "../../../ui/button"
 import { Input } from "../../../ui/input"
 import { Label } from "../../../ui/label"
@@ -47,6 +51,7 @@ export function PaymentDialog({
   // el arqueo tiene que poder cuadrar contra el libro.
   const [forma, setForma] = useState("")
   const [cuenta, setCuenta] = useState("")
+  const [confirmandoRedondeo, setConfirmandoRedondeo] = useState(false)
   const pagoCompleto = forma === "efectivo" || (forma === "transferencia" && !!cuenta)
 
   const pending = Number.parseFloat(amountPending || "0")
@@ -75,6 +80,17 @@ export function PaymentDialog({
     if (isNaN(value) || value <= 0) return
     if (!pagoCompleto) return
 
+    if (operation === "patient_paid" && value > pending) {
+      setConfirmandoRedondeo(true)
+      return
+    }
+
+    await registrar(value)
+  }
+
+  const registrar = async (value: number) => {
+    if (isNaN(value) || value <= 0 || !pagoCompleto) return
+
     const success = await onRegularize(value, operation, forma, cuenta)
     if (success) {
       setAmount("")
@@ -82,6 +98,12 @@ export function PaymentDialog({
       setCuenta("")
       onOpenChange(false)
     }
+  }
+
+  const cobrarJusto = async () => {
+    setConfirmandoRedondeo(false)
+    setAmount(pending.toFixed(2))
+    await registrar(pending)
   }
 
   const handleClose = (isOpen: boolean) => {
@@ -245,7 +267,6 @@ export function PaymentDialog({
               isProcessing ||
               !amount ||
               Number.parseFloat(amount) <= 0 ||
-              Number.parseFloat(amount) > maxAmount ||
               !pagoCompleto
             }
             className={`w-full sm:w-auto ${
@@ -268,6 +289,27 @@ export function PaymentDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={confirmandoRedondeo} onOpenChange={setConfirmandoRedondeo}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>El paciente paga de más</AlertDialogTitle>
+            <AlertDialogDescription>
+              El monto ingresado supera el saldo pendiente en ${(Number.parseFloat(amount || "0") - pending).toFixed(2)}.
+              ¿Querés tomar esa diferencia como redondeo o cobrar justo y devolverla?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
+            <Button variant="outline" onClick={cobrarJusto} disabled={isProcessing}>
+              Cobrar justo
+            </Button>
+            <AlertDialogAction onClick={() => { setConfirmandoRedondeo(false); void registrar(Number.parseFloat(amount)) }} disabled={isProcessing}>
+              Redondear
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }
