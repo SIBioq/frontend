@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import {
-  ArrowDownWideNarrow, Banknote, BookOpen, ChevronDown, Landmark, Plus, Search,
+  ArrowDownWideNarrow, Banknote, BookOpen, CalendarOff, ChevronDown, Landmark, Plus, Search,
   Trash2, X,
 } from "lucide-react"
 
@@ -201,6 +201,7 @@ export default function LibroDiarioPage() {
 
   const [desde, setDesde] = useState(haceDias(7))
   const [hasta, setHasta] = useState(hoyISO())
+  const [fechasActivas, setFechasActivas] = useState(true)
   // LA BÚSQUEDA VA AL BACKEND, NO SE FILTRA ACÁ
   //
   // El rango de fechas puede tener más movimientos que los que entran en la
@@ -240,11 +241,12 @@ export default function LibroDiarioPage() {
   const puedeCargarMovimientos = hasPermission(PERMISSIONS.MANAGE_BILLING.codename)
 
   const consulta = useApiQuery<Respuesta>({
-    queryKey: ["analytics", "libro-diario", desde, hasta, protocoloSenalado, buscar, orden],
+    queryKey: ["analytics", "libro-diario", desde, hasta, fechasActivas, protocoloSenalado, buscar, orden],
     // Siempre agrupado: una fila por protocolo con la fecha de su último pago.
     // El detalle de cada cobro se abre en la fila.
     url:
-      `${ANALYTICS_ENDPOINTS.LIBRO_DIARIO}?agrupado=protocolo&desde=${desde}&hasta=${hasta}` +
+      `${ANALYTICS_ENDPOINTS.LIBRO_DIARIO}?agrupado=protocolo` +
+      (fechasActivas && !buscar ? `&desde=${desde}&hasta=${hasta}` : "") +
       (protocoloSenalado ? `&protocolo=${protocoloSenalado}` : "") +
       (buscar ? `&buscar=${encodeURIComponent(buscar)}` : "") +
       `&orden=${orden}`,
@@ -403,13 +405,24 @@ export default function LibroDiarioPage() {
                 setHasta(nuevoHasta)
               }}
               max={hoyISO()}
-              className="w-full sm:w-[17rem]"
+              className={`w-full sm:w-[17rem] ${!fechasActivas || buscar ? "opacity-50" : ""}`}
               atajos={[
                 { label: "Hoy", desde: hoyISO(), hasta: hoyISO() },
                 { label: "Últimos 7 días", desde: haceDias(7), hasta: hoyISO() },
                 { label: "Últimos 30 días", desde: haceDias(30), hasta: hoyISO() },
               ]}
             />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setFechasActivas((activa) => !activa)}
+              title={fechasActivas ? "Desactivar filtro de fechas" : "Activar filtro de fechas"}
+              className="h-9"
+            >
+              <CalendarOff className="mr-1 h-4 w-4" />
+              {fechasActivas ? "Sin fechas" : "Usar fechas"}
+            </Button>
 
             {/* La barra: número de protocolo o paciente, sin elegir cuál. En el
                 mostrador llega cualquiera de los dos y pedirle a la persona que
