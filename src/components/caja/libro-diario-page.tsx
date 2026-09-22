@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import {
-  ArrowDownWideNarrow, Banknote, BookOpen, ChevronDown, Landmark, Plus, Search,
+  ArrowDownWideNarrow, Banknote, BookOpen, CalendarOff, ChevronDown, Landmark, Plus, Search,
   Trash2, X,
 } from "lucide-react"
 
@@ -125,6 +125,19 @@ const montoNumerico = (valor?: string) => {
   return Number.isFinite(numero) ? numero : 0
 }
 
+const textoMedioDePago = (
+  forma: string | undefined,
+  cuenta?: string,
+  alias?: string,
+) => {
+  if (forma === "transferencia") {
+    const detalle = [cuenta, alias].filter(Boolean).join(" · ")
+    return detalle ? `Transferencia · ${detalle}` : "Transferencia · cuenta no informada"
+  }
+  if (forma === "efectivo") return "Efectivo"
+  return "Medio sin especificar"
+}
+
 /** Desglosa movimientos reales, sin netear una devolución contra un cobro. */
 function resumirFlujos(movimientos: FilaAgrupada[]) {
   const flujos = movimientos.flatMap((fila) =>
@@ -132,24 +145,46 @@ function resumirFlujos(movimientos: FilaAgrupada[]) {
       ? fila.pagos.map((pago) => ({
           monto: (pago.tipo === "devolucion" ? -1 : 1) * montoNumerico(pago.monto),
           forma: pago.forma_de_pago,
+          cuenta: pago.cuenta_de_cobro,
+          alias: pago.cuenta_alias,
         }))
-      : [{ monto: montoNumerico(fila.total), forma: fila.forma_de_pago ?? "" }],
+      : [{
+          monto: montoNumerico(fila.total),
+          forma: fila.forma_de_pago ?? "",
+          cuenta: fila.cuenta_de_cobro,
+          alias: fila.cuenta_alias,
+        }],
   )
 
-  return flujos.reduce(
+  const totales = flujos.reduce(
     (totales, flujo) => {
+      const detalle = textoMedioDePago(flujo.forma, flujo.cuenta, flujo.alias)
+      const importe = Math.abs(flujo.monto)
       if (flujo.monto > 0) {
         totales.entradas += flujo.monto
         if (flujo.forma === "efectivo") totales.efectivo += flujo.monto
         else if (flujo.forma === "transferencia") totales.transferencia += flujo.monto
         else totales.sinEspecificar += flujo.monto
+        totales.entradasPorOrigen.set(detalle, (totales.entradasPorOrigen.get(detalle) ?? 0) + importe)
       } else {
         totales.salidas += flujo.monto
+        totales.salidasPorOrigen.set(detalle, (totales.salidasPorOrigen.get(detalle) ?? 0) + importe)
       }
       return totales
     },
-    { entradas: 0, efectivo: 0, transferencia: 0, sinEspecificar: 0, salidas: 0 },
+    {
+      entradas: 0, efectivo: 0, transferencia: 0, sinEspecificar: 0, salidas: 0,
+      entradasPorOrigen: new Map<string, number>(),
+      salidasPorOrigen: new Map<string, number>(),
+    },
   )
+  const listar = (origenes: Map<string, number>) =>
+    Array.from(origenes, ([titulo, valor]) => ({ titulo, valor: plata(String(valor)) }))
+  return {
+    ...totales,
+    entradasDetalle: listar(totales.entradasPorOrigen),
+    salidasDetalle: listar(totales.salidasPorOrigen),
+  }
 }
 
 export default function LibroDiarioPage() {
@@ -166,6 +201,7 @@ export default function LibroDiarioPage() {
 
   const [desde, setDesde] = useState(haceDias(7))
   const [hasta, setHasta] = useState(hoyISO())
+  const [fechasActivas, setFechasActivas] = useState(true)
   // LA BÚSQUEDA VA AL BACKEND, NO SE FILTRA ACÁ
   //
   // El rango de fechas puede tener más movimientos que los que entran en la
@@ -205,11 +241,12 @@ export default function LibroDiarioPage() {
   const puedeCargarMovimientos = hasPermission(PERMISSIONS.MANAGE_BILLING.codename)
 
   const consulta = useApiQuery<Respuesta>({
-    queryKey: ["analytics", "libro-diario", desde, hasta, protocoloSenalado, buscar, orden],
+    queryKey: ["analytics", "libro-diario", desde, hasta, fechasActivas, protocoloSenalado, buscar, orden],
     // Siempre agrupado: una fila por protocolo con la fecha de su último pago.
     // El detalle de cada cobro se abre en la fila.
     url:
-      `${ANALYTICS_ENDPOINTS.LIBRO_DIARIO}?agrupado=protocolo&desde=${desde}&hasta=${hasta}` +
+      `${ANALYTICS_ENDPOINTS.LIBRO_DIARIO}?agrupado=protocolo` +
+      (fechasActivas && !buscar ? `&desde=${desde}&hasta=${hasta}` : "") +
       (protocoloSenalado ? `&protocolo=${protocoloSenalado}` : "") +
       (buscar ? `&buscar=${encodeURIComponent(buscar)}` : "") +
       `&orden=${orden}`,
@@ -294,7 +331,7 @@ export default function LibroDiarioPage() {
   // No debe inflar los totales del período, incluso si su último pago coincide
   // con el rango pero quedó fuera del recorte de la lista.
   const movimientosDelResumen = movimientos.filter((fila) => !fila.fuera_de_rango)
-  const { entradas, efectivo, transferencia, sinEspecificar, salidas } =
+  const { entradas, salidas, entradasDetalle, salidasDetalle } =
     resumirFlujos(movimientosDelResumen)
 
   // UNA FILA POR PROTOCOLO, QUE SE ABRE
@@ -368,13 +405,24 @@ export default function LibroDiarioPage() {
                 setHasta(nuevoHasta)
               }}
               max={hoyISO()}
-              className="w-full sm:w-[17rem]"
+              className={`w-full sm:w-[17rem] ${!fechasActivas || buscar ? "opacity-50" : ""}`}
               atajos={[
                 { label: "Hoy", desde: hoyISO(), hasta: hoyISO() },
                 { label: "Últimos 7 días", desde: haceDias(7), hasta: hoyISO() },
                 { label: "Últimos 30 días", desde: haceDias(30), hasta: hoyISO() },
               ]}
             />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setFechasActivas((activa) => !activa)}
+              title={fechasActivas ? "Desactivar filtro de fechas" : "Activar filtro de fechas"}
+              className="h-9"
+            >
+              <CalendarOff className="mr-1 h-4 w-4" />
+              {fechasActivas ? "Sin fechas" : "Usar fechas"}
+            </Button>
 
             {/* La barra: número de protocolo o paciente, sin elegir cuál. En el
                 mostrador llega cualquiera de los dos y pedirle a la persona que
@@ -383,10 +431,10 @@ export default function LibroDiarioPage() {
             <div className="relative w-full sm:w-64">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <Input
-                type="search"
+                type="text"
                 value={buscado}
                 onChange={(evento) => setBuscado(evento.target.value)}
-                placeholder="Protocolo o paciente…"
+                placeholder="Protocolo, paciente o descripción…"
                 aria-label="Buscar en el libro diario"
                 autoComplete="off"
                 spellCheck={false}
@@ -457,15 +505,14 @@ export default function LibroDiarioPage() {
               titulo="Entró"
               valor={plata(String(entradas))}
               tono="entra"
-              desglose={[
-                { titulo: "Efectivo", valor: plata(String(efectivo)) },
-                { titulo: "Transferencia", valor: plata(String(transferencia)) },
-                ...(sinEspecificar > 0
-                  ? [{ titulo: "Sin especificar", valor: plata(String(sinEspecificar)) }]
-                  : []),
-              ]}
+              desglose={entradasDetalle}
             />
-            <Resumen titulo="Salió" valor={plata(String(salidas))} tono="sale" />
+            <Resumen
+              titulo="Salió"
+              valor={plata(String(salidas))}
+              tono="sale"
+              desglose={salidasDetalle}
+            />
             <Resumen titulo="Neto" valor={plata(String(entradas + salidas))} tono="neto" />
           </div>
         ) : null}
@@ -555,11 +602,11 @@ export default function LibroDiarioPage() {
                                 <Banknote className="h-3 w-3 text-emerald-600" />
                               ) : null}
                               <span>
-                                {fila.forma_de_pago === "transferencia"
-                                  ? `Transferencia${fila.cuenta_de_cobro ? ` · ${fila.cuenta_de_cobro}` : ""}`
-                                  : fila.forma_de_pago === "efectivo"
-                                    ? "Efectivo"
-                                    : "Medio sin especificar"}
+                                {textoMedioDePago(
+                                  fila.forma_de_pago,
+                                  fila.cuenta_de_cobro,
+                                  fila.cuenta_alias,
+                                )}
                               </span>
                             </div>
                           </>
@@ -569,7 +616,7 @@ export default function LibroDiarioPage() {
                       {/* Cuántos cobros y por qué vía, sin abrir. */}
                       {esProtocolo && (fila.pagos?.length ?? 0) > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {fila.pagos!.map((pago) => (
+                          {fila.pagos!.slice(-3).map((pago) => (
                             <span
                               key={pago.id}
                               title={`${pago.tipo === "devolucion" ? "Devolución" : "Cobro"} de ${plata(pago.monto)}`}
@@ -588,6 +635,13 @@ export default function LibroDiarioPage() {
                               )}
                               {pago.tipo === "devolucion" ? "−" : ""}
                               {plata(pago.monto)}
+                              <span>
+                                {textoMedioDePago(
+                                  pago.forma_de_pago,
+                                  pago.cuenta_de_cobro,
+                                  pago.cuenta_alias,
+                                )}
+                              </span>
                             </span>
                           ))}
                         </div>
