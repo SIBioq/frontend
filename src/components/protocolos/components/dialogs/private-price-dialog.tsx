@@ -53,7 +53,7 @@ export function PrivatePriceDialog({ open, onOpenChange, currentPrice, currentIn
         </DialogHeader>
         <div className="space-y-4">
           <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Snapshot actual del protocolo</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Precio guardado en este protocolo</p>
             <p className="mt-0.5 text-sm font-medium text-gray-900">{currentPrice ? `$${currentPrice}` : "Sin configurar"}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">

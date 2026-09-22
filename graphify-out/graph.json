@@ -7462,7 +7462,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_components_patients_components_create_patient_dialog_tsx_components_create_patient_dialog_createpatientdialogprops",
-      "community": 14,
+      "community": 4,
       "norm_label": "createpatientdialogprops"
     },
     {
@@ -7512,7 +7512,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "components_delete_patient_dialog_deletepatientdialogprops",
-      "community": 14,
+      "community": 4,
       "norm_label": "deletepatientdialogprops"
     },
     {
@@ -7542,7 +7542,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_components_patients_components_edit_patient_dialog_tsx_components_edit_patient_dialog_editpatientdialogprops",
-      "community": 14,
+      "community": 4,
       "norm_label": "editpatientdialogprops"
     },
     {
@@ -8116,14 +8116,14 @@
       "norm_label": "compactnumber()"
     },
     {
-      "label": "snapshotLabel()",
+      "label": "pricingHistoryLabel()",
       "file_type": "code",
       "source_file": "src/components/protocolos/components/analysis-price-summary.tsx",
       "source_location": "L15",
       "_origin": "ast",
-      "id": "components_analysis_price_summary_snapshotlabel",
+      "id": "components_analysis_price_summary_pricinghistorylabel",
       "community": 40,
-      "norm_label": "snapshotlabel()"
+      "norm_label": "pricinghistorylabel()"
     },
     {
       "label": "AnalysisPriceSummary()",
@@ -21179,7 +21179,7 @@
       "label": "Diagn\u00f3stico de permisos y API",
       "file_type": "document",
       "source_file": "docs/2026-09-21-fix-precio-particular.md",
-      "source_location": "L20",
+      "source_location": "L22",
       "_origin": "ast",
       "id": "docs_2026_09_21_fix_precio_particular_diagn\u00f3stico_de_permisos_y_api",
       "community": 51,
@@ -21189,7 +21189,7 @@
       "label": "Validaci\u00f3n",
       "file_type": "document",
       "source_file": "docs/2026-09-21-fix-precio-particular.md",
-      "source_location": "L24",
+      "source_location": "L26",
       "_origin": "ast",
       "id": "docs_2026_09_21_fix_precio_particular_validaci\u00f3n",
       "community": 51,
@@ -21199,7 +21199,7 @@
       "label": "Backend asociado",
       "file_type": "document",
       "source_file": "docs/2026-09-21-fix-precio-particular.md",
-      "source_location": "L30",
+      "source_location": "L32",
       "_origin": "ast",
       "id": "docs_2026_09_21_fix_precio_particular_backend_asociado",
       "community": 51,
@@ -64311,9 +64311,9 @@
       "source_file": "src/components/protocolos/components/analysis-price-summary.tsx",
       "source_location": "L15",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "components_analysis_price_summary",
-      "target": "components_analysis_price_summary_snapshotlabel"
+      "target": "components_analysis_price_summary_pricinghistorylabel",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports_from",
@@ -64388,9 +64388,9 @@
       "source_file": "src/components/protocolos/components/dialogs/analysis-dialog.tsx",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_analysis_dialog",
-      "target": "components_analysis_price_summary",
-      "confidence_score": 1.0
+      "target": "components_analysis_price_summary"
     },
     {
       "relation": "calls",
@@ -64454,9 +64454,9 @@
       "source_file": "src/components/protocolos/components/analysis-price-summary.tsx",
       "source_location": "L52",
       "weight": 1.0,
-      "confidence_score": 1.0,
       "source": "components_analysis_price_summary_analysispricesummary",
-      "target": "components_analysis_price_summary_snapshotlabel"
+      "target": "components_analysis_price_summary_pricinghistorylabel",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -64487,9 +64487,9 @@
       "source_file": "src/components/protocolos/components/dialogs/analysis-dialog.tsx",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_analysis_dialog",
-      "target": "components_analysis_price_summary_analysispricesummary",
-      "confidence_score": 1.0
+      "target": "components_analysis_price_summary_analysispricesummary"
     },
     {
       "relation": "contains",
@@ -67233,9 +67233,9 @@
       "source_file": "src/components/protocolos/components/dialogs/index.ts",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_index",
-      "target": "dialogs_private_price_dialog",
-      "confidence_score": 1.0
+      "target": "dialogs_private_price_dialog"
     },
     {
       "relation": "re_exports",
@@ -67244,9 +67244,9 @@
       "source_file": "src/components/protocolos/components/dialogs/index.ts",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_index",
-      "target": "dialogs_private_price_dialog_privatepricedialog",
-      "confidence_score": 1.0
+      "target": "dialogs_private_price_dialog_privatepricedialog"
     },
     {
       "relation": "re_exports",
@@ -68532,9 +68532,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "dialogs_private_price_dialog_privatepricedialog",
-      "confidence_score": 1.0
+      "target": "dialogs_private_price_dialog_privatepricedialog"
     },
     {
       "relation": "contains",
@@ -68542,9 +68542,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "dialogs_private_price_dialog_privatepricedialogprops",
-      "confidence_score": 1.0
+      "target": "dialogs_private_price_dialog_privatepricedialogprops"
     },
     {
       "relation": "imports_from",
@@ -68553,9 +68553,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_button",
-      "confidence_score": 1.0
+      "target": "ui_button"
     },
     {
       "relation": "imports",
@@ -68564,9 +68564,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_button_button",
-      "confidence_score": 1.0
+      "target": "ui_button_button"
     },
     {
       "relation": "imports_from",
@@ -68575,9 +68575,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_dialog",
-      "confidence_score": 1.0
+      "target": "ui_dialog"
     },
     {
       "relation": "imports",
@@ -68586,9 +68586,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_dialog_dialog",
-      "confidence_score": 1.0
+      "target": "ui_dialog_dialog"
     },
     {
       "relation": "imports",
@@ -68597,9 +68597,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_dialog_dialogcontent",
-      "confidence_score": 1.0
+      "target": "ui_dialog_dialogcontent"
     },
     {
       "relation": "imports",
@@ -68608,9 +68608,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_dialog_dialogdescription",
-      "confidence_score": 1.0
+      "target": "ui_dialog_dialogdescription"
     },
     {
       "relation": "imports",
@@ -68619,9 +68619,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_dialog_dialogfooter",
-      "confidence_score": 1.0
+      "target": "ui_dialog_dialogfooter"
     },
     {
       "relation": "imports",
@@ -68630,9 +68630,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_dialog_dialogheader",
-      "confidence_score": 1.0
+      "target": "ui_dialog_dialogheader"
     },
     {
       "relation": "imports",
@@ -68641,9 +68641,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_dialog_dialogtitle",
-      "confidence_score": 1.0
+      "target": "ui_dialog_dialogtitle"
     },
     {
       "relation": "imports_from",
@@ -68652,9 +68652,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_input",
-      "confidence_score": 1.0
+      "target": "ui_input"
     },
     {
       "relation": "imports",
@@ -68663,9 +68663,9 @@
       "source_file": "src/components/protocolos/components/dialogs/private-price-dialog.tsx",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "dialogs_private_price_dialog",
-      "target": "ui_input_input",
-      "confidence_score": 1.0
+      "target": "ui_input_input"
     },
     {
       "relation": "imports",
@@ -68674,9 +68674,9 @@
       "source_file": "src/components/protocolos/components/protocol-card.tsx",
       "source_location": "L45",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_protocol_card",
-      "target": "dialogs_private_price_dialog_privatepricedialog",
-      "confidence_score": 1.0
+      "target": "dialogs_private_price_dialog_privatepricedialog"
     },
     {
       "relation": "imports_from",
@@ -73862,9 +73862,9 @@
       "source_file": "src/components/protocolos/protocol-detail-page.tsx",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "protocolos_protocol_detail_page",
-      "target": "lib_format_utils",
-      "confidence_score": 1.0
+      "target": "lib_format_utils"
     },
     {
       "relation": "imports",
@@ -73873,9 +73873,9 @@
       "source_file": "src/components/protocolos/protocol-detail-page.tsx",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "protocolos_protocol_detail_page",
-      "target": "lib_format_utils_formatutcdatetime",
-      "confidence_score": 1.0
+      "target": "lib_format_utils_formatutcdatetime"
     },
     {
       "relation": "imports_from",
@@ -95137,9 +95137,9 @@
       "source_file": "docs/2026-09-21-fix-precio-particular.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_09_21_fix_precio_particular",
-      "target": "docs_2026_09_21_fix_precio_particular_hotfix_del_precio_particular_por_ub_en_protocolo",
-      "confidence_score": 1.0
+      "target": "docs_2026_09_21_fix_precio_particular_hotfix_del_precio_particular_por_ub_en_protocolo"
     },
     {
       "relation": "references",
@@ -95147,9 +95147,9 @@
       "source_file": "docs/INDICE.md",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_indice",
-      "target": "docs_2026_09_21_fix_precio_particular",
-      "confidence_score": 1.0
+      "target": "docs_2026_09_21_fix_precio_particular"
     },
     {
       "relation": "contains",
@@ -95157,9 +95157,9 @@
       "source_file": "docs/2026-09-21-fix-precio-particular.md",
       "source_location": "L30",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_09_21_fix_precio_particular_hotfix_del_precio_particular_por_ub_en_protocolo",
-      "target": "docs_2026_09_21_fix_precio_particular_backend_asociado",
-      "confidence_score": 1.0
+      "target": "docs_2026_09_21_fix_precio_particular_backend_asociado"
     },
     {
       "relation": "contains",
@@ -95167,9 +95167,9 @@
       "source_file": "docs/2026-09-21-fix-precio-particular.md",
       "source_location": "L16",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_09_21_fix_precio_particular_hotfix_del_precio_particular_por_ub_en_protocolo",
-      "target": "docs_2026_09_21_fix_precio_particular_cambio",
-      "confidence_score": 1.0
+      "target": "docs_2026_09_21_fix_precio_particular_cambio"
     },
     {
       "relation": "contains",
@@ -95177,9 +95177,9 @@
       "source_file": "docs/2026-09-21-fix-precio-particular.md",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_09_21_fix_precio_particular_hotfix_del_precio_particular_por_ub_en_protocolo",
-      "target": "docs_2026_09_21_fix_precio_particular_diagn\u00f3stico_de_permisos_y_api",
-      "confidence_score": 1.0
+      "target": "docs_2026_09_21_fix_precio_particular_diagn\u00f3stico_de_permisos_y_api"
     },
     {
       "relation": "contains",
@@ -95187,9 +95187,9 @@
       "source_file": "docs/2026-09-21-fix-precio-particular.md",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_09_21_fix_precio_particular_hotfix_del_precio_particular_por_ub_en_protocolo",
-      "target": "docs_2026_09_21_fix_precio_particular_hallazgos",
-      "confidence_score": 1.0
+      "target": "docs_2026_09_21_fix_precio_particular_hallazgos"
     },
     {
       "relation": "contains",
@@ -95197,9 +95197,9 @@
       "source_file": "docs/2026-09-21-fix-precio-particular.md",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_09_21_fix_precio_particular_hotfix_del_precio_particular_por_ub_en_protocolo",
-      "target": "docs_2026_09_21_fix_precio_particular_pedido",
-      "confidence_score": 1.0
+      "target": "docs_2026_09_21_fix_precio_particular_pedido"
     },
     {
       "relation": "contains",
@@ -95207,9 +95207,9 @@
       "source_file": "docs/2026-09-21-fix-precio-particular.md",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_09_21_fix_precio_particular_hotfix_del_precio_particular_por_ub_en_protocolo",
-      "target": "docs_2026_09_21_fix_precio_particular_validaci\u00f3n",
-      "confidence_score": 1.0
+      "target": "docs_2026_09_21_fix_precio_particular_validaci\u00f3n"
     },
     {
       "relation": "contains",
@@ -95217,9 +95217,9 @@
       "source_file": "docs/INDICE.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_indice",
-      "target": "docs_indice_\u00edndice_de_documentaci\u00f3n",
-      "confidence_score": 1.0
+      "target": "docs_indice_\u00edndice_de_documentaci\u00f3n"
     },
     {
       "relation": "conceptually_related_to",
@@ -96343,5 +96343,5 @@
       "source_file": "/Users/givecab/labsalud/frontend/doc/endpoint-cola-resultados.md"
     }
   ],
-  "built_at_commit": "d89cf9dea5fb5b7c8a29b93aac96f375e5cd20b4"
+  "built_at_commit": "7194e1d3e2de519540cdc3c32f8b4a28ba2404a4"
 }

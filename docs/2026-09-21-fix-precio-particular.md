@@ -15,7 +15,9 @@ Corregir la actualización del precio particular por UB y rediseñar su modal re
 
 ## Cambio
 
-El handler pasa `body: { precio_particular_ub: price }` y deja la serialización a `apiRequest`. Tras el POST exitoso fuerza un GET del detalle, invalidando el estado anterior antes de aplicar el resultado; si el GET falla, la card no presenta el detalle viejo como actualizado y el modal informa la recarga fallida. El modal muestra el snapshot `billing_breakdown.private_ub_value_used` (con fallback al override del protocolo) y, separado, el valor vigente de la OOSS particular `private_ub_value`. El formulario usa `onSubmit` y botón `submit`, por lo que Enter guarda. Se mantiene el botón azul y `canUpdatePrivatePrice`.
+El handler pasa `body: { precio_particular_ub: price }` y deja la serialización a `apiRequest`. Tras el POST exitoso fuerza un GET del detalle, invalidando el estado anterior antes de aplicar el resultado; si el GET falla, la card no presenta el detalle viejo como actualizado y el modal informa la recarga fallida. El modal muestra el precio guardado en el protocolo (`billing_breakdown.private_ub_value_used`, con fallback al override del protocolo) y, separado, el valor vigente de la OOSS particular `private_ub_value`. El formulario usa `onSubmit` y botón `submit`, por lo que Enter guarda. Se mantiene el botón azul y `canUpdatePrivatePrice`.
+
+La interfaz evita el término técnico “snapshot”: lo presenta como “Precio guardado en este protocolo”. También se renombró el identificador interno de la etiqueta de historial para mantener el código del componente alineado con el lenguaje visible.
 
 ## Diagnóstico de permisos y API
 

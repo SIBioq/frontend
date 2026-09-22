@@ -1,7 +1,7 @@
 # Graph Report - frontend  (2026-09-21)
 
 ## Corpus Check
-- 349 files · ~260,345 words
+- 349 files · ~260,387 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d89cf9de`
+- Built from commit: `7194e1d3`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -161,8 +161,8 @@ Cohesion: 0.03
 Nodes (65): AnalysisCategory, AnalysisPanel, ApiResponse, AppConfig, ApplicationInfo, AvailableAnalysis, BaseEntity, BillingOossControlItem (+57 more)
 
 ### Community 4 - "Forma de Pago y Facturación ARCA"
-Cohesion: 0.09
-Nodes (44): Persona, Props, CuentaElegible, FormaDePago(), Props, SelectorDeCuentaProps, BillingEntitySelectProps, initialValidation (+36 more)
+Cohesion: 0.08
+Nodes (47): Persona, Props, CuentaElegible, FormaDePago(), Props, SelectorDeCuentaProps, BillingEntitySelectProps, initialValidation (+39 more)
 
 ### Community 5 - "Primitivas UI (sheet, accordion)"
 Cohesion: 0.06
@@ -201,8 +201,8 @@ Cohesion: 0.22
 Nodes (18): ResultsQueueTable(), ANALYTICS_ENDPOINTS, RESULTS_ENDPOINTS, usePersistedState(), appendStatusParams(), getStatusFilterState(), hasAnyStatusFilter(), normalizeStatusFilter() (+10 more)
 
 ### Community 14 - "Valores de Referencia y Determinaciones"
-Cohesion: 0.10
-Nodes (38): PermissionManagementProps, extractErrorMessage(), RoleManagementProps, RoleWithDetails, UserManagementProps, extractErrorMessage(), CreateUserDialog(), CreateUserDialogProps (+30 more)
+Cohesion: 0.11
+Nodes (35): PermissionManagementProps, extractErrorMessage(), RoleManagementProps, RoleWithDetails, UserManagementProps, extractErrorMessage(), CreateUserDialog(), CreateUserDialogProps (+27 more)
 
 ### Community 15 - "Navbar y Menú de Usuario"
 Cohesion: 0.10
