@@ -408,6 +408,7 @@ export interface Analysis {
   bio_unit_values?: BioUnitValue[]
   is_urgent: boolean
   is_active: boolean
+  lleva_resultado: boolean
   requires_derivacion?: boolean
   /**
    * Si está activo, al paciente se le cobra `precio_particular` en vez de
@@ -736,6 +737,8 @@ export interface ProtocolBillingBreakdown {
 export interface ProtocolDetail {
   id: number
   analysis: number
+  /** false: práctica administrativa; se lista en el protocolo pero no tiene resultados. */
+  lleva_resultado?: boolean
   is_authorized: boolean
   is_sent?: boolean
   is_valid?: boolean

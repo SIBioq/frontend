@@ -67,6 +67,7 @@ interface ReportDialogProps {
 
 interface ReportCustomizationDrawerProps {
   open: boolean
+  reportType: "full" | "summary"
   analyses: ReportProtocolAnalysis[]
   selectedAnalysisIds: number[]
   onToggleAnalysis: (analysisId: number) => void
@@ -80,16 +81,20 @@ const EXCLUDED_ANALYSIS_CODES = ACTO_BIOQUIMICO_CODES
 // Se puede incluir cualquier análisis con resultados cargados, aunque no esté
 // validado por completo: el backend imprime sólo los resultados validados
 // (is_sent) del análisis, así que la impresión parcial es válida.
-function isSelectableAnalysis(analysis: ReportProtocolAnalysis) {
-  return !EXCLUDED_ANALYSIS_CODES.has(analysis.code) && analysis.is_loaded !== false
+function isSelectableAnalysis(analysis: ReportProtocolAnalysis, reportType: "full" | "summary") {
+  return !EXCLUDED_ANALYSIS_CODES.has(analysis.code)
+    && (reportType === "summary" || analysis.lleva_resultado !== false)
+    && analysis.is_loaded !== false
 }
 
-function isVisibleAnalysis(analysis: ReportProtocolAnalysis) {
+function isVisibleAnalysis(analysis: ReportProtocolAnalysis, reportType: "full" | "summary") {
   return !EXCLUDED_ANALYSIS_CODES.has(analysis.code)
+    && (reportType === "summary" || analysis.lleva_resultado !== false)
 }
 
 function ReportCustomizationDrawer({
   open,
+  reportType,
   analyses,
   selectedAnalysisIds,
   onToggleAnalysis,
@@ -97,9 +102,9 @@ function ReportCustomizationDrawer({
   onDeselectAllAnalyses,
   onToggleOpen,
 }: ReportCustomizationDrawerProps) {
-  const visibleAnalyses = analyses.filter(isVisibleAnalysis)
+  const visibleAnalyses = analyses.filter((analysis) => isVisibleAnalysis(analysis, reportType))
   const selectedCount = selectedAnalysisIds.filter((id) => visibleAnalyses.some((analysis) => analysis.id === id)).length
-  const selectableCount = visibleAnalyses.filter(isSelectableAnalysis).length
+  const selectableCount = visibleAnalyses.filter((analysis) => isSelectableAnalysis(analysis, reportType)).length
 
   return (
     <div className="pointer-events-none absolute inset-y-0 left-0 h-full w-[calc(var(--ancho-tarjeta)+var(--ancho-panel)+80px)] overflow-visible">
@@ -135,7 +140,7 @@ function ReportCustomizationDrawer({
               <div className="space-y-2">
                 {visibleAnalyses.map((analysis) => {
                   const checked = selectedAnalysisIds.includes(analysis.id)
-                  const isDisabled = !isSelectableAnalysis(analysis)
+                  const isDisabled = !isSelectableAnalysis(analysis, reportType)
                   // Cargado pero aún no validado por completo: se puede incluir, pero parcial.
                   const isPartial = !isDisabled && analysis.is_valid === false
                   return (
@@ -394,9 +399,9 @@ export function ReportDialog({
     startScrollTopRef.current = 0
   }
 
-  const visibleAnalyses = analyses.filter(isVisibleAnalysis)
+  const visibleAnalyses = analyses.filter((analysis) => isVisibleAnalysis(analysis, reportType))
   const selectedCount = selectedAnalysisIds.filter((id) => visibleAnalyses.some((analysis) => analysis.id === id)).length
-  const selectableCount = visibleAnalyses.filter(isSelectableAnalysis).length
+  const selectableCount = visibleAnalyses.filter((analysis) => isSelectableAnalysis(analysis, reportType)).length
   const activeSendAction = getSendMethodAction(sendMethodName)
 
   // EL MÉTODO DE ENVÍO VIVE ACÁ, NO EN FACTURACIÓN.
@@ -676,6 +681,7 @@ export function ReportDialog({
 
           <ReportCustomizationDrawer
             open={customizationOpen}
+            reportType={reportType}
             analyses={analyses}
             selectedAnalysisIds={selectedAnalysisIds}
             onToggleAnalysis={onToggleAnalysis}
@@ -875,7 +881,7 @@ export function ReportDialog({
                         <div className="space-y-2">
                           {visibleAnalyses.map((analysis) => {
                             const checked = selectedAnalysisIds.includes(analysis.id)
-                            const isDisabled = !isSelectableAnalysis(analysis)
+                            const isDisabled = !isSelectableAnalysis(analysis, reportType)
                             return (
                               <button
                                 key={analysis.id}

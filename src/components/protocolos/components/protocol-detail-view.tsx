@@ -230,6 +230,7 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
   } = props
 
   const details = detail.details ?? []
+  const hasResultAnalyses = details.some((analysis) => analysis.lleva_resultado !== false)
   const isPrivate = (insuranceName || "").toLowerCase() === "particular"
   const envio = getSendMethodInfo(detail.send_method?.name)
   const IconoDeEnvio =
@@ -344,20 +345,22 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
             // resultados" partido en dos renglones ocupa más y se lee peor que
             // el botón entero. Envuelven si de verdad no entran.
             <div className="flex flex-wrap gap-2">
-              {isPendingValidation && (
+              {hasResultAnalyses && isPendingValidation && (
                 <Button size="sm" variant="outline" onClick={onGoValidation} className="whitespace-nowrap">
                   <CheckCircle className="mr-1.5 h-4 w-4" />
                   Validar
                 </Button>
               )}
-              <Button
-                size="sm"
-                className="whitespace-nowrap bg-[#204983] hover:bg-[#1a3d6f]"
-                onClick={onGoResults}
-              >
-                <TestTube className="mr-1.5 h-4 w-4" />
-                Cargar resultados
-              </Button>
+              {hasResultAnalyses && (
+                <Button
+                  size="sm"
+                  className="whitespace-nowrap bg-[#204983] hover:bg-[#1a3d6f]"
+                  onClick={onGoResults}
+                >
+                  <TestTube className="mr-1.5 h-4 w-4" />
+                  Cargar resultados
+                </Button>
+              )}
             </div>
           }
         >
@@ -372,7 +375,9 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
                 disabled={!isEditable || !onReordenarAnalisis}
               >
                 {(d, manija) => {
-                  const resultStatus = d.is_valid
+                  const resultStatus = d.lleva_resultado === false
+                    ? { label: "No lleva resultado", color: "text-slate-600", dot: "bg-slate-400" }
+                    : d.is_valid
                     ? { label: "Validado", color: "text-emerald-700", dot: "bg-emerald-500" }
                     : d.is_loaded
                       ? { label: "Resultados sin validar", color: "text-amber-700", dot: "bg-amber-500" }

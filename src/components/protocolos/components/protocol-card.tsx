@@ -165,8 +165,10 @@ const EXCLUDED_REPORT_ANALYSIS_CODES = ACTO_BIOQUIMICO_CODES
 
 // Incluible en el reporte: alcanza con tener resultados cargados (el backend
 // imprime sólo los validados). Permite impresión parcial de análisis a medio validar.
-const isSelectableForReport = (analysis: ReportProtocolDetail) => {
-  return !EXCLUDED_REPORT_ANALYSIS_CODES.has(analysis.code) && analysis.is_loaded !== false
+const isSelectableForReport = (analysis: ReportProtocolDetail, kind: "full" | "summary" = "full") => {
+  return !EXCLUDED_REPORT_ANALYSIS_CODES.has(analysis.code)
+    && (kind === "summary" || analysis.lleva_resultado !== false)
+    && analysis.is_loaded !== false
 }
 
 // Preselección por defecto: sólo los análisis totalmente validados.
@@ -174,8 +176,9 @@ const isDefaultReportSelected = (analysis: ReportProtocolDetail) => {
   return isSelectableForReport(analysis) && analysis.is_valid !== false
 }
 
-const isReportableAnalysis = (analysis: ReportProtocolDetail) => {
+const isReportableAnalysis = (analysis: ReportProtocolDetail, kind: "full" | "summary") => {
   return !EXCLUDED_REPORT_ANALYSIS_CODES.has(analysis.code)
+    && (kind === "summary" || analysis.lleva_resultado !== false)
 }
 
 interface ProtocolCardProps {
@@ -307,6 +310,9 @@ export function ProtocolCard({
   const handleReportTypeChange = (type: "full" | "summary") => {
     setReportType(type)
     setReportSigned(type === "full")
+    setSelectedReportAnalysisIds(
+      protocolDetails.filter((analysis) => isSelectableForReport(analysis, type)).map((analysis) => analysis.id),
+    )
   }
 
   const extractErrorMessage = (error: unknown, defaultMessage: string): string => {
@@ -316,7 +322,7 @@ export function ProtocolCard({
   const getReportRequestOptions = () => {
     const date = reportDate.trim()
     const time = reportTime.trim()
-    const reportableAnalyses = protocolDetails.filter(isReportableAnalysis)
+    const reportableAnalyses = protocolDetails.filter((analysis) => isReportableAnalysis(analysis, reportType))
     // `selectedReportAnalysisIds` guarda IDs de DETALLE (ProtocolDetail.id). Al
     // backend hay que mandarle el analysis_id REAL (`detail.analysis`): si se
     // manda el id del detalle, puede colisionar con el analysis_id de OTRO
@@ -513,7 +519,7 @@ export function ProtocolCard({
 
   const handleToggleReportAnalysis = (analysisId: number) => {
     const analysis = protocolDetails.find((item) => item.id === analysisId)
-    if (!analysis || !isSelectableForReport(analysis)) {
+    if (!analysis || !isSelectableForReport(analysis, reportType)) {
       return
     }
 
@@ -523,7 +529,9 @@ export function ProtocolCard({
   }
 
   const handleSelectAllReportAnalyses = () => {
-    setSelectedReportAnalysisIds(protocolDetails.filter(isSelectableForReport).map((analysis) => analysis.id))
+    setSelectedReportAnalysisIds(
+      protocolDetails.filter((analysis) => isSelectableForReport(analysis, reportType)).map((analysis) => analysis.id),
+    )
   }
 
   const handleDeselectAllReportAnalyses = () => {
