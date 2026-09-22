@@ -603,7 +603,7 @@ export default function LibroDiarioPage() {
                       {/* Cuántos cobros y por qué vía, sin abrir. */}
                       {esProtocolo && (fila.pagos?.length ?? 0) > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {fila.pagos!.map((pago) => (
+                          {fila.pagos!.slice(-3).map((pago) => (
                             <span
                               key={pago.id}
                               title={`${pago.tipo === "devolucion" ? "Devolución" : "Cobro"} de ${plata(pago.monto)}`}
