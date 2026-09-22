@@ -89,6 +89,16 @@ export function AnalysisDetailDialog({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <span className="text-sm font-medium text-gray-600">Lleva resultado</span>
+            <Badge
+              variant="outline"
+              className={analysis.lleva_resultado ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}
+            >
+              {analysis.lleva_resultado ? "Sí" : "No"}
+            </Badge>
+          </div>
+
           {bioUnitItems.length > 0 && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Unidades bioquímicas históricas</p>

@@ -44,6 +44,7 @@ export const CreateAnalysisCatalogDialog: React.FC<CreateAnalysisCatalogDialogPr
   const [code, setCode] = useState("")
   const [name, setName] = useState("")
   const [isUrgent, setIsUrgent] = useState(false)
+  const [llevaResultado, setLlevaResultado] = useState(true)
   const [requiresDerivacion, setRequiresDerivacion] = useState(false)
   const [cobraPrecioFijo, setCobraPrecioFijo] = useState(false)
   const [precioParticular, setPrecioParticular] = useState("")
@@ -74,6 +75,7 @@ export const CreateAnalysisCatalogDialog: React.FC<CreateAnalysisCatalogDialogPr
       setCode("")
       setName("")
       setIsUrgent(false)
+      setLlevaResultado(true)
       setRequiresDerivacion(false)
       setCobraPrecioFijo(false)
       setPrecioParticular("")
@@ -130,6 +132,7 @@ export const CreateAnalysisCatalogDialog: React.FC<CreateAnalysisCatalogDialogPr
         code: code.trim(),
         name,
         is_urgent: isUrgent,
+        lleva_resultado: llevaResultado,
         requires_derivacion: requiresDerivacion,
         cobra_precio_fijo: cobraPrecioFijo && preciosFijosHabilitados,
         ...(cobraPrecioFijo && preciosFijosHabilitados
@@ -248,6 +251,18 @@ export const CreateAnalysisCatalogDialog: React.FC<CreateAnalysisCatalogDialogPr
               checked={requiresDerivacion}
               onCheckedChange={setRequiresDerivacion}
             />
+          </div>
+
+          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div>
+              <Label htmlFor="llevaResultado" className="font-medium">
+                Lleva resultado
+              </Label>
+              <p className="text-sm text-gray-500">
+                Si se desactiva, la práctica aparece en el protocolo, pero no se carga, valida ni incluye en el informe clínico.
+              </p>
+            </div>
+            <Switch id="llevaResultado" checked={llevaResultado} onCheckedChange={setLlevaResultado} />
           </div>
 
           <CampoPrecioFijo
