@@ -3,10 +3,7 @@
 import { useState, useEffect } from "react"
 import { Loader2, DollarSign, ArrowDownLeft, ArrowUpRight } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../../ui/dialog"
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "../../../ui/alert-dialog"
+import { RoundingConfirmDialog } from "./rounding-confirm-dialog"
 import { Button } from "../../../ui/button"
 import { Input } from "../../../ui/input"
 import { Label } from "../../../ui/label"
@@ -290,26 +287,7 @@ export function PaymentDialog({
         </DialogFooter>
       </DialogContent>
 
-      <AlertDialog open={confirmandoRedondeo} onOpenChange={setConfirmandoRedondeo}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>El paciente paga de más</AlertDialogTitle>
-            <AlertDialogDescription>
-              El monto ingresado supera el saldo pendiente en ${(Number.parseFloat(amount || "0") - pending).toFixed(2)}.
-              ¿Querés tomar esa diferencia como redondeo o cobrar justo y devolverla?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isProcessing}>Cancelar</AlertDialogCancel>
-            <Button variant="outline" onClick={cobrarJusto} disabled={isProcessing}>
-              Cobrar justo
-            </Button>
-            <AlertDialogAction onClick={() => { setConfirmandoRedondeo(false); void registrar(Number.parseFloat(amount)) }} disabled={isProcessing}>
-              Redondear
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <RoundingConfirmDialog open={confirmandoRedondeo} diferencia={Number.parseFloat(amount || "0") - pending} isProcessing={isProcessing} onOpenChange={setConfirmandoRedondeo} onRedondear={() => { setConfirmandoRedondeo(false); void registrar(Number.parseFloat(amount)) }} onCobrarJusto={cobrarJusto} />
     </Dialog>
   )
 }
