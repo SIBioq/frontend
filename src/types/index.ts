@@ -1209,6 +1209,9 @@ export interface Result {
   /** Estado NUEVO del protocolo dueño, recalculado por el backend tras guardar/validar. */
   protocol_status?: { id: number; name: string } | null
   protocol_id?: number | null
+  /** Los cálculos que el backend vació al excluir esta determinación: su
+   *  componente salió del protocolo, así que el valor viejo dejó de valer. */
+  dependientes_vaciados?: Result[]
 }
 
 // Response from GET /results/results/by-analysis/{id}/
