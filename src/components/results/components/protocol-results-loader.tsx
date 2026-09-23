@@ -294,7 +294,7 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
                     {loaded}/{activas.length} cargados
                   </Badge>
                   {excluidas > 0 && (
-                    <span className="shrink-0 text-xs text-gray-400">
+                    <span className="shrink-0 text-xs font-medium text-orange-600">
                       · {excluidas} fuera del protocolo
                     </span>
                   )}

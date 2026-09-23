@@ -108,8 +108,8 @@ export function ValidationResultRow({ result, saving, disabled = false, onValida
       className={cn(
         "flex flex-col gap-3 rounded-lg border p-3 lg:flex-row lg:items-center",
         // La exclusión manda sobre el resto: de esta fila lo que importa es que
-        // no cuenta.
-        excluido ? "border-slate-300 bg-slate-50" : isWrong ? "border-red-300 bg-red-50" : isValidated ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200 bg-white",
+        // no cuenta. Naranja, igual que en la carga, para que no pase desapercibida.
+        excluido ? "border-orange-300 border-l-4 border-l-orange-500 bg-orange-50" : isWrong ? "border-red-300 bg-red-50" : isValidated ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200 bg-white",
       )}
     >
       {/* Determinación + valor + referencia */}
@@ -130,7 +130,7 @@ export function ValidationResultRow({ result, saving, disabled = false, onValida
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {excluido && (
-            <Badge variant="secondary" className="text-[10px]">
+            <Badge className="border-transparent bg-orange-500 text-[10px] text-white hover:bg-orange-500">
               Fuera del protocolo
             </Badge>
           )}
