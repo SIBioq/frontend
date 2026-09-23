@@ -585,10 +585,17 @@ export function useProtocolResults(protocolId: number) {
     })
 
     return submodulos
-      // Si una de las determinaciones no corresponde en este protocolo, la suma
-      // del catálogo ya no aplica: mostrarla en rojo sería señalar un error que
-      // no existe. Mismo criterio que `corroboracion.py` en el backend.
-      .filter((s) => !s.determinaciones.some((id) => determinacionesExcluidas.has(id)))
+      // Una determinación excluida sale del submódulo; la fórmula sigue
+      // valiendo para las que quedan. Mismo criterio que `corroboracion.py`
+      // en el backend.
+      .map(
+        (s): SubmoduloEvaluado => ({
+          ...s,
+          determinaciones: s.determinaciones.filter((id) => !determinacionesExcluidas.has(id)),
+        }),
+      )
+      // Sin determinaciones no hay nada que corroborar.
+      .filter((s) => s.determinaciones.length > 0)
       .map((s) => {
         let suma = 0
         const faltantes: string[] = []
