@@ -97,7 +97,7 @@ export interface ProtocolDetailViewProps {
   onUncancel: () => void
   onOrderStatus: () => void
   onPreauth: () => void
-  onCoseguro: () => void
+  onEditarCargos: () => void
   onEntidadDeFacturacion: () => void
   onMedico: () => void
   onObraSocial: () => void
@@ -131,7 +131,6 @@ export interface ProtocolDetailViewProps {
   isUncancelling?: boolean
   showOrderAction: boolean
   showPreauthAction: boolean
-  showCoseguroAction: boolean
 }
 
 function orderStatusInfo(s?: string) {
@@ -198,7 +197,7 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
     onUncancel,
     onOrderStatus,
     onPreauth,
-    onCoseguro,
+    onEditarCargos,
     onEntidadDeFacturacion,
     onMedico,
     onObraSocial,
@@ -226,7 +225,6 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
     isUncancelling = false,
     showOrderAction,
     showPreauthAction,
-    showCoseguroAction,
   } = props
 
   const details = detail.details ?? []
@@ -622,10 +620,10 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 Cobro no contemplado
               </Button>
-              {showCoseguroAction && (
-                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onCoseguro}>
+              {isEditable && (
+                <Button size="sm" variant="outline" className="h-8 text-xs" onClick={onEditarCargos}>
                   <Receipt className="mr-1 h-3.5 w-3.5" />
-                  Coseguro
+                  Editar cargos
                 </Button>
               )}
             </div>
