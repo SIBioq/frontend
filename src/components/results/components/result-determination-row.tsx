@@ -131,7 +131,9 @@ export function ResultDeterminationRow({
         "rounded-lg border p-3 transition-colors",
         // La exclusión manda sobre el resto de los estados: lo que importa de
         // esta fila es que no cuenta, no si el valor está cargado o validado.
-        excluido ? "border-slate-300 bg-slate-50" : isWrong ? "border-red-300 bg-red-50" : isValidated ? "border-emerald-200 bg-emerald-50/40" : hasValue ? "border-blue-200 bg-blue-50/30" : "border-gray-200 bg-white",
+        // Naranja y con borde izquierdo grueso para que no pase desapercibida
+        // al recorrer el protocolo; no es rojo porque no es un error.
+        excluido ? "border-orange-300 border-l-4 border-l-orange-500 bg-orange-50" : isWrong ? "border-red-300 bg-red-50" : isValidated ? "border-emerald-200 bg-emerald-50/40" : hasValue ? "border-blue-200 bg-blue-50/30" : "border-gray-200 bg-white",
       )}
     >
       {/* Línea superior: nombre + estado (con fecha de validación) */}
@@ -140,7 +142,8 @@ export function ResultDeterminationRow({
           <span className="font-semibold text-gray-900">{det.name}</span>
           {unit && <span className="ml-1 text-xs text-gray-500">({unit})</span>}
           {excluido && (
-            <Badge variant="secondary" className="ml-2 align-middle text-[10px]">
+            <Badge className="ml-2 gap-1 border-transparent bg-orange-500 align-middle text-[10px] text-white hover:bg-orange-500">
+              <CircleMinus className="h-3 w-3" />
               Fuera del protocolo
             </Badge>
           )}
@@ -230,7 +233,7 @@ export function ResultDeterminationRow({
             // Excluida no se escribe, pero el valor sigue a la vista: es el dato
             // que se conserva, y esconderlo diría lo contrario.
             disabled={locked || excluido}
-            className={cn("h-11 text-base font-semibold", hasValue && !isValidated && "border-blue-300", isValidated && "border-emerald-300 bg-emerald-100", excluido && "border-slate-300 bg-slate-100 text-slate-600")}
+            className={cn("h-11 text-base font-semibold", hasValue && !isValidated && "border-blue-300", isValidated && "border-emerald-300 bg-emerald-100", excluido && "border-orange-200 bg-orange-100/60 text-orange-900/70")}
           />
           {enElInforme && (
             <p className="mt-1 text-[11px] tabular-nums text-gray-500">
@@ -332,8 +335,8 @@ export function ResultDeterminationRow({
           que quede al alcance de un click apurado mientras se carga. */}
       {(excluido || onToggleExclusion) && (
         <div className="mt-2 flex items-end justify-between gap-3">
-          {/* Qué significa la fila gris, dicho donde se la está mirando. */}
-          <p className="min-w-0 text-[11px] text-slate-500">
+          {/* Qué significa la fila naranja, dicho donde se la está mirando. */}
+          <p className="min-w-0 text-[11px] text-orange-800">
             {excluido &&
               "Fuera del protocolo: no cuenta para el estado del protocolo, el informe ni el envío. El dato cargado se conserva y podés volver a incluirla cuando quieras."}
           </p>
@@ -350,7 +353,7 @@ export function ResultDeterminationRow({
               className={cn(
                 "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
                 excluido
-                  ? "border-[#cbd8ea] bg-[#f4f7fb] text-[#204983] hover:border-[#204983] hover:bg-[#eaf0f8]"
+                  ? "border-orange-300 bg-white text-orange-700 hover:border-orange-500 hover:bg-orange-100"
                   : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800",
               )}
               title={
