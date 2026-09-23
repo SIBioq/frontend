@@ -95,6 +95,24 @@ export function useProtocolResults(protocolId: number) {
   const canceladoRef = useRef(cancelado)
   canceladoRef.current = cancelado
 
+  // `onSave`, `alternarCargaManual` y `alternarExclusion` leen `results` y
+  // `values` DESPUÉS de un `await`. Si dos de estas acciones se disparan casi
+  // juntas (guardar una fila y excluir otra, por ejemplo), la segunda que
+  // termina pisa el estado con lo que tenía en su clausura ANTES de que la
+  // primera terminara — la actualización de la primera desaparece de la
+  // pantalla aunque el backend la haya guardado bien. Leer de la ref en vez
+  // de la clausura evita eso: siempre parte de lo último, no de una foto
+  // vieja tomada al invocar la función.
+  const resultsRef = useRef<Result[]>(results)
+  useEffect(() => {
+    resultsRef.current = results
+  }, [results])
+
+  const valuesRef = useRef<Record<number, ResultValue>>(values)
+  useEffect(() => {
+    valuesRef.current = values
+  }, [values])
+
   /**
    * Guarda las fórmulas que ya se calcularon solas.
    *
@@ -275,12 +293,14 @@ export function useProtocolResults(protocolId: number) {
           throw new Error(formatApiError(err, "Error al guardar el resultado"))
         }
         const updated: Result = await res.json()
-        const siguientes = results.map((r) => (r.id === resultId ? updated : r))
+        const siguientes = resultsRef.current.map((r) => (r.id === resultId ? updated : r))
+        resultsRef.current = siguientes
         setResults(siguientes)
         const valores = applyFormulaCalculations(siguientes, {
-          ...values,
+          ...valuesRef.current,
           [resultId]: { value: updated.value, notes: updated.notes },
         })
+        valuesRef.current = valores
         setValues(valores)
         if (updated.protocol_status !== undefined) {
           setProtocol((prev) => (prev ? { ...prev, status: updated.protocol_status ?? null } : prev))
@@ -301,7 +321,7 @@ export function useProtocolResults(protocolId: number) {
         setSaving((prev) => ({ ...prev, [resultId]: false }))
       }
     },
-    [apiRequest, values, results, canEditResults, guardarFormulasCalculadas],
+    [apiRequest, values, canEditResults, guardarFormulasCalculadas],
   )
 
   /**
@@ -333,11 +353,16 @@ export function useProtocolResults(protocolId: number) {
           throw new Error(formatApiError(err, "No se pudo cambiar el modo de carga"))
         }
         const updated: Result = await res.json()
-        const siguientes = results.map((r) => (r.id === resultId ? updated : r))
+        const siguientes = resultsRef.current.map((r) => (r.id === resultId ? updated : r))
+        resultsRef.current = siguientes
         setResults(siguientes)
         // Con la lista ya actualizada: si se apagó, el cálculo vuelve a correr
         // sobre esta fila; si se encendió, la saltea.
-        setValues((prev) => applyFormulaCalculations(siguientes, prev))
+        setValues((prev) => {
+          const siguientesValores = applyFormulaCalculations(siguientes, prev)
+          valuesRef.current = siguientesValores
+          return siguientesValores
+        })
         return true
       } catch (e) {
         toast.error(getErrorMessage(e, "No se pudo cambiar el modo de carga"))
@@ -346,7 +371,7 @@ export function useProtocolResults(protocolId: number) {
         setSaving((prev) => ({ ...prev, [resultId]: false }))
       }
     },
-    [apiRequest, canEditResults, results],
+    [apiRequest, canEditResults],
   )
 
   /**
@@ -396,11 +421,16 @@ export function useProtocolResults(protocolId: number) {
           throw new Error(formatApiError(err, "No se pudo cambiar la exclusión"))
         }
         const updated: Result = await res.json()
-        const siguientes = results.map((r) => (r.id === resultId ? updated : r))
+        const siguientes = resultsRef.current.map((r) => (r.id === resultId ? updated : r))
+        resultsRef.current = siguientes
         setResults(siguientes)
         // Con la lista ya actualizada: las fórmulas que usaban esta fila como
         // componente dejan de resolver (o vuelven a hacerlo al reincluirla).
-        setValues((prev) => applyFormulaCalculations(siguientes, prev))
+        setValues((prev) => {
+          const siguientesValores = applyFormulaCalculations(siguientes, prev)
+          valuesRef.current = siguientesValores
+          return siguientesValores
+        })
         if (updated.protocol_status !== undefined) {
           setProtocol((prev) => (prev ? { ...prev, status: updated.protocol_status ?? null } : prev))
         }
@@ -415,7 +445,7 @@ export function useProtocolResults(protocolId: number) {
         setSaving((prev) => ({ ...prev, [resultId]: false }))
       }
     },
-    [apiRequest, canEditResults, results],
+    [apiRequest, canEditResults],
   )
 
   /**
@@ -588,10 +618,20 @@ export function useProtocolResults(protocolId: number) {
       // Una determinación excluida sale del submódulo; la fórmula sigue
       // valiendo para las que quedan. Mismo criterio que `corroboracion.py`
       // en el backend.
+      //
+      // Se parte de `determinaciones_definidas` (el catálogo completo del
+      // submódulo, sin filtrar) y no de `determinaciones`: esta última ya
+      // viene filtrada por las exclusiones que había al pedir la pantalla, así
+      // que una determinación que estaba excluida entonces no aparece ahí —y
+      // si el usuario la reincluye ahora, no hay forma de volver a sumarla
+      // porque su id ya no está en ninguna lista. Con el catálogo completo
+      // como base, el filtro de acá siempre refleja el estado ACTUAL.
       .map(
         (s): SubmoduloEvaluado => ({
           ...s,
-          determinaciones: s.determinaciones.filter((id) => !determinacionesExcluidas.has(id)),
+          determinaciones: (s.determinaciones_definidas ?? s.determinaciones).filter(
+            (id) => !determinacionesExcluidas.has(id),
+          ),
         }),
       )
       // Sin determinaciones no hay nada que corroborar.
