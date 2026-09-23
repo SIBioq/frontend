@@ -595,6 +595,13 @@ export interface SubmoduloEvaluado {
   cierra: boolean
   faltantes: string[]
   determinaciones: number[]
+  /**
+   * Todas las determinaciones activas del submódulo, sin filtrar por
+   * exclusión. Sirve para recalcular en el momento si el usuario reincluye
+   * una determinación que estaba excluida al abrir la pantalla: sin esto,
+   * su id no está en ninguna lista y no vuelve a sumar hasta recargar.
+   */
+  determinaciones_definidas?: number[]
 }
 
 export interface Determination {
