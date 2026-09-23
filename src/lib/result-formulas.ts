@@ -329,3 +329,122 @@ export function formulasParaGuardar<T extends FormulaGuardable>(
     return calculado !== guardado
   })
 }
+
+export type TokenFormula =
+  | { tipo: "operador"; texto: string }
+  | { tipo: "numero"; texto: string }
+  | { tipo: "componente"; codigo: string; nombre: string; valor: string | null }
+
+export type ComponenteFaltante = { codigo: string; nombre: string }
+
+export type ExplicacionFormula = {
+  /** La fórmula original, tal cual vino de la base. */
+  formula: string
+  tokens: TokenFormula[]
+  faltantes: ComponenteFaltante[]
+  /** Valor calculado; `null` si falta un componente o la expresión no evalúa. */
+  resultado: string | null
+}
+
+const SIGNOS_TIPOGRAFICOS: Record<string, string> = {
+  "*": "×",
+  "/": "÷",
+  "-": "−",
+  "+": "+",
+}
+
+// Referencia primero (puede contener cualquier cosa entre corchetes), después
+// número, después la potencia de dos caracteres (tiene que ganarle al `*`
+// suelto) y por último un operador o paréntesis de un carácter. Lo que no
+// entra en ninguno de los cuatro grupos —espacios, algo raro que se coló—
+// simplemente no genera match y `matchAll` lo salta solo.
+const TOKEN_PATTERN = /\[([^\]]+)\]|(\d+(?:\.\d+)?)|(\*\*)|([+\-*/()])/g
+
+/**
+ * Arma la fórmula "explicada": cada token con el nombre de la determinación y
+ * el valor cargado en vez del código crudo, más la lista de lo que falta.
+ *
+ * POR QUÉ ES UNA FUNCIÓN PURA APARTE
+ * ===================================
+ * `calculateFormulaValue` ya sabe resolver códigos y evaluar la expresión,
+ * pero sólo devuelve el resultado final: para mostrarle al usuario "esto no
+ * calculó porque falta [Hematocrito]" hace falta el detalle de CADA término,
+ * no sólo si al final faltó algo. Separarla del render deja esa traducción
+ * —código a nombre, referencia a valor cargado— testeable y reutilizable sin
+ * arrastrar JSX ni estado de componente; la pantalla sólo la recorre y pinta.
+ *
+ * POR QUÉ EL VALOR ES TEXTO Y NO NÚMERO
+ * ======================================
+ * Mismo motivo que en `calculateFormulaValue`: lo que se muestra es lo que la
+ * persona cargó, con sus decimales tal cual los escribió. `Number("1.250")`
+ * da `1.25` y se comió un decimal que en un resultado de laboratorio puede
+ * importar.
+ */
+export const describirFormula = (
+  result: FormulaResult,
+  allResults: FormulaResult[],
+  values: Record<number, FormulaValue>,
+): ExplicacionFormula | null => {
+  const formula = result.determination.formula?.trim()
+  if (!formula) return null
+
+  const codeByResult = buildResultCodeMap(allResults)
+  const resultIdByCode = new Map<string, number>()
+  codeByResult.forEach((code, resultId) => {
+    resultIdByCode.set(code, resultId)
+  })
+  const resultsById = new Map(allResults.map((r) => [r.id, r]))
+
+  const codesByNumber = buildCodesByNumber(allResults, result.analysis.code)
+  // Mismo criterio que `calculateFormulaValue`: un componente excluido es un
+  // componente que no está.
+  const excluidos = new Set(allResults.filter((r) => r.excluido).map((r) => r.id))
+
+  const expression = normalizeExpression(formula)
+
+  const tokens: TokenFormula[] = []
+  const faltantes: ComponenteFaltante[] = []
+  const codigosFaltantesVistos = new Set<string>()
+
+  for (const match of expression.matchAll(TOKEN_PATTERN)) {
+    const [, referencia, numero, potencia, operador] = match
+
+    if (referencia !== undefined) {
+      const codigo = resolveRelativeCode(referencia.trim(), result.analysis.code, codesByNumber)
+      const dependencyId = resultIdByCode.get(codigo)
+      const componente = dependencyId !== undefined ? resultsById.get(dependencyId) : undefined
+      const disponible = dependencyId !== undefined && !excluidos.has(dependencyId)
+      const textoCargado = disponible ? values[dependencyId as number]?.value : undefined
+      const valor = textoCargado !== undefined && extraerNumero(textoCargado) !== null ? textoCargado : null
+      const nombre = componente?.determination.name ?? codigo
+
+      tokens.push({ tipo: "componente", codigo, nombre, valor })
+
+      if (valor === null && !codigosFaltantesVistos.has(codigo)) {
+        codigosFaltantesVistos.add(codigo)
+        faltantes.push({ codigo, nombre })
+      }
+      continue
+    }
+
+    if (numero !== undefined) {
+      tokens.push({ tipo: "numero", texto: numero })
+      continue
+    }
+
+    if (potencia !== undefined) {
+      tokens.push({ tipo: "operador", texto: "^" })
+      continue
+    }
+
+    if (operador !== undefined) {
+      const texto = operador === "(" || operador === ")" ? operador : SIGNOS_TIPOGRAFICOS[operador]
+      tokens.push({ tipo: "operador", texto })
+    }
+  }
+
+  const calculation = calculateFormulaValue(result, allResults, values)
+  const resultado = calculation && calculation.missingCodes.length === 0 ? calculation.value : null
+
+  return { formula, tokens, faltantes, resultado }
+}
