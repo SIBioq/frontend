@@ -36,7 +36,11 @@ export function ProtocolValidationLoader({ controller }: ProtocolValidationLoade
     if (collapseInit || groups.length === 0) return
     const collapsed = new Set<number>()
     groups.forEach((g) => {
-      const todoValidado = g.determinations.length > 0 && g.determinations.every((d) => d.is_valid)
+      // Una excluida no se valida nunca, así que cuenta como atendida: si no,
+      // dejaría el análisis abierto para siempre. El `length > 0` se mide sobre
+      // el grupo completo, así uno con todas excluidas colapsa igual.
+      const todoValidado =
+        g.determinations.length > 0 && g.determinations.every((d) => d.excluido || d.is_valid)
       if (todoValidado) collapsed.add(g.analysis.id)
     })
     setCollapsedIds(collapsed)
@@ -50,7 +54,9 @@ export function ProtocolValidationLoader({ controller }: ProtocolValidationLoade
       return next
     })
 
-  const pendingWithValue = results.filter((r) => !!r.value && !r.is_valid)
+  // Las excluidas no entran: el backend rechaza validar una fila que no
+  // corresponde, así que "Validar todos" se comería un error por cada una.
+  const pendingWithValue = results.filter((r) => !!r.value && !r.is_valid && !r.excluido)
 
   /**
    * Manda los pendientes en UNA request.
@@ -148,7 +154,11 @@ export function ProtocolValidationLoader({ controller }: ProtocolValidationLoade
         <p className="py-6 text-center text-sm text-gray-400">Ningún análisis coincide con “{search}”.</p>
       ) : (
         filteredGroups.map((group) => {
-          const validated = group.determinations.filter((d) => d.is_valid).length
+          // Mismo criterio que en la carga: las excluidas no son trabajo, así
+          // que salen del total.
+          const activas = group.determinations.filter((d) => !d.excluido)
+          const validated = activas.filter((d) => d.is_valid).length
+          const excluidas = group.determinations.length - activas.length
           return (
             <section key={group.analysis.id}>
               <button
@@ -168,8 +178,13 @@ export function ProtocolValidationLoader({ controller }: ProtocolValidationLoade
                     <ResumenDeResultados determinaciones={group.determinations} />
                   ) : null}
                   <Badge variant="outline" className="shrink-0 text-xs text-gray-500">
-                    {validated}/{group.determinations.length} validados
+                    {validated}/{activas.length} validados
                   </Badge>
+                  {excluidas > 0 && (
+                    <span className="shrink-0 text-xs font-medium text-orange-600">
+                      · {excluidas} fuera del protocolo
+                    </span>
+                  )}
                 </span>
               </button>
               {!collapsedIds.has(group.analysis.id) && (

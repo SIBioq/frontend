@@ -11,7 +11,9 @@ import { PERMISSIONS, PERMISSION_MESSAGES } from "@/config/permissions"
 import type { useProtocolResults } from "@/hooks/use-protocol-results"
 import { teclaDelEvento, useMacrosDeResultado } from "@/hooks/use-macros-de-resultado"
 import { calculateFormulaValue } from "@/lib/result-formulas"
+import type { Result } from "@/types"
 import { ResultDeterminationRow } from "./result-determination-row"
+import { ExclusionConfirmDialog } from "./exclusion-confirm-dialog"
 import { ResumenDeResultados } from "@/components/common/resumen-de-resultados"
 import { cn } from "@/lib/utils"
 import { ENTRADA_ABAJO } from "@/lib/entrada"
@@ -27,7 +29,7 @@ interface ProtocolResultsLoaderProps {
  * useProtocolResults en la página).
  */
 export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps) {
-  const { loading, error, protocol, results, groups, submodulos, orderedIds, values, saving, onChange, onSave, alternarCargaManual, borrarValor, previousResults, loadingPrevious, loadPrevious } =
+  const { loading, error, protocol, results, groups, submodulos, orderedIds, values, saving, onChange, onSave, alternarCargaManual, alternarExclusion, borrarValor, previousResults, loadingPrevious, loadPrevious } =
     controller
   const { hasPermission } = useAuth()
   // Sin `gestionar_resultados` la pantalla no desaparece: se sigue viendo todo
@@ -54,8 +56,11 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
     if (collapseInit || groups.length === 0) return
     const collapsed = new Set<number>()
     groups.forEach((g) => {
+      // Una excluida no puede dejar el grupo abierto para siempre: no hay nada
+      // que cargar ahí. El `length > 0` se mide sobre el grupo COMPLETO, así un
+      // análisis con todas las determinaciones excluidas colapsa igual.
       const allLoaded =
-        g.determinations.length > 0 && g.determinations.every((d) => !!d.value)
+        g.determinations.length > 0 && g.determinations.every((d) => d.excluido || !!d.value)
       if (allLoaded) collapsed.add(g.analysis.id)
     })
     setCollapsedIds(collapsed)
@@ -70,6 +75,28 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
     })
   const inputRefs = useRef<Record<number, HTMLInputElement | null>>({})
   const textareaRefs = useRef<Record<number, HTMLTextAreaElement | null>>({})
+
+  // LA FILA QUE QUEDÓ ESPERANDO UN "SÍ".
+  // Marcar una fila vacía no pregunta nada. Si ya tiene datos, el backend
+  // contesta 409 sin tocar nada y recién entonces se pregunta: un solo diálogo
+  // para toda la pantalla, con la fila que lo abrió.
+  const [pendienteDeConfirmar, setPendienteDeConfirmar] = useState<Result | null>(null)
+  const [confirmando, setConfirmando] = useState(false)
+
+  const alternarExclusionDeFila = async (result: Result, excluido: boolean) => {
+    const resultado = await alternarExclusion(result.id, excluido)
+    if (!resultado.ok && resultado.requiereConfirmacion) setPendienteDeConfirmar(result)
+  }
+
+  const confirmarExclusion = async () => {
+    if (!pendienteDeConfirmar) return
+    setConfirmando(true)
+    await alternarExclusion(pendienteDeConfirmar.id, true, true)
+    setConfirmando(false)
+    // Se cierra en los dos casos: si falló, el aviso ya lo dijo y dejar el
+    // diálogo abierto invita a volver a apretar lo mismo.
+    setPendienteDeConfirmar(null)
+  }
 
   const focusInput = (id?: number) => {
     if (id == null) return
@@ -239,7 +266,12 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
         <p className="py-6 text-center text-sm text-gray-400">Ningún análisis coincide con “{search}”.</p>
       ) : (
         filteredGroups.map((group) => {
-          const loaded = group.determinations.filter((d) => !!d.value).length
+          // El progreso cuenta lo que hay para cargar: las excluidas no son
+          // trabajo pendiente ni trabajo hecho, así que salen del denominador y
+          // se muestran aparte.
+          const activas = group.determinations.filter((d) => !d.excluido)
+          const loaded = activas.filter((d) => !!d.value).length
+          const excluidas = group.determinations.length - activas.length
           return (
             <section key={group.analysis.id}>
               <button
@@ -259,8 +291,13 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
                     <ResumenDeResultados determinaciones={group.determinations} />
                   ) : null}
                   <Badge variant="outline" className="shrink-0 text-xs text-gray-500">
-                    {loaded}/{group.determinations.length} cargados
+                    {loaded}/{activas.length} cargados
                   </Badge>
+                  {excluidas > 0 && (
+                    <span className="shrink-0 text-xs font-medium text-orange-600">
+                      · {excluidas} fuera del protocolo
+                    </span>
+                  )}
                 </span>
               </button>
               {!collapsedIds.has(group.analysis.id) && (
@@ -270,12 +307,16 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
                   const isFormula = !!result.determination.formula?.trim()
                   const formulaResolved = !!calc && calc.missingCodes.length === 0
                   const cargaManual = !!result.carga_manual
+                  const excluido = !!result.excluido
                   // En modo manual el campo se escribe aunque la fórmula
                   // resuelva: es justo el caso en que resuelve mal.
-                  const bloqueada = (formulaResolved && !cargaManual) || isCancelled || !canEdit
+                  const bloqueada = (formulaResolved && !cargaManual) || isCancelled || !canEdit || excluido
                   // Ya validado no se toca desde acá: se invalida primero.
                   const puedeCambiarModo =
                     !isCancelled && canEdit && !(result.is_valid && !result.is_wrong)
+                  // Una fila ya excluida siempre se puede volver a incluir: si
+                  // no, quedaría afuera para siempre sin forma de revertirlo.
+                  const puedeExcluir = puedeCambiarModo || (!isCancelled && canEdit && excluido)
                   return (
                     <ResultDeterminationRow
                       key={result.id}
@@ -289,6 +330,11 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
                       cargaManual={cargaManual}
                       onToggleCargaManual={
                         puedeCambiarModo ? () => void alternarCargaManual(result.id, !cargaManual) : undefined
+                      }
+                      onToggleExclusion={
+                        puedeExcluir
+                          ? (siguiente) => void alternarExclusionDeFila(result, siguiente)
+                          : undefined
                       }
                       onBorrarValor={puedeCambiarModo ? () => void borrarValor(result.id) : undefined}
                       onChange={(field, val) => onChange(result.id, field, val)}
@@ -356,6 +402,19 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
           )
         })
       )}
+
+      {/* UNO PARA TODA LA PANTALLA. Es el mismo diálogo para cualquier fila: lo
+          que cambia es el nombre. Uno por fila serían decenas de nodos
+          montados para que se use, como mucho, uno. */}
+      <ExclusionConfirmDialog
+        open={pendienteDeConfirmar !== null}
+        onOpenChange={(abierto) => {
+          if (!abierto) setPendienteDeConfirmar(null)
+        }}
+        nombreDeterminacion={pendienteDeConfirmar?.determination.name ?? ""}
+        onConfirmar={confirmarExclusion}
+        confirmando={confirmando}
+      />
     </div>
   )
 }

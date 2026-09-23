@@ -49,7 +49,7 @@ export function CreatePatientForm({
     email: "",
     country: "Argentina",
     province: "Córdoba",
-    city: "Leones",
+    city: "",
     address: "",
     observations: "",
   })

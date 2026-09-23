@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Loader2, Save, AlertTriangle, ShieldCheck, History, CheckCircle2, Circle, PencilLine, Sigma, Trash2 } from "lucide-react"
+import { Loader2, Save, AlertTriangle, ShieldCheck, History, CheckCircle2, Circle, PencilLine, Sigma, Trash2, CircleMinus, RotateCcw } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -34,6 +34,12 @@ interface ResultDeterminationRowProps {
   /** Enciende/apaga la carga a mano. `undefined` = no se puede (sin permiso,
    *  protocolo cancelado o resultado ya validado). */
   onToggleCargaManual?: () => void
+  /**
+   * Deja la determinación fuera de este protocolo, o la vuelve
+   * a incluir. `undefined` = no se puede (sin permiso, protocolo cancelado o
+   * resultado ya validado).
+   */
+  onToggleExclusion?: (excluido: boolean) => void
   /** Borra el valor cargado, en pantalla y en la base. */
   onBorrarValor?: () => void
   onChange: (field: "value" | "notes", value: string) => void
@@ -70,6 +76,7 @@ export function ResultDeterminationRow({
   formulaResolved,
   cargaManual,
   onToggleCargaManual,
+  onToggleExclusion,
   onBorrarValor,
   onChange,
   onSave,
@@ -90,6 +97,9 @@ export function ResultDeterminationRow({
   const hasValue = !!result.value
   const isValidated = result.is_valid
   const isWrong = result.is_wrong
+  // Fuera del protocolo: la fila se sigue viendo con su valor,
+  // pero no se escribe y no interviene en nada. No se borró nada.
+  const excluido = !!result.excluido
   const locked = isValidated && !isWrong
   // Sin permiso el input queda readOnly (no disabled) a propósito: así se puede
   // enfocar y seguir consultando los valores anteriores del paciente.
@@ -119,7 +129,11 @@ export function ResultDeterminationRow({
       data-result-row
       className={cn(
         "rounded-lg border p-3 transition-colors",
-        isWrong ? "border-red-300 bg-red-50" : isValidated ? "border-emerald-200 bg-emerald-50/40" : hasValue ? "border-blue-200 bg-blue-50/30" : "border-gray-200 bg-white",
+        // La exclusión manda sobre el resto de los estados: lo que importa de
+        // esta fila es que no cuenta, no si el valor está cargado o validado.
+        // Naranja y con borde izquierdo grueso para que no pase desapercibida
+        // al recorrer el protocolo; no es rojo porque no es un error.
+        excluido ? "border-orange-300 border-l-4 border-l-orange-500 bg-orange-50" : isWrong ? "border-red-300 bg-red-50" : isValidated ? "border-emerald-200 bg-emerald-50/40" : hasValue ? "border-blue-200 bg-blue-50/30" : "border-gray-200 bg-white",
       )}
     >
       {/* Línea superior: nombre + estado (con fecha de validación) */}
@@ -127,6 +141,12 @@ export function ResultDeterminationRow({
         <div className="min-w-0">
           <span className="font-semibold text-gray-900">{det.name}</span>
           {unit && <span className="ml-1 text-xs text-gray-500">({unit})</span>}
+          {excluido && (
+            <Badge className="ml-2 gap-1 border-transparent bg-orange-500 align-middle text-[10px] text-white hover:bg-orange-500">
+              <CircleMinus className="h-3 w-3" />
+              Fuera del protocolo
+            </Badge>
+          )}
           {isFormula && (
             <Badge
               variant="outline"
@@ -210,8 +230,10 @@ export function ResultDeterminationRow({
             }}
             onBlur={() => setTimeout(() => setFocused(false), 150)}
             readOnly={readOnly}
-            disabled={locked}
-            className={cn("h-11 text-base font-semibold", hasValue && !isValidated && "border-blue-300", isValidated && "border-emerald-300 bg-emerald-100")}
+            // Excluida no se escribe, pero el valor sigue a la vista: es el dato
+            // que se conserva, y esconderlo diría lo contrario.
+            disabled={locked || excluido}
+            className={cn("h-11 text-base font-semibold", hasValue && !isValidated && "border-blue-300", isValidated && "border-emerald-300 bg-emerald-100", excluido && "border-orange-200 bg-orange-100/60 text-orange-900/70")}
           />
           {enElInforme && (
             <p className="mt-1 text-[11px] tabular-nums text-gray-500">
@@ -270,7 +292,7 @@ export function ResultDeterminationRow({
           value={value.notes}
           onChange={(e) => onChange("notes", e.target.value)}
           onKeyDown={onTextareaKeyDown}
-          disabled={cannotSave}
+          disabled={cannotSave || excluido}
           rows={2}
           title={lockedReason}
           className="min-h-0 flex-1 resize-none text-sm"
@@ -278,7 +300,7 @@ export function ResultDeterminationRow({
         {/* Borrar el valor. Solo en las de fórmula y solo cuando el campo se
             puede escribir: en una fila en modo automático no tiene sentido,
             porque el cálculo lo vuelve a poner enseguida. */}
-        {isFormula && onBorrarValor && !readOnly && !cannotSave && !!value.value && (
+        {isFormula && onBorrarValor && !readOnly && !cannotSave && !excluido && !!value.value && (
           <Button
             size="sm"
             variant="outline"
@@ -292,17 +314,60 @@ export function ResultDeterminationRow({
         )}
         {/* El title va en el span: un botón deshabilitado no dispara eventos de
             mouse, así que su propio tooltip nativo no se muestra. */}
-        <span title={lockedReason} className="inline-flex">
-          <Button
-            size="sm"
-            onClick={onSave}
-            disabled={saving || cannotSave}
-            className="h-11 bg-[#204983] hover:bg-[#1a3d6f]"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          </Button>
-        </span>
+        {!excluido && (
+          <span title={lockedReason} className="inline-flex">
+            <Button
+              size="sm"
+              onClick={onSave}
+              disabled={saving || cannotSave}
+              className="h-11 bg-[#204983] hover:bg-[#1a3d6f]"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            </Button>
+          </span>
+        )}
       </div>
+
+      {/* DEJAR FUERA DEL PROTOCOLO: LA DETERMINACIÓN NO APLICA ACÁ.
+          Sale del estado, del informe y del envío, pero no se borra nada y se
+          puede volver a incluir. Va abajo a la derecha, lejos del valor: es una
+          decisión sobre la fila entera, no una edición del dato, y no conviene
+          que quede al alcance de un click apurado mientras se carga. */}
+      {(excluido || onToggleExclusion) && (
+        <div className="mt-2 flex items-end justify-between gap-3">
+          {/* Qué significa la fila naranja, dicho donde se la está mirando. */}
+          <p className="min-w-0 text-[11px] text-orange-800">
+            {excluido &&
+              "Fuera del protocolo: no cuenta para el estado del protocolo, el informe ni el envío. El dato cargado se conserva y podés volver a incluirla cuando quieras."}
+          </p>
+          {onToggleExclusion && (
+            <button
+              type="button"
+              onClick={() => onToggleExclusion(!excluido)}
+              aria-pressed={excluido}
+              aria-label={
+                excluido
+                  ? `Volver a incluir ${det.name} en este protocolo`
+                  : `Dejar ${det.name} fuera de este protocolo`
+              }
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+                excluido
+                  ? "border-orange-300 bg-white text-orange-700 hover:border-orange-500 hover:bg-orange-100"
+                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800",
+              )}
+              title={
+                excluido
+                  ? "Vuelve a contar para el estado del protocolo y el informe"
+                  : "La determinación no aplica en este protocolo: el dato se conserva pero deja de contar"
+              }
+            >
+              {excluido ? <RotateCcw className="h-3.5 w-3.5" /> : <CircleMinus className="h-3.5 w-3.5" />}
+              {excluido ? "Volver a incluir" : "Dejar fuera del protocolo"}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }

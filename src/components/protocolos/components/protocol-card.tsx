@@ -49,6 +49,7 @@ import {
   EditDialog,
   ReportDialog,
   CoseguroDialog,
+  EditarCargosDialog,
   EntidadDeFacturacionDialog,
   MedicoDialog,
   ObraSocialDialog,
@@ -58,7 +59,7 @@ import {
   UnplannedTransactionsDialog,
   PrivatePriceDialog,
 } from "./dialogs"
-import type { ArcaPayload } from "./dialogs"
+import type { ArcaPayload, CargosDelProtocolo } from "./dialogs"
 import { ProtocolHistoryDialog } from "./dialogs/protocol-history-dialog"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
 import { useAuth } from "@/contexts/auth-context"
@@ -240,6 +241,8 @@ export function ProtocolCard({
   const [arcaInvoicePdfUrl, setArcaInvoicePdfUrl] = useState<string | null>(null)
   const [coseguroDialogOpen, setCoseguroDialogOpen] = useState(false)
   const [isProcessingCoseguro, setIsProcessingCoseguro] = useState(false)
+  const [editarCargosDialogOpen, setEditarCargosDialogOpen] = useState(false)
+  const [isProcessingCargos, setIsProcessingCargos] = useState(false)
   const [entidadDialogOpen, setEntidadDialogOpen] = useState(false)
   const [guardandoEntidad, setGuardandoEntidad] = useState(false)
   const [medicoDialogOpen, setMedicoDialogOpen] = useState(false)
@@ -1164,6 +1167,12 @@ export function ProtocolCard({
     setCoseguroDialogOpen(true)
   }
 
+  const handleOpenEditarCargosDialog = async () => {
+    if (needsCompletedConfirm(handleOpenEditarCargosDialog)) return
+    if (!protocolDetail) await fetchProtocolDetail()
+    setEditarCargosDialogOpen(true)
+  }
+
   // Un solo camino para los tres: son todos un PATCH al protocolo y todos
   // terminan igual —refrescar el detalle y avisar—. Tres copias del mismo
   // try/catch era la otra opción.
@@ -1333,6 +1342,51 @@ export function ProtocolCard({
       return false
     } finally {
       setIsProcessingCoseguro(false)
+    }
+  }
+
+  const handleEditarCargos = async ({ materialDescartable, derivacion, coseguro }: CargosDelProtocolo): Promise<boolean> => {
+    setIsProcessingCargos(true)
+    try {
+      const extras = await apiRequest(PROTOCOL_ENDPOINTS.SET_EXTRAS(protocol.id), {
+        method: "POST",
+        body: {
+          material_descartable_amount: materialDescartable.toFixed(2),
+          derivacion_amount: derivacion.toFixed(2),
+        },
+      })
+      if (!extras.ok) {
+        const data = await extras.json().catch(() => ({}))
+        throw new Error(extractErrorMessage(data, "No se pudieron guardar material descartable y derivación."))
+      }
+
+      if (insuranceChargesCoseguro) {
+        const coseguroResponse = await apiRequest(PROTOCOL_ENDPOINTS.SET_COSEGURO(protocol.id), {
+          method: "POST",
+          body: { amount: coseguro.toFixed(2) },
+        })
+        if (!coseguroResponse.ok) {
+          const data = await coseguroResponse.json().catch(() => ({}))
+          const message = extractErrorMessage(data, "No se pudo guardar el coseguro.")
+          await refreshProtocolDetail()
+          onUpdate()
+          toast.error(`Material descartable y derivación se guardaron, pero el coseguro no: ${message}`, {
+            duration: TOAST_DURATION,
+          })
+          return false
+        }
+      }
+
+      await refreshProtocolDetail()
+      onUpdate()
+      toast.success("Cargos actualizados correctamente", { duration: TOAST_DURATION })
+      return true
+    } catch (error) {
+      console.error("Error setting protocol charges:", error)
+      toast.error(getErrorMessage(error, "No se pudieron guardar los cargos"), { duration: TOAST_DURATION })
+      return false
+    } finally {
+      setIsProcessingCargos(false)
     }
   }
 
@@ -1557,7 +1611,7 @@ export function ProtocolCard({
           onUncancel={handleUncancelProtocol}
           onOrderStatus={handleOpenOrderStatusDialog}
           onPreauth={handleOpenPreauthDialog}
-          onCoseguro={handleOpenCoseguroDialog}
+          onEditarCargos={handleOpenEditarCargosDialog}
           onEntidadDeFacturacion={handleAbrirEntidad}
           onMedico={handleAbrirMedico}
           onObraSocial={handleAbrirObraSocial}
@@ -1585,7 +1639,6 @@ export function ProtocolCard({
           canUncancel={Boolean(canUncancel)}
           showOrderAction={showOrderAction}
           showPreauthAction={showPreauthAction}
-          showCoseguroAction={showCoseguroAction}
         />
       ) : (
       <Card
@@ -1943,6 +1996,18 @@ export function ProtocolCard({
         insuranceChargesCoseguro={insuranceChargesCoseguro}
         onConfirm={handleSetCoseguro}
         isProcessing={isProcessingCoseguro}
+      />
+
+      <EditarCargosDialog
+        open={editarCargosDialogOpen}
+        onOpenChange={setEditarCargosDialogOpen}
+        protocolId={protocol.id}
+        materialDescartableActual={protocolDetail?.material_descartable_amount}
+        derivacionActual={protocolDetail?.derivacion_amount}
+        coseguroActual={protocolDetail?.coseguro_amount}
+        insuranceChargesCoseguro={insuranceChargesCoseguro}
+        onConfirm={handleEditarCargos}
+        isProcessing={isProcessingCargos}
       />
 
       <MedicoDialog
