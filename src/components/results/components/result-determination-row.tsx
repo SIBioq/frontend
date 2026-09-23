@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Loader2, Save, AlertTriangle, ShieldCheck, History, CheckCircle2, Circle, PencilLine, Sigma, Trash2, Ban, RotateCcw } from "lucide-react"
+import { Loader2, Save, AlertTriangle, ShieldCheck, History, CheckCircle2, Circle, PencilLine, Sigma, Trash2, CircleMinus, RotateCcw } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -35,7 +35,7 @@ interface ResultDeterminationRowProps {
    *  protocolo cancelado o resultado ya validado). */
   onToggleCargaManual?: () => void
   /**
-   * Marca la determinación como "no corresponde" en este protocolo, o la vuelve
+   * Deja la determinación fuera de este protocolo, o la vuelve
    * a incluir. `undefined` = no se puede (sin permiso, protocolo cancelado o
    * resultado ya validado).
    */
@@ -97,7 +97,7 @@ export function ResultDeterminationRow({
   const hasValue = !!result.value
   const isValidated = result.is_valid
   const isWrong = result.is_wrong
-  // "No corresponde" en este protocolo: la fila se sigue viendo con su valor,
+  // Fuera del protocolo: la fila se sigue viendo con su valor,
   // pero no se escribe y no interviene en nada. No se borró nada.
   const excluido = !!result.excluido
   const locked = isValidated && !isWrong
@@ -141,7 +141,7 @@ export function ResultDeterminationRow({
           {unit && <span className="ml-1 text-xs text-gray-500">({unit})</span>}
           {excluido && (
             <Badge variant="secondary" className="ml-2 align-middle text-[10px]">
-              No corresponde
+              Fuera del protocolo
             </Badge>
           )}
           {isFormula && (
@@ -178,32 +178,6 @@ export function ResultDeterminationRow({
             >
               {cargaManual ? <Sigma className="h-3 w-3" /> : <PencilLine className="h-3 w-3" />}
               {cargaManual ? "Volver a la fórmula" : "Cargar a mano"}
-            </button>
-          )}
-          {/* "NO CORRESPONDE": LA DETERMINACIÓN NO APLICA EN ESTE PROTOCOLO.
-              Sale del estado, del informe y del envío, pero no se borra nada y
-              se puede volver a incluir. Mismo estilo que el toggle de al lado:
-              son dos decisiones de la misma fila y no tienen por qué pesar
-              distinto a la vista. */}
-          {onToggleExclusion && (
-            <button
-              type="button"
-              onClick={() => onToggleExclusion(!excluido)}
-              aria-pressed={excluido}
-              aria-label={
-                excluido
-                  ? `Volver a incluir ${det.name} en este protocolo`
-                  : `Marcar ${det.name} como no corresponde en este protocolo`
-              }
-              className="ml-2 inline-flex items-center gap-1 rounded border border-gray-200 px-1.5 py-0.5 align-middle text-[10px] font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
-              title={
-                excluido
-                  ? "Vuelve a contar para el estado del protocolo y el informe"
-                  : "La determinación no aplica en este protocolo: el dato se conserva pero deja de contar"
-              }
-            >
-              {excluido ? <RotateCcw className="h-3 w-3" /> : <Ban className="h-3 w-3" />}
-              {excluido ? "Volver a incluir" : "No corresponde"}
             </button>
           )}
           {result.is_sent && (
@@ -351,12 +325,45 @@ export function ResultDeterminationRow({
         )}
       </div>
 
-      {/* Qué significa la fila gris, dicho donde se la está mirando. */}
-      {excluido && (
-        <p className="mt-2 text-[11px] text-slate-500">
-          No corresponde en este protocolo: no cuenta para el estado del protocolo, el informe ni el
-          envío. El dato cargado se conserva y podés volver a incluirla cuando quieras.
-        </p>
+      {/* DEJAR FUERA DEL PROTOCOLO: LA DETERMINACIÓN NO APLICA ACÁ.
+          Sale del estado, del informe y del envío, pero no se borra nada y se
+          puede volver a incluir. Va abajo a la derecha, lejos del valor: es una
+          decisión sobre la fila entera, no una edición del dato, y no conviene
+          que quede al alcance de un click apurado mientras se carga. */}
+      {(excluido || onToggleExclusion) && (
+        <div className="mt-2 flex items-end justify-between gap-3">
+          {/* Qué significa la fila gris, dicho donde se la está mirando. */}
+          <p className="min-w-0 text-[11px] text-slate-500">
+            {excluido &&
+              "Fuera del protocolo: no cuenta para el estado del protocolo, el informe ni el envío. El dato cargado se conserva y podés volver a incluirla cuando quieras."}
+          </p>
+          {onToggleExclusion && (
+            <button
+              type="button"
+              onClick={() => onToggleExclusion(!excluido)}
+              aria-pressed={excluido}
+              aria-label={
+                excluido
+                  ? `Volver a incluir ${det.name} en este protocolo`
+                  : `Dejar ${det.name} fuera de este protocolo`
+              }
+              className={cn(
+                "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors",
+                excluido
+                  ? "border-[#cbd8ea] bg-[#f4f7fb] text-[#204983] hover:border-[#204983] hover:bg-[#eaf0f8]"
+                  : "border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800",
+              )}
+              title={
+                excluido
+                  ? "Vuelve a contar para el estado del protocolo y el informe"
+                  : "La determinación no aplica en este protocolo: el dato se conserva pero deja de contar"
+              }
+            >
+              {excluido ? <RotateCcw className="h-3.5 w-3.5" /> : <CircleMinus className="h-3.5 w-3.5" />}
+              {excluido ? "Volver a incluir" : "Dejar fuera del protocolo"}
+            </button>
+          )}
+        </div>
       )}
     </div>
   )
