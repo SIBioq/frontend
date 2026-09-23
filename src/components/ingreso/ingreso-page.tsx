@@ -227,28 +227,11 @@ export default function IngresoPage() {
     ],
   )
 
-  /**
-   * `guardadoHabilitado` necesita saber si HAY borrador pendiente para no
-   * pisarlo (RF9) — pero ese dato es la propia salida de este hook, así que
-   * no se puede calcular antes de invocarlo en la misma llamada. Se cachea en
-   * un ref que se actualiza al final de cada render y se lee al principio del
-   * siguiente (no es un `useState` nuevo: no dispara re-render por sí solo).
-   * En el primer render el ref arranca en `false` sin haber leído nada
-   * todavía, pero ahí `isLoading` ya es `true` y bloquea el guardado por su
-   * cuenta, así que no hay ventana real en la que se pueda pisar un borrador.
-   */
-  const huboBorradorPendienteRef = useRef(false)
   const borrador = useBorradorDeIngreso({
     usuarioId: user?.id ?? null,
     instantanea,
-    guardadoHabilitado:
-      !isLoading &&
-      !huboBorradorPendienteRef.current &&
-      !restaurandoBorrador &&
-      !successData &&
-      faseDeCreacion === "idle",
+    guardadoHabilitado: !isLoading && !restaurandoBorrador && !successData && faseDeCreacion === "idle",
   })
-  huboBorradorPendienteRef.current = borrador.borradorPendiente !== null
 
   /**
    * Lo que este paciente usó la última vez, para subirlo en los combos.

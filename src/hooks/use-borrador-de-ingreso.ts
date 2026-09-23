@@ -26,7 +26,7 @@ export function useBorradorDeIngreso(params: {
   usuarioId: number | null
   /** Foto del formulario ahora. La arma la pantalla en cada render (useMemo). */
   instantanea: InstantaneaDeIngreso
-  /** false mientras se muestra el cartel, se restaura, carga la pantalla o se está creando el protocolo. */
+  /** false mientras la pantalla carga, se restaura o se está creando el protocolo; el cartel pendiente lo maneja el hook por su cuenta. */
   guardadoHabilitado: boolean
 }): ResultadoDelBorrador {
   const { usuarioId, instantanea, guardadoHabilitado } = params
@@ -48,18 +48,20 @@ export function useBorradorDeIngreso(params: {
   }, [usuarioId])
 
   // Debounce: el formulario cambia con cada tecla y no tiene sentido escribir
-  // en localStorage tan seguido. Mientras el cartel sigue arriba (guardado
-  // deshabilitado) no se guarda nada: el usuario todavía no decidió, y
-  // guardar acá pisaría el borrador que se le está ofreciendo.
+  // en localStorage tan seguido.
   useEffect(() => {
-    if (!guardadoHabilitado) return
+    // No se guarda mientras hay un borrador pendiente de decisión: el usuario
+    // todavía no dijo si lo quiere, y guardar acá pisaría justo el que se le
+    // está ofreciendo. La regla vive acá y no en la pantalla porque el dato
+    // —si hay borrador pendiente— es de este hook.
+    if (!guardadoHabilitado || borradorPendiente !== null) return
 
     const temporizador = setTimeout(() => {
       guardarBorrador(usuarioId, instantanea)
     }, RETARDO_DE_GUARDADO_MS)
 
     return () => clearTimeout(temporizador)
-  }, [usuarioId, instantanea, guardadoHabilitado])
+  }, [usuarioId, instantanea, guardadoHabilitado, borradorPendiente])
 
   const descartar = useCallback(() => {
     borrarBorrador(usuarioId)
