@@ -12,13 +12,28 @@ import {
 const RETARDO_DE_GUARDADO_MS = 600
 
 export type ResultadoDelBorrador = {
-  /** El borrador que había al entrar, hasta que el usuario decida. null = no hay nada que ofrecer. */
+  /**
+   * El borrador que había al entrar. Se ofrece con el cartel `AvisoDeBorrador`
+   * hasta que el usuario apriete «Continuar» (u ocurra un «Descartar», que lo
+   * baja junto con borrar todo). `null` = no hay nada que ofrecer.
+   *
+   * OJO: que esto no sea `null` NO quiere decir que el formulario esté vacío.
+   * La pantalla restaura el formulario solo, apenas entra (salvo que haya un
+   * paciente preseteado); el cartel se queda arriba nada más como aviso, y
+   * mientras tanto el formulario ya es editable y se sigue guardando (ver
+   * `marcarComoRestaurado`).
+   */
   borradorPendiente: BorradorDeIngreso | null
-  /** El usuario dijo «Descartar»: se borra del storage y se baja el cartel. */
-  descartar: () => void
-  /** El usuario dijo «Continuar»: baja el cartel y habilita el guardado, SIN borrar. */
-  olvidar: () => void
-  /** Para cuando el protocolo se creó o se limpió el formulario a mano. */
+  /** El formulario ya quedó igual al borrador (la pantalla lo restauró, sola
+   *  o porque el usuario apretó «Continuar»): a partir de acá los cambios que
+   *  haga el usuario se vuelven a guardar, aunque el cartel siga arriba. */
+  marcarComoRestaurado: () => void
+  /** El usuario apretó «Continuar»: sólo baja el cartel. El formulario ya
+   *  estaba relleno de antes, así que no hay nada más que hacer acá. */
+  ocultarCartel: () => void
+  /** Borra el borrador del storage y baja el cartel. La usan tanto el botón
+   *  «Descartar» (vía el reset de la pantalla) como la creación exitosa de un
+   *  protocolo y la limpieza manual del formulario. */
   borrar: () => void
 }
 
@@ -32,6 +47,13 @@ export function useBorradorDeIngreso(params: {
   const { usuarioId, instantanea, guardadoHabilitado } = params
 
   const [borradorPendiente, setBorradorPendiente] = useState<BorradorDeIngreso | null>(null)
+
+  // true desde que el formulario quedó igual al borrador (ver
+  // `marcarComoRestaurado`). Mientras el cartel está arriba y esto sigue en
+  // false, el guardado está frenado: es la ventana entre ofrecer el borrador
+  // y terminar de traer sus entidades del backend, y ahí el formulario
+  // todavía no es una copia fiel de lo guardado.
+  const [yaRestaurado, setYaRestaurado] = useState(false)
 
   // El id del usuario puede llegar null en el primer render (el contexto de
   // auth todavía no resolvió). Este ref recuerda para qué usuario ya se leyó
@@ -55,11 +77,12 @@ export function useBorradorDeIngreso(params: {
   // Debounce: el formulario cambia con cada tecla y no tiene sentido escribir
   // en localStorage tan seguido.
   useEffect(() => {
-    // No se guarda mientras hay un borrador pendiente de decisión: el usuario
-    // todavía no dijo si lo quiere, y guardar acá pisaría justo el que se le
-    // está ofreciendo. La regla vive acá y no en la pantalla porque el dato
-    // —si hay borrador pendiente— es de este hook.
-    if (!guardadoHabilitado || borradorPendiente !== null) {
+    // No se guarda mientras hay un borrador pendiente y el formulario TODAVÍA
+    // no es su copia: guardar acá pisaría, con lo que hay en pantalla (poco o
+    // nada), justo el borrador que se está por restaurar. Una vez que
+    // `marcarComoRestaurado` avisa que ya son lo mismo, el guardado sigue de
+    // largo aunque el cartel se quede arriba esperando el «Continuar».
+    if (!guardadoHabilitado || (borradorPendiente !== null && !yaRestaurado)) {
       sinGuardarRef.current = null
       return
     }
@@ -71,7 +94,7 @@ export function useBorradorDeIngreso(params: {
     }, RETARDO_DE_GUARDADO_MS)
 
     return () => clearTimeout(temporizador)
-  }, [usuarioId, instantanea, guardadoHabilitado, borradorPendiente])
+  }, [usuarioId, instantanea, guardadoHabilitado, borradorPendiente, yaRestaurado])
 
   // Al salir de la pantalla se escribe ya lo que quedaba en el debounce.
   useEffect(() => {
@@ -82,13 +105,11 @@ export function useBorradorDeIngreso(params: {
     }
   }, [])
 
-  const descartar = useCallback(() => {
-    sinGuardarRef.current = null
-    borrarBorrador(usuarioId)
-    setBorradorPendiente(null)
-  }, [usuarioId])
+  const marcarComoRestaurado = useCallback(() => {
+    setYaRestaurado(true)
+  }, [])
 
-  const olvidar = useCallback(() => {
+  const ocultarCartel = useCallback(() => {
     setBorradorPendiente(null)
   }, [])
 
@@ -96,7 +117,8 @@ export function useBorradorDeIngreso(params: {
     sinGuardarRef.current = null
     borrarBorrador(usuarioId)
     setBorradorPendiente(null)
+    setYaRestaurado(false)
   }, [usuarioId])
 
-  return { borradorPendiente, descartar, olvidar, borrar }
+  return { borradorPendiente, marcarComoRestaurado, ocultarCartel, borrar }
 }

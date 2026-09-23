@@ -269,6 +269,21 @@ export default function IngresoPage() {
   const location = useLocation()
   const navigate = useNavigate()
 
+  // Si se entró desde "Nuevo protocolo" en la ficha de un paciente, ese
+  // paciente gana: no tiene sentido restaurar el borrador solo por encima y
+  // reemplazárselo. Se calcula una única vez, con el `location.state` que
+  // trajo el mount, porque el efecto de más abajo lo vacía enseguida
+  // (`navigate(..., { state: null })`) y para la segunda vuelta ya no está.
+  const vinoConPacientePreseteadoRef = useRef(
+    Boolean((location.state as { patient?: Patient } | null)?.patient),
+  )
+  // true en cuanto arranca `restaurarBorrador`, la haya disparado el efecto
+  // de auto-restauración o el clic en «Continuar». Evita repetir los pedidos
+  // al backend si las dos vías llegaran a coincidir, y le dice a «Continuar»
+  // si todavía tiene que restaurar él mismo (caso paciente preseteado) o si
+  // sólo le queda bajar el cartel.
+  const restauracionArrancadaRef = useRef(false)
+
   useEffect(() => {
     loadInitialData()
   }, [])
@@ -286,6 +301,26 @@ export default function IngresoPage() {
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // El pedido es "el formulario como lo dejé, no vacío": si hay un borrador
+  // para ofrecer, se restaura solo apenas termina de cargar la pantalla. El
+  // cartel se sigue mostrando (avisando lo que se recuperó), pero ya no hace
+  // falta apretar «Continuar» para ver los datos.
+  //
+  // Excepción: paciente preseteado (ver `vinoConPacientePreseteadoRef`). Ahí
+  // se deja el cartel como estaba antes de este cambio, restaurando sólo si
+  // el usuario lo pide con «Continuar».
+  //
+  // Se espera a que termine `isLoading`: `restaurarBorrador` necesita
+  // `sendMethods` ya cargado para poder reponer el método de envío guardado.
+  useEffect(() => {
+    if (isLoading) return
+    if (!borrador.borradorPendiente) return
+    if (vinoConPacientePreseteadoRef.current) return
+    if (restauracionArrancadaRef.current) return
+    void restaurarBorrador()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, borrador.borradorPendiente])
 
   const extractErrorMessage = (errorData: unknown): string => formatApiError(errorData)
 
@@ -656,6 +691,10 @@ export default function IngresoPage() {
   const restaurarBorrador = async () => {
     const pendiente = borrador.borradorPendiente
     if (!pendiente) return
+    // Sincrónico y antes del primer `await`: cubre tanto la doble invocación
+    // de efectos de `StrictMode` como un cruce entre la auto-restauración y
+    // un clic en «Continuar» que llegara a colarse.
+    restauracionArrancadaRef.current = true
 
     setRestaurandoBorrador(true)
     try {
@@ -752,12 +791,25 @@ export default function IngresoPage() {
         toast.success("Seguimos donde lo dejaste")
       }
 
-      // Baja el cartel sin borrar el borrador del storage: el guardado se
-      // rehabilita solo y lo vuelve a escribir con los datos ya repuestos.
-      borrador.olvidar()
+      // El formulario ya es una copia del borrador: se rehabilita el guardado
+      // (sigue escribiendo por encima del mismo borrador) SIN bajar el
+      // cartel. El cartel lo baja quien apretó «Continuar» — acá puede haber
+      // llegado solo, sin que nadie lo apretara todavía.
+      borrador.marcarComoRestaurado()
     } finally {
       setRestaurandoBorrador(false)
     }
+  }
+
+  // Click en «Continuar» del cartel. En el caso normal la restauración ya
+  // corrió sola (`restauracionArrancadaRef.current` en true) y sólo queda
+  // bajar el cartel; si hay un paciente preseteado, la restauración nunca
+  // arrancó y hay que hacerla ahora, a mano, antes de bajarlo.
+  const handleContinuarBorrador = async () => {
+    if (!restauracionArrancadaRef.current) {
+      await restaurarBorrador()
+    }
+    borrador.ocultarCartel()
   }
 
   const isPrivateInsurance = selectedInsurance?.name.toLowerCase() === "particular"
@@ -1093,8 +1145,8 @@ export default function IngresoPage() {
             <AvisoDeBorrador
               cantidadDeAnalisis={borrador.borradorPendiente.analisis.length}
               guardadoEn={borrador.borradorPendiente.guardadoEn}
-              onContinuar={() => void restaurarBorrador()}
-              onDescartar={borrador.descartar}
+              onContinuar={() => void handleContinuarBorrador()}
+              onDescartar={handleReset}
               restaurando={restaurandoBorrador}
             />
           </div>

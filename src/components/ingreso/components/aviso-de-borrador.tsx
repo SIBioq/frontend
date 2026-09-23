@@ -9,11 +9,19 @@ type Props = {
   guardadoEn: string
   onContinuar: () => void
   onDescartar: () => void
+  /** true mientras se están pidiendo al backend las entidades del borrador
+   *  (auto al entrar, o a mano si «Continuar» todavía tiene que restaurar). */
   restaurando: boolean
 }
 
 /**
- * Cartel que ofrece retomar un protocolo que quedó a medias.
+ * Cartel que avisa que se recuperó un protocolo que había quedado a medias.
+ *
+ * El formulario ya se restauró solo antes de que este cartel se pinte (salvo
+ * que se haya entrado con un paciente preseteado, ver `ingreso-page.tsx`):
+ * esto es sólo el aviso, no el disparador de la restauración.
+ * - «Continuar» sólo baja el cartel: no hay nada más para rellenar.
+ * - «Descartar» borra el borrador y reinicia el formulario a vacío.
  *
  * Presentacional puro: no toca `localStorage` ni sabe nada del esquema del
  * borrador. Sólo se le pasan los datos ya resueltos (`useBorradorDeIngreso`
@@ -45,10 +53,10 @@ export function AvisoDeBorrador({
         <div className="flex items-start gap-3">
           <FileClock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
           <div>
-            <p className="font-bold text-gray-800">Quedó este protocolo sin enviar</p>
+            <p className="font-bold text-gray-800">Recuperamos el protocolo que dejaste a medias</p>
             <p className="text-sm text-amber-800">
-              Lo dejaste a medias a las {hora}
-              {tramoDeAnalisis}. ¿Querés seguir con ese o descartarlo?
+              Quedó a las {hora}
+              {tramoDeAnalisis}. ¿Seguís con este o empezás de cero?
             </p>
           </div>
         </div>
