@@ -20,7 +20,7 @@ Ofrecer un toggle en cada fila de carga de resultados para marcar una determinac
 - Modificó `result-formulas.ts` para tratar determinaciones excluidas como dependencias faltantes en el cálculo de fórmulas.
 - Actualizó `protocol-results-loader.tsx` para mostrar "X/Y cargados · N fuera del protocolo" en la barra de progreso.
 - Modificó `protocol-validation-loader.tsx` y `validation-result-row.tsx` para omitir excluidas en validación y "Validar todos".
-- Modificó `resumen-de-resultados.tsx` para filtrar determinaciones excluidas en la lista de resultados con valor (no calcula submódulos, sólo los muestra).
+- Modificó `resumen-de-resultados.tsx` para filtrar las determinaciones excluidas de la lista de resultados con valor. Este componente no interviene en los submódulos de corroboración: no los calcula ni los muestra.
 
 ## Decisiones
 
@@ -46,7 +46,7 @@ Ofrecer un toggle en cada fila de carga de resultados para marcar una determinac
 | `src/components/results/components/protocol-results-loader.tsx` | Barra de progreso con contador de las que quedaron fuera |
 | `src/components/validacion/components/protocol-validation-loader.tsx` | Omisión de excluidas en vista de validación |
 | `src/components/validacion/components/validation-result-row.tsx` | UI y filtrado en filas de validación |
-| `src/components/common/resumen-de-resultados.tsx` | Rechazo de submódulos con excluidas |
+| `src/components/common/resumen-de-resultados.tsx` | Excluidas fuera de la lista de resultados con valor |
 
 ## Cómo se probó
 
