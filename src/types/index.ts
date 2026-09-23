@@ -1180,6 +1180,8 @@ export interface Result {
    * la fórmula está mal y traba la fila.
    */
   carga_manual?: boolean
+  /** La determinación no aplica en este protocolo: se conserva el dato pero no interviene. */
+  excluido?: boolean
   /** true si este resultado ya fue enviado al paciente (envío parcial: se puede
    * enviar aunque el análisis no esté completo, con al menos un resultado). */
   is_sent?: boolean

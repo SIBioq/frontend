@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState } from "react"
-import { Loader2, Save, AlertTriangle, ShieldCheck, History, CheckCircle2, Circle, PencilLine, Sigma, Trash2 } from "lucide-react"
+import { Loader2, Save, AlertTriangle, ShieldCheck, History, CheckCircle2, Circle, PencilLine, Sigma, Trash2, Ban, RotateCcw } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -34,6 +34,12 @@ interface ResultDeterminationRowProps {
   /** Enciende/apaga la carga a mano. `undefined` = no se puede (sin permiso,
    *  protocolo cancelado o resultado ya validado). */
   onToggleCargaManual?: () => void
+  /**
+   * Marca la determinación como "no corresponde" en este protocolo, o la vuelve
+   * a incluir. `undefined` = no se puede (sin permiso, protocolo cancelado o
+   * resultado ya validado).
+   */
+  onToggleExclusion?: (excluido: boolean) => void
   /** Borra el valor cargado, en pantalla y en la base. */
   onBorrarValor?: () => void
   onChange: (field: "value" | "notes", value: string) => void
@@ -70,6 +76,7 @@ export function ResultDeterminationRow({
   formulaResolved,
   cargaManual,
   onToggleCargaManual,
+  onToggleExclusion,
   onBorrarValor,
   onChange,
   onSave,
@@ -90,6 +97,9 @@ export function ResultDeterminationRow({
   const hasValue = !!result.value
   const isValidated = result.is_valid
   const isWrong = result.is_wrong
+  // "No corresponde" en este protocolo: la fila se sigue viendo con su valor,
+  // pero no se escribe y no interviene en nada. No se borró nada.
+  const excluido = !!result.excluido
   const locked = isValidated && !isWrong
   // Sin permiso el input queda readOnly (no disabled) a propósito: así se puede
   // enfocar y seguir consultando los valores anteriores del paciente.
@@ -119,7 +129,9 @@ export function ResultDeterminationRow({
       data-result-row
       className={cn(
         "rounded-lg border p-3 transition-colors",
-        isWrong ? "border-red-300 bg-red-50" : isValidated ? "border-emerald-200 bg-emerald-50/40" : hasValue ? "border-blue-200 bg-blue-50/30" : "border-gray-200 bg-white",
+        // La exclusión manda sobre el resto de los estados: lo que importa de
+        // esta fila es que no cuenta, no si el valor está cargado o validado.
+        excluido ? "border-slate-300 bg-slate-50" : isWrong ? "border-red-300 bg-red-50" : isValidated ? "border-emerald-200 bg-emerald-50/40" : hasValue ? "border-blue-200 bg-blue-50/30" : "border-gray-200 bg-white",
       )}
     >
       {/* Línea superior: nombre + estado (con fecha de validación) */}
@@ -127,6 +139,11 @@ export function ResultDeterminationRow({
         <div className="min-w-0">
           <span className="font-semibold text-gray-900">{det.name}</span>
           {unit && <span className="ml-1 text-xs text-gray-500">({unit})</span>}
+          {excluido && (
+            <Badge variant="secondary" className="ml-2 align-middle text-[10px]">
+              No corresponde
+            </Badge>
+          )}
           {isFormula && (
             <Badge
               variant="outline"
@@ -161,6 +178,32 @@ export function ResultDeterminationRow({
             >
               {cargaManual ? <Sigma className="h-3 w-3" /> : <PencilLine className="h-3 w-3" />}
               {cargaManual ? "Volver a la fórmula" : "Cargar a mano"}
+            </button>
+          )}
+          {/* "NO CORRESPONDE": LA DETERMINACIÓN NO APLICA EN ESTE PROTOCOLO.
+              Sale del estado, del informe y del envío, pero no se borra nada y
+              se puede volver a incluir. Mismo estilo que el toggle de al lado:
+              son dos decisiones de la misma fila y no tienen por qué pesar
+              distinto a la vista. */}
+          {onToggleExclusion && (
+            <button
+              type="button"
+              onClick={() => onToggleExclusion(!excluido)}
+              aria-pressed={excluido}
+              aria-label={
+                excluido
+                  ? `Volver a incluir ${det.name} en este protocolo`
+                  : `Marcar ${det.name} como no corresponde en este protocolo`
+              }
+              className="ml-2 inline-flex items-center gap-1 rounded border border-gray-200 px-1.5 py-0.5 align-middle text-[10px] font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+              title={
+                excluido
+                  ? "Vuelve a contar para el estado del protocolo y el informe"
+                  : "La determinación no aplica en este protocolo: el dato se conserva pero deja de contar"
+              }
+            >
+              {excluido ? <RotateCcw className="h-3 w-3" /> : <Ban className="h-3 w-3" />}
+              {excluido ? "Volver a incluir" : "No corresponde"}
             </button>
           )}
           {result.is_sent && (
@@ -210,8 +253,10 @@ export function ResultDeterminationRow({
             }}
             onBlur={() => setTimeout(() => setFocused(false), 150)}
             readOnly={readOnly}
-            disabled={locked}
-            className={cn("h-11 text-base font-semibold", hasValue && !isValidated && "border-blue-300", isValidated && "border-emerald-300 bg-emerald-100")}
+            // Excluida no se escribe, pero el valor sigue a la vista: es el dato
+            // que se conserva, y esconderlo diría lo contrario.
+            disabled={locked || excluido}
+            className={cn("h-11 text-base font-semibold", hasValue && !isValidated && "border-blue-300", isValidated && "border-emerald-300 bg-emerald-100", excluido && "border-slate-300 bg-slate-100 text-slate-600")}
           />
           {enElInforme && (
             <p className="mt-1 text-[11px] tabular-nums text-gray-500">
@@ -270,7 +315,7 @@ export function ResultDeterminationRow({
           value={value.notes}
           onChange={(e) => onChange("notes", e.target.value)}
           onKeyDown={onTextareaKeyDown}
-          disabled={cannotSave}
+          disabled={cannotSave || excluido}
           rows={2}
           title={lockedReason}
           className="min-h-0 flex-1 resize-none text-sm"
@@ -278,7 +323,7 @@ export function ResultDeterminationRow({
         {/* Borrar el valor. Solo en las de fórmula y solo cuando el campo se
             puede escribir: en una fila en modo automático no tiene sentido,
             porque el cálculo lo vuelve a poner enseguida. */}
-        {isFormula && onBorrarValor && !readOnly && !cannotSave && !!value.value && (
+        {isFormula && onBorrarValor && !readOnly && !cannotSave && !excluido && !!value.value && (
           <Button
             size="sm"
             variant="outline"
@@ -292,17 +337,27 @@ export function ResultDeterminationRow({
         )}
         {/* El title va en el span: un botón deshabilitado no dispara eventos de
             mouse, así que su propio tooltip nativo no se muestra. */}
-        <span title={lockedReason} className="inline-flex">
-          <Button
-            size="sm"
-            onClick={onSave}
-            disabled={saving || cannotSave}
-            className="h-11 bg-[#204983] hover:bg-[#1a3d6f]"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          </Button>
-        </span>
+        {!excluido && (
+          <span title={lockedReason} className="inline-flex">
+            <Button
+              size="sm"
+              onClick={onSave}
+              disabled={saving || cannotSave}
+              className="h-11 bg-[#204983] hover:bg-[#1a3d6f]"
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            </Button>
+          </span>
+        )}
       </div>
+
+      {/* Qué significa la fila gris, dicho donde se la está mirando. */}
+      {excluido && (
+        <p className="mt-2 text-[11px] text-slate-500">
+          No corresponde en este protocolo: no cuenta para el estado del protocolo, el informe ni el
+          envío. El dato cargado se conserva y podés volver a incluirla cuando quieras.
+        </p>
+      )}
     </div>
   )
 }

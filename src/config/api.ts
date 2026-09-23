@@ -285,6 +285,8 @@ export const RESULTS_ENDPOINTS = {
   BY_PROTOCOL: (id: number) => buildApiUrl(`/results/results/by-protocol/${id}/`),
   RESULT_DETAIL: (id: number) => buildApiUrl(`/results/results/${id}/`),
   VALIDATE: (id: number) => buildApiUrl(`/results/results/${id}/validate/`),
+  /** "No corresponde": la determinación no aplica en ESTE protocolo. Reversible. */
+  EXCLUSION: (id: number) => buildApiUrl(`/results/results/${id}/exclusion/`),
   /** Validar varios de una: "Validar todos" mandaba una request por resultado. */
   VALIDATE_BATCH: buildApiUrl("/results/results/validate-batch/"),
   PREVIOUS_RESULTS: (patientId: number, determinationId: number) =>

@@ -20,6 +20,18 @@ export interface ResultGroup {
   determinations: Result[]
 }
 
+/**
+ * Lo que devuelve `alternarExclusion`.
+ *
+ * `requiereConfirmacion` es el 409 del backend: la fila ya tiene datos y hay
+ * que preguntar antes. No es un error —nada cambió en el servidor—, así que la
+ * pantalla lo usa para abrir el diálogo y no para mostrar una falla.
+ */
+export type ResultadoExclusion =
+  | { ok: true }
+  | { ok: false; requiereConfirmacion: true }
+  | { ok: false; requiereConfirmacion?: false }
+
 export interface ResultsProtocolHeader {
   id: number
   patient: { id: number; dni?: string; first_name: string; last_name: string; age?: number | null; is_anonymous?: boolean } | null
@@ -50,6 +62,10 @@ function groupByAnalysis(results: Result[]): ResultGroup[] {
 /** Un protocolo cancelado se ve pero no se escribe. El backend además lo bloquea. */
 const esCancelado = (protocolo: ResultsProtocolHeader | null | undefined): boolean =>
   (protocolo?.status?.name || "").trim().toLowerCase() === "cancelado"
+
+/** Mismo criterio que el aviso de la pantalla: cancelado se ve, no se escribe. */
+const AVISO_PROTOCOLO_CANCELADO =
+  "El protocolo está cancelado: descancelalo para editar los resultados."
 
 
 export function useProtocolResults(protocolId: number) {
@@ -219,7 +235,12 @@ export function useProtocolResults(protocolId: number) {
   }, [fetchResults])
 
   const groups = useMemo(() => groupByAnalysis(results), [results])
-  const orderedIds = useMemo(() => groups.flatMap((g) => g.determinations.map((d) => d.id)), [groups])
+  // Las excluidas quedan afuera del recorrido: Enter y las flechas las saltean,
+  // porque no hay nada que cargar ahí.
+  const orderedIds = useMemo(
+    () => groups.flatMap((g) => g.determinations.filter((d) => !d.excluido).map((d) => d.id)),
+    [groups],
+  )
 
   // Recálculo de fórmulas diferido: la tecla hace solo el set puntual.
   const formulaTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -321,6 +342,75 @@ export function useProtocolResults(protocolId: number) {
       } catch (e) {
         toast.error(getErrorMessage(e, "No se pudo cambiar el modo de carga"))
         return false
+      } finally {
+        setSaving((prev) => ({ ...prev, [resultId]: false }))
+      }
+    },
+    [apiRequest, canEditResults, results],
+  )
+
+  /**
+   * Marca una determinación como "no corresponde" en ESTE protocolo, o la vuelve
+   * a incluir.
+   *
+   * NO SE BORRA NADA
+   * ================
+   * Valor, notas, evaluación y firma de validación quedan tal cual: la fila
+   * simplemente deja de intervenir en el estado del protocolo, el informe y el
+   * envío. Al volver a incluirla reaparece completa.
+   *
+   * EL 409 NO ES UNA FALLA
+   * ======================
+   * Si la fila ya tiene datos, el backend no cambia nada y pide confirmación.
+   * Eso se devuelve como `requiereConfirmacion` —sin aviso de error— para que
+   * la pantalla abra el diálogo y reintente con `confirmarConDatos`.
+   */
+  const alternarExclusion = useCallback(
+    async (
+      resultId: number,
+      excluido: boolean,
+      confirmarConDatos?: boolean,
+    ): Promise<ResultadoExclusion> => {
+      if (!canEditResults) {
+        toast.error(PERMISSION_MESSAGES.MANAGE_RESULTS)
+        return { ok: false }
+      }
+      if (canceladoRef.current) {
+        toast.error(AVISO_PROTOCOLO_CANCELADO)
+        return { ok: false }
+      }
+      setSaving((prev) => ({ ...prev, [resultId]: true }))
+      try {
+        const res = await apiRequest(RESULTS_ENDPOINTS.EXCLUSION(resultId), {
+          method: "POST",
+          body: { excluido, ...(confirmarConDatos ? { confirmar_con_datos: true } : {}) },
+        })
+        if (!res.ok) {
+          const err = (await res.json().catch(() => ({}))) as {
+            detail?: string
+            requires_confirmation?: boolean
+          }
+          if (res.status === 409 && err.requires_confirmation) {
+            return { ok: false, requiereConfirmacion: true }
+          }
+          throw new Error(formatApiError(err, "No se pudo cambiar la exclusión"))
+        }
+        const updated: Result = await res.json()
+        const siguientes = results.map((r) => (r.id === resultId ? updated : r))
+        setResults(siguientes)
+        // Con la lista ya actualizada: las fórmulas que usaban esta fila como
+        // componente dejan de resolver (o vuelven a hacerlo al reincluirla).
+        setValues((prev) => applyFormulaCalculations(siguientes, prev))
+        if (updated.protocol_status !== undefined) {
+          setProtocol((prev) => (prev ? { ...prev, status: updated.protocol_status ?? null } : prev))
+        }
+        toast.success(
+          excluido ? "Determinación marcada como no corresponde" : "Determinación vuelta a incluir",
+        )
+        return { ok: true }
+      } catch (e) {
+        toast.error(getErrorMessage(e, "No se pudo cambiar la exclusión"))
+        return { ok: false }
       } finally {
         setSaving((prev) => ({ ...prev, [resultId]: false }))
       }
@@ -485,33 +575,45 @@ export function useProtocolResults(protocolId: number) {
    */
   const estadoSubmodulos = useMemo(() => {
     const resultadoPorDeterminacion = new Map<number, Result>()
-    results.forEach((r) => resultadoPorDeterminacion.set(r.determination.id, r))
-
-    return submodulos.map((s) => {
-      let suma = 0
-      const faltantes: string[] = []
-
-      for (const determinacionId of s.determinaciones) {
-        const resultado = resultadoPorDeterminacion.get(determinacionId)
-        const crudo = resultado ? (values[resultado.id]?.value ?? resultado.value) : ""
-        const numero = Number.parseFloat(String(crudo).replace(",", "."))
-        if (!crudo || Number.isNaN(numero)) {
-          faltantes.push(resultado?.determination.name || "")
-          continue
-        }
-        suma += numero
+    const determinacionesExcluidas = new Set<number>()
+    results.forEach((r) => {
+      if (r.excluido) {
+        determinacionesExcluidas.add(r.determination.id)
+        return
       }
-
-      const esperado = Number.parseFloat(s.total_esperado) || 0
-      const tolerancia = Number.parseFloat(s.tolerancia) || 0
-      const completo = faltantes.length === 0
-      // Sin todo cargado no se opina: la suma no puede dar y marcar error sobre
-      // algo que se está tipeando enseña a ignorar el error.
-      const cierra =
-        completo && suma >= esperado - tolerancia && suma <= esperado + tolerancia
-
-      return { ...s, suma, esperado, tolerancia, completo, cierra, faltantes }
+      resultadoPorDeterminacion.set(r.determination.id, r)
     })
+
+    return submodulos
+      // Si una de las determinaciones no corresponde en este protocolo, la suma
+      // del catálogo ya no aplica: mostrarla en rojo sería señalar un error que
+      // no existe. Mismo criterio que `corroboracion.py` en el backend.
+      .filter((s) => !s.determinaciones.some((id) => determinacionesExcluidas.has(id)))
+      .map((s) => {
+        let suma = 0
+        const faltantes: string[] = []
+
+        for (const determinacionId of s.determinaciones) {
+          const resultado = resultadoPorDeterminacion.get(determinacionId)
+          const crudo = resultado ? (values[resultado.id]?.value ?? resultado.value) : ""
+          const numero = Number.parseFloat(String(crudo).replace(",", "."))
+          if (!crudo || Number.isNaN(numero)) {
+            faltantes.push(resultado?.determination.name || "")
+            continue
+          }
+          suma += numero
+        }
+
+        const esperado = Number.parseFloat(s.total_esperado) || 0
+        const tolerancia = Number.parseFloat(s.tolerancia) || 0
+        const completo = faltantes.length === 0
+        // Sin todo cargado no se opina: la suma no puede dar y marcar error sobre
+        // algo que se está tipeando enseña a ignorar el error.
+        const cierra =
+          completo && suma >= esperado - tolerancia && suma <= esperado + tolerancia
+
+        return { ...s, suma, esperado, tolerancia, completo, cierra, faltantes }
+      })
   }, [submodulos, results, values])
 
   return {
@@ -529,6 +631,7 @@ export function useProtocolResults(protocolId: number) {
     onValidate,
     onValidateMany,
     alternarCargaManual,
+    alternarExclusion,
     borrarValor,
     previousResults,
     loadingPrevious,

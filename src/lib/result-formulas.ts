@@ -37,6 +37,11 @@ export type FormulaResult = {
   analysis: FormulaAnalysis
   /** Con esto encendido la fórmula no vuelve a pisar el valor. */
   carga_manual?: boolean
+  /**
+   * "No corresponde" en ESTE protocolo: la fila conserva su valor pero sale de
+   * la cuenta. Ni se le calcula la fórmula ni sirve como componente de otra.
+   */
+  excluido?: boolean
 }
 
 export type FormulaValue = {
@@ -203,12 +208,16 @@ export const calculateFormulaValue = (
   const missingCodes: string[] = []
   const decimalesDeLosComponentes: number[] = []
   const codesByNumber = buildCodesByNumber(allResults, result.analysis.code)
+  // Un componente excluido es un componente que no está: la fórmula no aplica
+  // en este protocolo, igual que para el backend cuando descarta el submódulo.
+  const excluidos = new Set(allResults.filter((r) => r.excluido).map((r) => r.id))
   let expression = normalizeExpression(formula)
 
   expression = expression.replace(/\[([^\]]+)\]/g, (_match, rawCode: string) => {
     const code = resolveRelativeCode(rawCode.trim(), result.analysis.code, codesByNumber)
     const dependencyId = resultIdByCode.get(code)
-    const crudo = dependencyId ? extraerNumero(values[dependencyId]?.value) : null
+    const disponible = dependencyId !== undefined && !excluidos.has(dependencyId)
+    const crudo = disponible ? extraerNumero(values[dependencyId]?.value) : null
     const dependencyValue = crudo === null ? null : toFormulaNumber(crudo)
 
     if (crudo === null || dependencyValue === null) {
@@ -246,6 +255,9 @@ export const applyFormulaCalculations = <T extends FormulaResult>(
       // sirviendo como componente de OTRAS fórmulas —está en `nextValues`—,
       // que es lo que se quiere cuando una fórmula quedó mal y el resto no.
       if (result.carga_manual) return
+      // "No corresponde": la determinación no aplica en este protocolo, así que
+      // no se le calcula nada. Lo que tenga cargado queda tal cual.
+      if (result.excluido) return
 
       const calculation = calculateFormulaValue(result, results, nextValues)
       if (!calculation || calculation.missingCodes.length > 0) return
@@ -291,6 +303,7 @@ export type FormulaGuardable = FormulaResult & {
  * QUÉ NO SE MANDA
  * ===============
  * - Lo que está en carga a mano: la fórmula quedó de lado a propósito.
+ * - Lo excluido ("no corresponde"): el backend rechaza escribir esa fila.
  * - Lo ya validado: se invalida primero y recién ahí se toca.
  * - Lo que todavía no calculó nada.
  * - Con `soloVacias`, lo que ya tiene un valor guardado. Es el modo de cuando
@@ -305,6 +318,7 @@ export function formulasParaGuardar<T extends FormulaGuardable>(
   return resultados.filter((resultado) => {
     if (!resultado.determination.formula?.trim()) return false
     if (resultado.carga_manual) return false
+    if (resultado.excluido) return false
     if (resultado.is_valid && !resultado.is_wrong) return false
 
     const calculado = valores[resultado.id]?.value ?? ""
