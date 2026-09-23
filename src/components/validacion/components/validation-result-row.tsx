@@ -85,7 +85,7 @@ export function ValidationResultRow({ result, saving, disabled = false, onValida
   const isValidated = result.is_valid
   const isWrong = result.is_wrong
   const hasValue = !!result.value
-  // "No corresponde" en este protocolo: se ve con su valor, pero no se valida
+  // Fuera del protocolo: se ve con su valor, pero no se valida
   // —el backend lo rechaza— y no interviene en el informe. Se saca desde la
   // pantalla de carga, no desde acá.
   const excluido = !!result.excluido
@@ -131,7 +131,7 @@ export function ValidationResultRow({ result, saving, disabled = false, onValida
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {excluido && (
             <Badge variant="secondary" className="text-[10px]">
-              No corresponde
+              Fuera del protocolo
             </Badge>
           )}
           {referenceItems.slice(0, 2).map((item) => (

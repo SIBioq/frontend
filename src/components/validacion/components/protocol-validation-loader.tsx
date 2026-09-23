@@ -182,7 +182,7 @@ export function ProtocolValidationLoader({ controller }: ProtocolValidationLoade
                   </Badge>
                   {excluidas > 0 && (
                     <span className="shrink-0 text-xs text-gray-400">
-                      · {excluidas} {excluidas === 1 ? "no corresponde" : "no corresponden"}
+                      · {excluidas} fuera del protocolo
                     </span>
                   )}
                 </span>

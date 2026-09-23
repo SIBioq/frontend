@@ -350,7 +350,7 @@ export function useProtocolResults(protocolId: number) {
   )
 
   /**
-   * Marca una determinación como "no corresponde" en ESTE protocolo, o la vuelve
+   * Deja una determinación fuera de ESTE protocolo, o la vuelve
    * a incluir.
    *
    * NO SE BORRA NADA
@@ -405,7 +405,7 @@ export function useProtocolResults(protocolId: number) {
           setProtocol((prev) => (prev ? { ...prev, status: updated.protocol_status ?? null } : prev))
         }
         toast.success(
-          excluido ? "Determinación marcada como no corresponde" : "Determinación vuelta a incluir",
+          excluido ? "Determinación dejada fuera del protocolo" : "Determinación vuelta a incluir",
         )
         return { ok: true }
       } catch (e) {
