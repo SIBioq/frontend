@@ -41,6 +41,18 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* TIPOGRAFÍA MATEMÁTICA, NO KATEX.
+   Habilita la utilidad `font-matematica` de Tailwind v4 (genera `font-*` a
+   partir de cada token `--font-*`), para la fórmula explicada de una
+   determinación calculada. Las fórmulas que se muestran son expresiones de
+   una línea (`(a × 10) ÷ b`), no ecuaciones con fracciones ni matrices: no
+   justifican sumar una librería de tipesetting como KaTeX. Con una tipografía
+   pensada para matemática alcanza para que los signos × ÷ − y los números se
+   lean bien. */
+@theme {
+  --font-matematica: "STIX Two Text", "STIX Two Math", Cambria, Georgia, serif;
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);

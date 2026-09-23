@@ -10,7 +10,7 @@ import useAuth from "@/contexts/auth-context"
 import { PERMISSIONS, PERMISSION_MESSAGES } from "@/config/permissions"
 import type { useProtocolResults } from "@/hooks/use-protocol-results"
 import { teclaDelEvento, useMacrosDeResultado } from "@/hooks/use-macros-de-resultado"
-import { calculateFormulaValue } from "@/lib/result-formulas"
+import { calculateFormulaValue, describirFormula } from "@/lib/result-formulas"
 import type { Result } from "@/types"
 import { ResultDeterminationRow } from "./result-determination-row"
 import { ExclusionConfirmDialog } from "./exclusion-confirm-dialog"
@@ -305,6 +305,7 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
                 {group.determinations.map((result) => {
                   const calc = calculateFormulaValue(result, results, values)
                   const isFormula = !!result.determination.formula?.trim()
+                  const formulaExplicacion = isFormula ? describirFormula(result, results, values) : null
                   const formulaResolved = !!calc && calc.missingCodes.length === 0
                   const cargaManual = !!result.carga_manual
                   const excluido = !!result.excluido
@@ -328,6 +329,7 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
                       isFormula={isFormula}
                       formulaResolved={formulaResolved}
                       cargaManual={cargaManual}
+                      formulaExplicacion={formulaExplicacion}
                       onToggleCargaManual={
                         puedeCambiarModo ? () => void alternarCargaManual(result.id, !cargaManual) : undefined
                       }

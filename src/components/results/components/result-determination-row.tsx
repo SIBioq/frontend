@@ -17,8 +17,10 @@ import {
 import { LAB_TIME_ZONE } from "@/lib/format-utils"
 import { cn } from "@/lib/utils"
 import { expandirNumero, unidadCompleta } from "@/lib/notacion"
+import type { ExplicacionFormula } from "@/lib/result-formulas"
 import type { PreviousResult, Result } from "@/types"
 import type { ResultValue } from "@/hooks/use-protocol-results"
+import { FormulaHoverCard } from "./formula-hover-card"
 
 interface ResultDeterminationRowProps {
   result: Result
@@ -31,6 +33,9 @@ interface ResultDeterminationRowProps {
   formulaResolved: boolean
   /** La fórmula quedó de lado: el valor se carga a mano. */
   cargaManual: boolean
+  /** La cuenta detallada de la fórmula, para mostrar al pasar el mouse por el
+   *  badge. `null`/`undefined` = no hay fórmula que explicar. */
+  formulaExplicacion?: ExplicacionFormula | null
   /** Enciende/apaga la carga a mano. `undefined` = no se puede (sin permiso,
    *  protocolo cancelado o resultado ya validado). */
   onToggleCargaManual?: () => void
@@ -75,6 +80,7 @@ export function ResultDeterminationRow({
   isFormula,
   formulaResolved,
   cargaManual,
+  formulaExplicacion,
   onToggleCargaManual,
   onToggleExclusion,
   onBorrarValor,
@@ -124,6 +130,24 @@ export function ResultDeterminationRow({
   const isOutOfRange = result.is_out_of_reference_range || evaluation?.is_out_of_reference_range
   const evaluatedReference = formatEvaluatedReference(evaluation)
 
+  // El badge en una const propia: se muestra igual, esté o no envuelto en la
+  // tarjeta con la cuenta de la fórmula (`formulaExplicacion`).
+  const badgeDeFormula = isFormula ? (
+    <Badge
+      variant="outline"
+      className={cn(
+        "ml-2 text-[10px]",
+        cargaManual
+          ? "border-violet-200 bg-violet-50 text-violet-700"
+          : formulaResolved
+            ? "border-blue-200 bg-blue-50 text-blue-700"
+            : "border-amber-200 bg-amber-50 text-amber-700",
+      )}
+    >
+      {cargaManual ? "A mano" : formulaResolved ? "Auto" : "Fórmula pendiente"}
+    </Badge>
+  ) : null
+
   return (
     <div
       data-result-row
@@ -147,20 +171,12 @@ export function ResultDeterminationRow({
               Fuera del protocolo
             </Badge>
           )}
-          {isFormula && (
-            <Badge
-              variant="outline"
-              className={cn(
-                "ml-2 text-[10px]",
-                cargaManual
-                  ? "border-violet-200 bg-violet-50 text-violet-700"
-                  : formulaResolved
-                    ? "border-blue-200 bg-blue-50 text-blue-700"
-                    : "border-amber-200 bg-amber-50 text-amber-700",
-              )}
-            >
-              {cargaManual ? "A mano" : formulaResolved ? "Auto" : "Fórmula pendiente"}
-            </Badge>
+          {formulaExplicacion ? (
+            <FormulaHoverCard explicacion={formulaExplicacion} cargaManual={cargaManual}>
+              {badgeDeFormula}
+            </FormulaHoverCard>
+          ) : (
+            badgeDeFormula
           )}
           {result.is_sent && (
             <Badge variant="outline" className="ml-2 border-sky-200 bg-sky-50 text-[10px] text-sky-700">
