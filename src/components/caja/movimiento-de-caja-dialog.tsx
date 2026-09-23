@@ -15,15 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FormaDePago } from "@/components/common/forma-de-pago"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { BILLING_ENDPOINTS, USER_ENDPOINTS } from "@/config/api"
-import useAuth from "@/contexts/auth-context"
+import { BILLING_ENDPOINTS } from "@/config/api"
 import { useApi } from "@/hooks/use-api"
 import { useToast } from "@/hooks/use-toast"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
@@ -36,17 +28,14 @@ import { formatApiError, getErrorMessage } from "@/lib/api-error"
  * ninguno de los que movió el laboratorio, y quien cerraba la caja los llevaba
  * aparte en un papel.
  *
- * QUIÉN LO HIZO NO ES SIEMPRE QUIEN LO CARGA
- * ==========================================
- * Arranca en quien está usando el sistema, porque es el caso normal, pero se
- * puede cambiar: la secretaria anota el gasto que hizo la bioquímica. Quién lo
- * cargó lo guarda el backend por su cuenta y no se elige.
+ * QUIÉN LO HIZO NO SE PREGUNTA
+ * =============================
+ * El sistema ya guarda quién cargó el movimiento (`created_by`) y no hace
+ * falta elegirlo: lo pone el backend solo, con quien está logueado. Lo que sí
+ * hay que dejar clarísimo es de dónde salió la plata (efectivo o cuenta) y
+ * qué se compró o cobró, y eso queda en la forma de pago y en la
+ * descripción.
  */
-
-type Persona = { id: number; username: string; first_name: string; last_name: string }
-
-const nombreDe = (p: Persona) =>
-  `${p.first_name} ${p.last_name}`.trim() || p.username
 
 type Props = {
   open: boolean
@@ -56,26 +45,22 @@ type Props = {
 }
 
 export function MovimientoDeCajaDialog({ open, onOpenChange, onGuardado }: Props) {
-  const { user } = useAuth()
   const { apiRequest } = useApi()
   const toastActions = useToast()
 
   const [tipo, setTipo] = useState("gasto")
   const [descripcion, setDescripcion] = useState("")
   const [monto, setMonto] = useState("")
-  const [usuarioId, setUsuarioId] = useState("")
   // De dónde sale el gasto o a dónde entra el ingreso. Obligatorio: sin esto,
   // el arqueo del efectivo y el saldo del banco no se pueden cuadrar contra el
   // libro — el movimiento podía haber sido cualquiera de los dos.
   const [formaDePago, setFormaDePago] = useState("")
   const [cuentaId, setCuentaId] = useState("")
-  const [personas, setPersonas] = useState<Persona[]>([])
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState("")
 
-  // Al abrir se limpia todo y el "lo hizo" vuelve a arrancar en uno mismo: si
-  // quedara el de la carga anterior, el segundo gasto del día se le anotaría a
-  // otra persona sin que nadie lo note.
+  // Al abrir se limpia todo: si quedara algo de la carga anterior, el
+  // segundo gasto del día se guardaría con datos que no son los suyos.
   useEffect(() => {
     if (!open) return
     setTipo("gasto")
@@ -83,26 +68,8 @@ export function MovimientoDeCajaDialog({ open, onOpenChange, onGuardado }: Props
     setMonto("")
     setFormaDePago("")
     setCuentaId("")
-    setUsuarioId(user?.id ? String(user.id) : "")
     setError("")
-  }, [open, user?.id])
-
-  useEffect(() => {
-    if (!open) return
-    let vigente = true
-    apiRequest(`${USER_ENDPOINTS.USERS}?is_active=true&limit=200`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((datos) => {
-        if (!vigente || !datos) return
-        setPersonas(datos.results || datos || [])
-      })
-      .catch(() => {
-        // Sin la lista igual se puede cargar: queda a nombre de uno mismo.
-      })
-    return () => {
-      vigente = false
-    }
-  }, [open, apiRequest])
+  }, [open])
 
   const montoValido = Number.parseFloat(monto.replace(",", ".")) > 0
   const pagoCompleto =
@@ -123,7 +90,6 @@ export function MovimientoDeCajaDialog({ open, onOpenChange, onGuardado }: Props
           monto: monto.replace(",", "."),
           payment_method: formaDePago,
           payment_account: formaDePago === "transferencia" && cuentaId ? Number(cuentaId) : null,
-          ...(usuarioId ? { usuario: Number(usuarioId) } : {}),
         },
       })
 
@@ -235,28 +201,8 @@ export function MovimientoDeCajaDialog({ open, onOpenChange, onGuardado }: Props
             onFormaChange={setFormaDePago}
             onCuentaChange={setCuentaId}
             disabled={guardando}
+            titulo={tipo === "gasto" ? "¿De dónde sale la plata? *" : "¿A dónde entra la plata? *"}
           />
-
-          <div className="space-y-2">
-            <Label htmlFor="movimiento-usuario" className="text-sm">
-              Lo hizo
-            </Label>
-            <Select value={usuarioId} onValueChange={setUsuarioId} disabled={guardando}>
-              <SelectTrigger id="movimiento-usuario">
-                <SelectValue placeholder="Elegí quién" />
-              </SelectTrigger>
-              <SelectContent>
-                {personas.map((persona) => (
-                  <SelectItem key={persona.id} value={String(persona.id)}>
-                    {nombreDe(persona)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-gray-500">
-              Quién hizo el gasto. Queda registrado aparte quién lo cargó.
-            </p>
-          </div>
         </div>
 
         <DialogFooter>
