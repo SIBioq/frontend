@@ -25,7 +25,9 @@ type Props = {
 }
 
 export function ResumenDeResultados({ determinaciones, tope = 4 }: Props) {
-  const conValor = determinaciones.filter((d) => !!d.value)
+  // Las excluidas quedan afuera: no intervienen en el protocolo ni salen en el
+  // informe, así que tampoco tienen por qué figurar en el resumen del análisis.
+  const conValor = determinaciones.filter((d) => !!d.value && !d.excluido)
   if (conValor.length === 0) return null
 
   const visibles = conValor.slice(0, tope)

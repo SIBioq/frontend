@@ -85,6 +85,11 @@ export function ValidationResultRow({ result, saving, disabled = false, onValida
   const isValidated = result.is_valid
   const isWrong = result.is_wrong
   const hasValue = !!result.value
+  // "No corresponde" en este protocolo: se ve con su valor, pero no se valida
+  // —el backend lo rechaza— y no interviene en el informe. Se saca desde la
+  // pantalla de carga, no desde acá.
+  const excluido = !!result.excluido
+  const noSeValida = disabled || excluido
 
   // Primero los rangos del paciente —los que se evalúan— y después los
   // rangos con nombre, que sólo informan. Ver `NamedReferenceRange`.
@@ -102,7 +107,9 @@ export function ValidationResultRow({ result, saving, disabled = false, onValida
     <div
       className={cn(
         "flex flex-col gap-3 rounded-lg border p-3 lg:flex-row lg:items-center",
-        isWrong ? "border-red-300 bg-red-50" : isValidated ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200 bg-white",
+        // La exclusión manda sobre el resto: de esta fila lo que importa es que
+        // no cuenta.
+        excluido ? "border-slate-300 bg-slate-50" : isWrong ? "border-red-300 bg-red-50" : isValidated ? "border-emerald-200 bg-emerald-50/40" : "border-gray-200 bg-white",
       )}
     >
       {/* Determinación + valor + referencia */}
@@ -122,6 +129,11 @@ export function ValidationResultRow({ result, saving, disabled = false, onValida
           {unit && <span className="text-xs text-gray-500">{unit}</span>}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          {excluido && (
+            <Badge variant="secondary" className="text-[10px]">
+              No corresponde
+            </Badge>
+          )}
           {referenceItems.slice(0, 2).map((item) => (
             <Badge key={item} variant="outline" className="bg-slate-50 text-[10px] text-slate-600">
               {item}
@@ -179,7 +191,7 @@ export function ValidationResultRow({ result, saving, disabled = false, onValida
                 </p>
               )}
             </div>
-            <Button size="sm" variant="outline" className="h-8 text-red-600 hover:bg-red-50" onClick={() => onValidate(false)} disabled={disabled}>
+            <Button size="sm" variant="outline" className="h-8 text-red-600 hover:bg-red-50" onClick={() => onValidate(false)} disabled={noSeValida}>
               Rechazar
             </Button>
           </div>
@@ -190,7 +202,7 @@ export function ValidationResultRow({ result, saving, disabled = false, onValida
               variant="outline"
               className="h-9 border-red-200 text-red-600 hover:bg-red-50"
               onClick={() => onValidate(false)}
-              disabled={!hasValue || disabled}
+              disabled={!hasValue || noSeValida}
             >
               <X className="mr-1 h-4 w-4" />
               Rechazar
@@ -199,7 +211,7 @@ export function ValidationResultRow({ result, saving, disabled = false, onValida
               size="sm"
               className="h-9 bg-emerald-600 hover:bg-emerald-700"
               onClick={() => onValidate(true)}
-              disabled={!hasValue || disabled}
+              disabled={!hasValue || noSeValida}
             >
               <Check className="mr-1 h-4 w-4" />
               Validar
