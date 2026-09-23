@@ -97,11 +97,22 @@ export function ImportDataDialog({ open, onOpenChange, onSuccess }: ImportDataDi
         const analysesSkipped = data.analyses?.skipped ?? 0
         const determinationsCreated = data.determinations?.created ?? 0
         const determinationsSkipped = data.determinations?.skipped ?? 0
+        const submodulosCreated = data.submodulos?.created ?? 0
+        const submodulosSkipped = data.submodulos?.skipped ?? 0
+        const submodulosErrors: unknown[] = data.submodulos?.errors ?? []
+        const resumenDeSubmodulos = data.submodulos
+          ? `; ${submodulosCreated} submódulos creados, ${submodulosSkipped} omitidos`
+          : ""
         const importSummary =
           data.analyses && data.determinations
-            ? `${analysesCreated} análisis creados, ${analysesSkipped} omitidos; ${determinationsCreated} determinaciones creadas, ${determinationsSkipped} omitidas.`
+            ? `${analysesCreated} análisis creados, ${analysesSkipped} omitidos; ${determinationsCreated} determinaciones creadas, ${determinationsSkipped} omitidas${resumenDeSubmodulos}.`
             : data.message || "Los datos se importaron correctamente"
         toast.success(importSummary)
+        if (submodulosErrors.length > 0) {
+          toast.warning(
+            `${submodulosErrors.length} submódulo(s) no se pudieron importar. Revisá la planilla.`
+          )
+        }
         progress.finish()
         onOpenChange(false)
         onSuccess()
@@ -211,6 +222,37 @@ export function ImportDataDialog({ open, onOpenChange, onSuccess }: ImportDataDi
                       <code className="bg-blue-100 px-1 rounded">niña_min/max</code> - Rangos de referencia
                     </li>
                   </ul>
+                </div>
+                <div>
+                  <p className="font-semibold">Tabla 3: "Submodulos" (opcional)</p>
+                  <p className="text-[10px] md:text-xs mt-1">
+                    Una planilla vieja que no trae esta hoja se sigue importando igual.
+                  </p>
+                  <ul className="list-disc list-inside text-[10px] md:text-xs mt-1 ml-2 space-y-0.5">
+                    <li>
+                      <code className="bg-blue-100 px-1 rounded">analisis_id</code> o{" "}
+                      <code className="bg-blue-100 px-1 rounded">analisis_codigo</code> - Análisis al
+                      que pertenece
+                    </li>
+                    <li>
+                      <code className="bg-blue-100 px-1 rounded">nombre</code> - Nombre del submódulo
+                    </li>
+                    <li>
+                      <code className="bg-blue-100 px-1 rounded">total_esperado</code> - Suma esperada
+                      de las determinaciones
+                    </li>
+                    <li>
+                      <code className="bg-blue-100 px-1 rounded">tolerancia</code> - Margen admitido
+                      (vacío se toma como 0)
+                    </li>
+                    <li>
+                      <code className="bg-blue-100 px-1 rounded">determinaciones</code> - Códigos de
+                      las determinaciones separados por coma
+                    </li>
+                  </ul>
+                  <p className="text-[10px] md:text-xs mt-1">
+                    Si el análisis ya tiene un submódulo con ese mismo nombre, la fila se omite.
+                  </p>
                 </div>
               </div>
             </AlertDescription>
