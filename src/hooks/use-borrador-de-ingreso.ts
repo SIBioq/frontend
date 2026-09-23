@@ -47,6 +47,11 @@ export function useBorradorDeIngreso(params: {
     setBorradorPendiente(leerBorrador(usuarioId))
   }, [usuarioId])
 
+  // Lo que el debounce todavía no escribió. Si el usuario se va de Ingreso
+  // dentro del retardo, el cleanup cancela el temporizador: sin esto, el
+  // último cambio se perdería.
+  const sinGuardarRef = useRef<{ usuarioId: number | null; instantanea: InstantaneaDeIngreso } | null>(null)
+
   // Debounce: el formulario cambia con cada tecla y no tiene sentido escribir
   // en localStorage tan seguido.
   useEffect(() => {
@@ -54,16 +59,31 @@ export function useBorradorDeIngreso(params: {
     // todavía no dijo si lo quiere, y guardar acá pisaría justo el que se le
     // está ofreciendo. La regla vive acá y no en la pantalla porque el dato
     // —si hay borrador pendiente— es de este hook.
-    if (!guardadoHabilitado || borradorPendiente !== null) return
+    if (!guardadoHabilitado || borradorPendiente !== null) {
+      sinGuardarRef.current = null
+      return
+    }
 
+    sinGuardarRef.current = { usuarioId, instantanea }
     const temporizador = setTimeout(() => {
       guardarBorrador(usuarioId, instantanea)
+      sinGuardarRef.current = null
     }, RETARDO_DE_GUARDADO_MS)
 
     return () => clearTimeout(temporizador)
   }, [usuarioId, instantanea, guardadoHabilitado, borradorPendiente])
 
+  // Al salir de la pantalla se escribe ya lo que quedaba en el debounce.
+  useEffect(() => {
+    return () => {
+      const sinGuardar = sinGuardarRef.current
+      if (sinGuardar) guardarBorrador(sinGuardar.usuarioId, sinGuardar.instantanea)
+      sinGuardarRef.current = null
+    }
+  }, [])
+
   const descartar = useCallback(() => {
+    sinGuardarRef.current = null
     borrarBorrador(usuarioId)
     setBorradorPendiente(null)
   }, [usuarioId])
@@ -73,6 +93,7 @@ export function useBorradorDeIngreso(params: {
   }, [])
 
   const borrar = useCallback(() => {
+    sinGuardarRef.current = null
     borrarBorrador(usuarioId)
     setBorradorPendiente(null)
   }, [usuarioId])

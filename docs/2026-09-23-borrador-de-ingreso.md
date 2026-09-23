@@ -30,7 +30,7 @@ Permitir que el usuario abandone la pantalla de carga de protocolo a mitad de ca
 
 - **Por usuario, en esta PC**. La clave incluye el id logueado. Otro usuario en la misma máquina no ve borradores ajenos; cerrar sesión no borra nada (es una decisión del usuario, no una limpieza automática).
 
-- **Debounce de 600 ms**. El formulario cambia en cada tecla y escribir en localStorage en cada una no tiene sentido. 600 ms es el valor elegido: nada en la pantalla depende de que la escritura haya terminado, así que el retardo no se ve. El riesgo real que deja es chico y conocido: cerrar la pestaña dentro de esos 600 ms pierde el último tecleo.
+- **Debounce de 600 ms**. El formulario cambia en cada tecla y escribir en localStorage en cada una no tiene sentido. 600 ms es el valor elegido: nada en la pantalla depende de que la escritura haya terminado, así que el retardo no se ve. Al salir de Ingreso por la app (navbar, otro link) lo que quedaba en el debounce se escribe en el momento, así que ni el último cambio se pierde ni el ámbar llega tarde. El riesgo que queda es chico y conocido: cerrar la pestaña o el navegador dentro de esos 600 ms pierde el último tecleo.
 
 - **No pisar un borrador con formulario vacío (RF9)**. Mientras hay un borrador pendiente de decisión (el cartel visible), el guardado automático está deshabilitado. Si el usuario empieza a cargar sin apretar botón, nada se guarda. Esto evita perder el borrador que se está ofreciendo.
 
