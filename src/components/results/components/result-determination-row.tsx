@@ -162,27 +162,6 @@ export function ResultDeterminationRow({
               {cargaManual ? "A mano" : formulaResolved ? "Auto" : "Fórmula pendiente"}
             </Badge>
           )}
-          {/* LA SALIDA CUANDO LA FÓRMULA ESTÁ MAL.
-              Una determinación calculada trae el valor sola y con el campo
-              bloqueado. Si la fórmula quedó mal cargada, eso trababa la fila
-              entera: no se podía escribir ni borrar, y el protocolo no cerraba.
-              El botón deja de lado el cálculo para ESTE protocolo; arreglar la
-              fórmula para todos es en Configuración. */}
-          {isFormula && onToggleCargaManual && (
-            <button
-              type="button"
-              onClick={onToggleCargaManual}
-              className="ml-2 inline-flex items-center gap-1 rounded border border-gray-200 px-1.5 py-0.5 align-middle text-[10px] font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
-              title={
-                cargaManual
-                  ? "Vuelve a calcular el valor con la fórmula"
-                  : "Deja de lado la fórmula y permite escribir el valor a mano"
-              }
-            >
-              {cargaManual ? <Sigma className="h-3 w-3" /> : <PencilLine className="h-3 w-3" />}
-              {cargaManual ? "Volver a la fórmula" : "Cargar a mano"}
-            </button>
-          )}
           {result.is_sent && (
             <Badge variant="outline" className="ml-2 border-sky-200 bg-sky-50 text-[10px] text-sky-700">
               Enviado
@@ -261,6 +240,36 @@ export function ResultDeterminationRow({
                   ))}
                 </ul>
               )}
+            </div>
+          )}
+          {/* LA SALIDA CUANDO LA FÓRMULA ESTÁ MAL.
+              Una determinación calculada trae el valor sola y con el campo
+              bloqueado. Si la fórmula quedó mal cargada, eso trababa la fila
+              entera: no se podía escribir ni borrar, y el protocolo no cerraba.
+              El botón deja de lado el cálculo para ESTE protocolo; arreglar la
+              fórmula para todos es en Configuración. Va debajo del valor,
+              separado, para que no se confunda con el resto de los badges. */}
+          {isFormula && onToggleCargaManual && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={onToggleCargaManual}
+                aria-pressed={cargaManual}
+                aria-label={
+                  cargaManual
+                    ? `Volver a calcular ${det.name} con la fórmula`
+                    : `Cargar ${det.name} a mano`
+                }
+                className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+                title={
+                  cargaManual
+                    ? "Vuelve a calcular el valor con la fórmula"
+                    : "Deja de lado la fórmula y permite escribir el valor a mano"
+                }
+              >
+                {cargaManual ? <Sigma className="h-3 w-3" /> : <PencilLine className="h-3 w-3" />}
+                {cargaManual ? "Volver a la fórmula" : "Cargar a mano"}
+              </button>
             </div>
           )}
         </div>
