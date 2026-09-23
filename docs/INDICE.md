@@ -2,6 +2,7 @@
 
 | Documento | Tema |
 |---|---|
+| [2026-09-23-exclusion-en-corroboracion.md](2026-09-23-exclusion-en-corroboracion.md) | Excluir una determinación dentro de un submódulo de corroboración |
 | [2026-09-23-excluir-determinacion-protocolo.md](2026-09-23-excluir-determinacion-protocolo.md) | Dejar una determinación fuera del protocolo en carga de resultados |
 | [2026-09-22-editar-cargos-facturacion-detalle.md](2026-09-22-editar-cargos-facturacion-detalle.md) | Edición de cargos en el detalle de facturación |
 | [2026-09-22-quitar-ciudad-por-defecto.md](2026-09-22-quitar-ciudad-por-defecto.md) | Evitar ciudad precargada al crear pacientes |

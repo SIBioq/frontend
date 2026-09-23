@@ -17,10 +17,10 @@ Ofrecer un toggle en cada fila de carga de resultados para marcar una determinac
 - Creó `exclusion-confirm-dialog.tsx`: confirmación no destructiva que aclara que los datos se conservan. Usa la misma estructura que los diálogos del protocolo (`Dialog` con franja de encabezado, azul `#204983`, pie gris), no el `AlertDialog` genérico.
 - Modificó `result-determination-row.tsx`: botón "Dejar fuera del protocolo" (ícono `CircleMinus`) abajo a la derecha de la fila; excluida, pasa a "Volver a incluir" y se marca en naranja con el badge "Fuera del protocolo". No aparece sin permiso, con el protocolo cancelado o con el resultado ya validado.
 - Actualizó `use-protocol-results.ts` (hook principal) para: excluir/incluir en conteos de progreso, omitir en navegación por teclado, filtrar en lista de validación, y manejar `409 requires_confirmation`.
-- Modificó `result-formulas.ts` para contar excluidas como "dependencia faltante" en fórmulas.
+- Modificó `result-formulas.ts` para tratar determinaciones excluidas como dependencias faltantes en el cálculo de fórmulas.
 - Actualizó `protocol-results-loader.tsx` para mostrar "X/Y cargados · N fuera del protocolo" en la barra de progreso.
 - Modificó `protocol-validation-loader.tsx` y `validation-result-row.tsx` para omitir excluidas en validación y "Validar todos".
-- Actualizó `resumen-de-resultados.tsx` para descartar submódulos si tienen una determinación excluida.
+- Modificó `resumen-de-resultados.tsx` para filtrar determinaciones excluidas en la lista de resultados con valor (no calcula submódulos, sólo los muestra).
 
 ## Decisiones
 
@@ -31,7 +31,7 @@ Ofrecer un toggle en cada fila de carga de resultados para marcar una determinac
 - **Fila sigue visible**: permite el usuario ver qué está excluido, comparar valores históricos, y reactivar sin navegar. El progreso la excluye de los conteos.
 - **Botón oculto si validada**: una vez que la bioquímico firma un resultado, es una decisión hecha; aunque técnicamente reversible en backend, la UI sólo permite excluir si no fue validada.
 - **Formulario de progreso**: en lugar de cero, se informa "X cargados · N fuera del protocolo" para aclarar que los pendientes no son errores sino filas no aplicables.
-- **Sin recursión en submódulos**: si un submódulo tiene una determinación excluida, el submódulo entero se descarta; el frontend no deja excluir parcialmente un grupo.
+- **Exclusión dentro de submódulos**: una determinación excluida sale del submódulo (no lo anula). Si todas quedan excluidas, el submódulo no se informa. Ver la tarea correlativa [2026-09-23-exclusion-en-corroboracion.md](2026-09-23-exclusion-en-corroboracion.md).
 
 ## Archivos tocados
 
