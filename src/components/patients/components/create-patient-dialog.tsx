@@ -57,7 +57,7 @@ export function CreatePatientDialog({ isOpen, onClose, addPatient, apiRequest }:
     email: "",
     country: "Argentina",
     province: "Córdoba",
-    city: "Leones",
+    city: "",
     address: "",
     observations: "",
   })
@@ -219,7 +219,7 @@ export function CreatePatientDialog({ isOpen, onClose, addPatient, apiRequest }:
       email: "",
       country: "Argentina",
       province: "Córdoba",
-      city: "Leones",
+      city: "",
       address: "",
       observations: "",
     })
