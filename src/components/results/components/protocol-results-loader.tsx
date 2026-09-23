@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import useAuth from "@/contexts/auth-context"
 import { PERMISSIONS, PERMISSION_MESSAGES } from "@/config/permissions"
-import type { useProtocolResults } from "@/hooks/use-protocol-results"
+import type { DependienteAVaciar, useProtocolResults } from "@/hooks/use-protocol-results"
 import { teclaDelEvento, useMacrosDeResultado } from "@/hooks/use-macros-de-resultado"
 import { calculateFormulaValue, describirFormula } from "@/lib/result-formulas"
 import type { Result } from "@/types"
@@ -77,26 +77,42 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
   const textareaRefs = useRef<Record<number, HTMLTextAreaElement | null>>({})
 
   // LA FILA QUE QUEDÓ ESPERANDO UN "SÍ".
-  // Marcar una fila vacía no pregunta nada. Si ya tiene datos, el backend
-  // contesta 409 sin tocar nada y recién entonces se pregunta: un solo diálogo
-  // para toda la pantalla, con la fila que lo abrió.
-  const [pendienteDeConfirmar, setPendienteDeConfirmar] = useState<Result | null>(null)
+  // Marcar una fila vacía y sin cálculos que dependan de ella no pregunta nada.
+  // Si hay algo que perder, el backend contesta 409 sin tocar nada y recién
+  // entonces se pregunta: un solo diálogo para toda la pantalla, con la fila que
+  // lo abrió y los cálculos que el 409 avisó que se van a vaciar. Van juntos en
+  // un solo estado porque se piden y se limpian siempre a la vez.
+  const [pendienteDeConfirmar, setPendienteDeConfirmar] = useState<{
+    result: Result
+    dependientes: DependienteAVaciar[]
+  } | null>(null)
   const [confirmando, setConfirmando] = useState(false)
 
   const alternarExclusionDeFila = async (result: Result, excluido: boolean) => {
     const resultado = await alternarExclusion(result.id, excluido)
-    if (!resultado.ok && resultado.requiereConfirmacion) setPendienteDeConfirmar(result)
+    if (!resultado.ok && resultado.requiereConfirmacion) {
+      setPendienteDeConfirmar({ result, dependientes: resultado.dependientes })
+    }
   }
 
   const confirmarExclusion = async () => {
     if (!pendienteDeConfirmar) return
     setConfirmando(true)
-    await alternarExclusion(pendienteDeConfirmar.id, true, true)
+    await alternarExclusion(pendienteDeConfirmar.result.id, true, true)
     setConfirmando(false)
     // Se cierra en los dos casos: si falló, el aviso ya lo dijo y dejar el
     // diálogo abierto invita a volver a apretar lo mismo.
     setPendienteDeConfirmar(null)
   }
+
+  // El diálogo tiene que ser honesto: ahora también aparece con la fila vacía,
+  // sólo por los cálculos que dependen de ella. Lo que "tiene datos" sale del
+  // mismo `Result` que abrió el diálogo, sin pedirle nada más al hook.
+  const filaPendienteConDatos = (() => {
+    const fila = pendienteDeConfirmar?.result
+    if (!fila) return false
+    return !!fila.value || !!fila.notes || !!fila.is_valid || !!fila.is_wrong
+  })()
 
   const focusInput = (id?: number) => {
     if (id == null) return
@@ -413,7 +429,9 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
         onOpenChange={(abierto) => {
           if (!abierto) setPendienteDeConfirmar(null)
         }}
-        nombreDeterminacion={pendienteDeConfirmar?.determination.name ?? ""}
+        nombreDeterminacion={pendienteDeConfirmar?.result.determination.name ?? ""}
+        filaConDatos={filaPendienteConDatos}
+        dependientes={pendienteDeConfirmar?.dependientes ?? []}
         onConfirmar={confirmarExclusion}
         confirmando={confirmando}
       />

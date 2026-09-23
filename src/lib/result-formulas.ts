@@ -52,6 +52,9 @@ export type FormulaValue = {
 export type FormulaCalculation = {
   value: string
   missingCodes: string[]
+  /** Los faltantes que faltan porque su fila salió del protocolo —excluida, o
+   *  vaciada en cascada por una exclusión—, no porque todavía no se cargaron. */
+  codigosNoDisponibles: string[]
 }
 
 /** El número que hay adentro de lo que se escribió, tal cual se escribió. */
@@ -191,10 +194,23 @@ const evaluateExpression = (expression: string): number | null => {
   }
 }
 
+/**
+ * UN FALTANTE NO ES IGUAL A OTRO
+ * ==============================
+ * "Todavía no se cargó" y "salió del protocolo" llegaban los dos como un código
+ * en `missingCodes`, y quien llamaba no podía distinguirlos: el primero tiene
+ * que dejar el valor que haya en pantalla (se está tipeando), el segundo tiene
+ * que vaciarlo. Por eso los indisponibles van también en `codigosNoDisponibles`.
+ *
+ * `idsNoDisponibles` son las filas que, sin estar `excluido`, dejaron de tener
+ * valor por una exclusión: las fórmulas vaciadas en cascada. Quien recorre las
+ * pasadas las va juntando y las vuelve a pasar acá.
+ */
 export const calculateFormulaValue = (
   result: FormulaResult,
   allResults: FormulaResult[],
   values: Record<number, FormulaValue>,
+  opciones: { idsNoDisponibles?: ReadonlySet<number> } = {},
 ): FormulaCalculation | null => {
   const formula = result.determination.formula?.trim()
   if (!formula) return null
@@ -206,22 +222,28 @@ export const calculateFormulaValue = (
   })
 
   const missingCodes: string[] = []
+  const codigosNoDisponibles: string[] = []
   const decimalesDeLosComponentes: number[] = []
   const codesByNumber = buildCodesByNumber(allResults, result.analysis.code)
   // Un componente excluido es un componente que no está: la fórmula no aplica
   // en este protocolo, igual que para el backend cuando descarta el submódulo.
-  const excluidos = new Set(allResults.filter((r) => r.excluido).map((r) => r.id))
+  // A los excluidos se suman los que quien llama ya sabe fuera de juego.
+  const noDisponibles = new Set(allResults.filter((r) => r.excluido).map((r) => r.id))
+  opciones.idsNoDisponibles?.forEach((id) => noDisponibles.add(id))
   let expression = normalizeExpression(formula)
 
   expression = expression.replace(/\[([^\]]+)\]/g, (_match, rawCode: string) => {
     const code = resolveRelativeCode(rawCode.trim(), result.analysis.code, codesByNumber)
     const dependencyId = resultIdByCode.get(code)
-    const disponible = dependencyId !== undefined && !excluidos.has(dependencyId)
-    const crudo = disponible ? extraerNumero(values[dependencyId]?.value) : null
+    const fueraDelProtocolo = dependencyId !== undefined && noDisponibles.has(dependencyId)
+    const crudo = dependencyId !== undefined && !fueraDelProtocolo
+      ? extraerNumero(values[dependencyId]?.value)
+      : null
     const dependencyValue = crudo === null ? null : toFormulaNumber(crudo)
 
     if (crudo === null || dependencyValue === null) {
       missingCodes.push(code)
+      if (fueraDelProtocolo) codigosNoDisponibles.push(code)
       return "NaN"
     }
 
@@ -232,20 +254,42 @@ export const calculateFormulaValue = (
   })
 
   if (missingCodes.length > 0) {
-    return { value: "", missingCodes }
+    return { value: "", missingCodes, codigosNoDisponibles }
   }
 
   const calculated = evaluateExpression(expression)
   if (calculated === null) return null
 
-  return { value: formatFormulaNumber(calculated, decimalesDeLosComponentes), missingCodes: [] }
+  return {
+    value: formatFormulaNumber(calculated, decimalesDeLosComponentes),
+    missingCodes: [],
+    codigosNoDisponibles: [],
+  }
 }
 
+/**
+ * Recalcula en pantalla todas las fórmulas, tantas pasadas como haga falta para
+ * que una fórmula de fórmula quede resuelta.
+ *
+ * POR QUÉ LA CASCADA NECESITA UN `Set`
+ * ====================================
+ * Cuando un componente sale del protocolo, su fórmula queda vacía. Pero un
+ * valor vacío en `nextValues` es indistinguible de "todavía no se cargó", y ese
+ * caso a propósito deja el número viejo en pantalla (no se vacía un cálculo a
+ * mitad de tipeo). Así, el dependiente del dependiente se quedaba con su número
+ * viejo calculado sobre algo que ya no existe.
+ *
+ * `vaciadosPorExclusion` guarda qué filas quedaron sin valor POR la exclusión y
+ * se pasa como `idsNoDisponibles`: la pasada siguiente las trata igual que a una
+ * excluida y la cascada llega hasta el final. El `Set` sólo crece, así que el
+ * `for` de pasadas termina igual que antes.
+ */
 export const applyFormulaCalculations = <T extends FormulaResult>(
   results: T[],
   values: Record<number, FormulaValue>,
 ): Record<number, FormulaValue> => {
   let nextValues = values
+  const vaciadosPorExclusion = new Set<number>()
 
   for (let pass = 0; pass < results.length; pass += 1) {
     let changed = false
@@ -259,8 +303,26 @@ export const applyFormulaCalculations = <T extends FormulaResult>(
       // no se le calcula nada. Lo que tenga cargado queda tal cual.
       if (result.excluido) return
 
-      const calculation = calculateFormulaValue(result, results, nextValues)
-      if (!calculation || calculation.missingCodes.length > 0) return
+      const calculation = calculateFormulaValue(result, results, nextValues, {
+        idsNoDisponibles: vaciadosPorExclusion,
+      })
+      if (!calculation) return
+
+      if (calculation.missingCodes.length > 0) {
+        // Todavía no cargado: se deja lo que haya en pantalla.
+        if (calculation.codigosNoDisponibles.length === 0) return
+        // Un componente que salió del protocolo: la fórmula no tiene valor, y su
+        // propio valor tampoco está disponible para las fórmulas que la usan.
+        if (!vaciadosPorExclusion.has(result.id)) {
+          vaciadosPorExclusion.add(result.id)
+          changed = true
+        }
+        const actual = nextValues[result.id] || { value: "", notes: "" }
+        if (actual.value === "") return
+        nextValues = { ...nextValues, [result.id]: { ...actual, value: "" } }
+        changed = true
+        return
+      }
 
       const current = nextValues[result.id] || { value: "", notes: "" }
       if (current.value === calculation.value) return
