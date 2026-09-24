@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import useAuth from "@/contexts/auth-context"
 import { PERMISSIONS, PERMISSION_MESSAGES } from "@/config/permissions"
-import type { useProtocolResults } from "@/hooks/use-protocol-results"
+import type { DependienteAVaciar, useProtocolResults } from "@/hooks/use-protocol-results"
 import { teclaDelEvento, useMacrosDeResultado } from "@/hooks/use-macros-de-resultado"
-import { calculateFormulaValue } from "@/lib/result-formulas"
+import { calculateFormulaValue, describirFormula } from "@/lib/result-formulas"
 import type { Result } from "@/types"
 import { ResultDeterminationRow } from "./result-determination-row"
 import { ExclusionConfirmDialog } from "./exclusion-confirm-dialog"
@@ -24,8 +24,9 @@ interface ProtocolResultsLoaderProps {
 
 /**
  * Carga de resultados de un protocolo (presentacional): búsqueda de análisis,
- * agrupación y navegación por teclado (Enter guarda y baja; ↑↓ mueven; → notas;
- * Alt + tecla escribe una macro). Los datos llegan por `controller` (hook
+ * agrupación y navegación por teclado (Enter guarda y baja; ↑↓ mueven entre
+ * resultados; Alt + ↑↓ mueven aunque el valor tenga varias líneas; Alt + tecla
+ * escribe una macro). Los datos llegan por `controller` (hook
  * useProtocolResults en la página).
  */
 export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps) {
@@ -73,30 +74,48 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
       else next.add(id)
       return next
     })
-  const inputRefs = useRef<Record<number, HTMLInputElement | null>>({})
+  // El valor pasó de <Input> a <textarea> (crece con el contenido), así que
+  // la ref ahora es de HTMLTextAreaElement.
+  const inputRefs = useRef<Record<number, HTMLTextAreaElement | null>>({})
   const textareaRefs = useRef<Record<number, HTMLTextAreaElement | null>>({})
 
   // LA FILA QUE QUEDÓ ESPERANDO UN "SÍ".
-  // Marcar una fila vacía no pregunta nada. Si ya tiene datos, el backend
-  // contesta 409 sin tocar nada y recién entonces se pregunta: un solo diálogo
-  // para toda la pantalla, con la fila que lo abrió.
-  const [pendienteDeConfirmar, setPendienteDeConfirmar] = useState<Result | null>(null)
+  // Marcar una fila vacía y sin cálculos que dependan de ella no pregunta nada.
+  // Si hay algo que perder, el backend contesta 409 sin tocar nada y recién
+  // entonces se pregunta: un solo diálogo para toda la pantalla, con la fila que
+  // lo abrió y los cálculos que el 409 avisó que se van a vaciar. Van juntos en
+  // un solo estado porque se piden y se limpian siempre a la vez.
+  const [pendienteDeConfirmar, setPendienteDeConfirmar] = useState<{
+    result: Result
+    dependientes: DependienteAVaciar[]
+  } | null>(null)
   const [confirmando, setConfirmando] = useState(false)
 
   const alternarExclusionDeFila = async (result: Result, excluido: boolean) => {
     const resultado = await alternarExclusion(result.id, excluido)
-    if (!resultado.ok && resultado.requiereConfirmacion) setPendienteDeConfirmar(result)
+    if (!resultado.ok && resultado.requiereConfirmacion) {
+      setPendienteDeConfirmar({ result, dependientes: resultado.dependientes })
+    }
   }
 
   const confirmarExclusion = async () => {
     if (!pendienteDeConfirmar) return
     setConfirmando(true)
-    await alternarExclusion(pendienteDeConfirmar.id, true, true)
+    await alternarExclusion(pendienteDeConfirmar.result.id, true, true)
     setConfirmando(false)
     // Se cierra en los dos casos: si falló, el aviso ya lo dijo y dejar el
     // diálogo abierto invita a volver a apretar lo mismo.
     setPendienteDeConfirmar(null)
   }
+
+  // El diálogo tiene que ser honesto: ahora también aparece con la fila vacía,
+  // sólo por los cálculos que dependen de ella. Lo que "tiene datos" sale del
+  // mismo `Result` que abrió el diálogo, sin pedirle nada más al hook.
+  const filaPendienteConDatos = (() => {
+    const fila = pendienteDeConfirmar?.result
+    if (!fila) return false
+    return !!fila.value || !!fila.notes || !!fila.is_valid || !!fila.is_wrong
+  })()
 
   const focusInput = (id?: number) => {
     if (id == null) return
@@ -111,9 +130,29 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
     }
   }
 
+  // El valor ya no ocupa siempre un solo renglón (creció a <textarea>, ver
+  // ResultDeterminationRow), así que ↑↓ solas navegan entre resultados sólo
+  // cuando no hay adónde mover el cursor dentro del texto: con el valor en
+  // una sola línea, o con el cursor ya en la primera línea (↑) o en la
+  // última (↓). La aproximación es simple a propósito: primera línea = cursor
+  // en la posición 0, última línea = cursor al final.
+  const ALTO_UNA_LINEA_PX = 44 // h-11: si el contenido no superó esto, todavía es un solo renglón
+
   const onInputKeyDown = useCallback(
-    async (e: React.KeyboardEvent<HTMLInputElement>, resultId: number, bloqueada: boolean) => {
+    async (e: React.KeyboardEvent<HTMLTextAreaElement>, resultId: number, bloqueada: boolean) => {
       const i = orderedIds.indexOf(resultId)
+
+      // ALT + FLECHA: EL FALLBACK QUE SIEMPRE NAVEGA
+      //
+      // Va antes que la macro y antes que el ArrowUp/ArrowDown de más abajo:
+      // sea cual sea el largo del valor o dónde esté el cursor, Alt + ↑↓ va al
+      // resultado anterior/siguiente. Es la manera de moverse sin pelearse con
+      // el cursor cuando el valor ya tiene varias líneas.
+      if (e.altKey && !e.ctrlKey && !e.metaKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+        e.preventDefault()
+        focusInput(orderedIds[e.key === "ArrowDown" ? i + 1 : i - 1])
+        return
+      }
 
       // ALT + TECLA: LA MACRO ESCRIBE, NO GUARDA
       //
@@ -121,9 +160,6 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
       // atajo que graba un resultado con una sola tecla, sin que se llegue a
       // leer lo que quedó escrito — y para eso ya está Enter, que además baja
       // a la siguiente. La macro reemplaza el tipeo, no la decisión.
-      //
-      // Se chequea antes que todo lo demás porque Alt + una flecha no tiene
-      // por qué mover: quien apretó Alt está pidiendo una macro.
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
         const tecla = teclaDelEvento(e.code)
         const macro = tecla ? porTecla.get(tecla) : undefined
@@ -147,28 +183,24 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
         if (canEdit) await onSave(resultId)
         focusInput(orderedIds[i + 1])
       } else if (e.key === "ArrowDown") {
-        e.preventDefault()
-        focusInput(orderedIds[i + 1])
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault()
-        focusInput(orderedIds[i - 1])
-      } else if (e.key === "ArrowRight") {
-        const ta = textareaRefs.current[resultId]
-        if (ta && !ta.disabled) {
+        const el = e.currentTarget
+        const unaLinea = el.scrollHeight <= ALTO_UNA_LINEA_PX
+        if (unaLinea || el.selectionEnd === el.value.length) {
           e.preventDefault()
-          ta.focus()
+          focusInput(orderedIds[i + 1])
+        }
+        // si no, el cursor se mueve normal dentro del texto de varias líneas
+      } else if (e.key === "ArrowUp") {
+        const el = e.currentTarget
+        const unaLinea = el.scrollHeight <= ALTO_UNA_LINEA_PX
+        if (unaLinea || el.selectionStart === 0) {
+          e.preventDefault()
+          focusInput(orderedIds[i - 1])
         }
       }
     },
     [orderedIds, onSave, onChange, canEdit, porTecla],
   )
-
-  const onTextareaKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>, resultId: number) => {
-    if (e.key === "ArrowLeft" && e.currentTarget.selectionStart === 0) {
-      e.preventDefault()
-      focusInput(resultId)
-    }
-  }, [])
 
   // Filtro por nombre de análisis o de determinación.
   const filteredGroups = useMemo(() => {
@@ -305,6 +337,7 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
                 {group.determinations.map((result) => {
                   const calc = calculateFormulaValue(result, results, values)
                   const isFormula = !!result.determination.formula?.trim()
+                  const formulaExplicacion = isFormula ? describirFormula(result, results, values) : null
                   const formulaResolved = !!calc && calc.missingCodes.length === 0
                   const cargaManual = !!result.carga_manual
                   const excluido = !!result.excluido
@@ -328,6 +361,7 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
                       isFormula={isFormula}
                       formulaResolved={formulaResolved}
                       cargaManual={cargaManual}
+                      formulaExplicacion={formulaExplicacion}
                       onToggleCargaManual={
                         puedeCambiarModo ? () => void alternarCargaManual(result.id, !cargaManual) : undefined
                       }
@@ -347,7 +381,6 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
                         textareaRefs.current[result.id] = el
                       }}
                       onInputKeyDown={(e) => onInputKeyDown(e, result.id, bloqueada)}
-                      onTextareaKeyDown={(e) => onTextareaKeyDown(e, result.id)}
                       previous={previousResults[result.id] || []}
                       loadingPrevious={loadingPrevious.has(result.id)}
                     />
@@ -411,7 +444,9 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
         onOpenChange={(abierto) => {
           if (!abierto) setPendienteDeConfirmar(null)
         }}
-        nombreDeterminacion={pendienteDeConfirmar?.determination.name ?? ""}
+        nombreDeterminacion={pendienteDeConfirmar?.result.determination.name ?? ""}
+        filaConDatos={filaPendienteConDatos}
+        dependientes={pendienteDeConfirmar?.dependientes ?? []}
         onConfirmar={confirmarExclusion}
         confirmando={confirmando}
       />

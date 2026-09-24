@@ -135,6 +135,8 @@ type Props = {
   onFormaChange: (forma: string) => void
   onCuentaChange: (id: string) => void
   disabled?: boolean
+  /** Encabezado del bloque. El default sirve para un pago de paciente; el gasto de caja necesita decir de dónde sale la plata. */
+  titulo?: string
 }
 
 export function FormaDePago({
@@ -143,6 +145,7 @@ export function FormaDePago({
   onFormaChange,
   onCuentaChange,
   disabled = false,
+  titulo = "Forma de pago",
 }: Props) {
   // Volver a tocar el que ya está elegido NO lo suelta. La forma es obligatoria
   // en todos lados donde se mueve plata, así que dejar volver a "ninguna" es
@@ -157,7 +160,7 @@ export function FormaDePago({
 
   return (
     <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-      <Label className="text-sm font-medium text-gray-700">Forma de pago</Label>
+      <Label className="text-sm font-medium text-gray-700">{titulo}</Label>
 
       <div className="flex flex-wrap gap-2">
         <button

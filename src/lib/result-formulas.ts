@@ -25,6 +25,14 @@ type FormulaDetermination = {
   code?: string
   name: string
   formula?: string
+  /**
+   * Decimales fijos para el resultado calculado. Vacío/null = se usa la
+   * regla automática (`formatFormulaNumber`). Ver el comentario de esa
+   * función: existe para cocientes como VCM, HCM y CHCM, que por cifras
+   * significativas van sin decimales (o con 1), y la regla automática los
+   * infla a un piso de dos.
+   */
+  decimales?: number | null
 }
 
 type FormulaAnalysis = {
@@ -52,6 +60,9 @@ export type FormulaValue = {
 export type FormulaCalculation = {
   value: string
   missingCodes: string[]
+  /** Los faltantes que faltan porque su fila salió del protocolo —excluida, o
+   *  vaciada en cascada por una exclusión—, no porque todavía no se cargaron. */
+  codigosNoDisponibles: string[]
 }
 
 /** El número que hay adentro de lo que se escribió, tal cual se escribió. */
@@ -87,22 +98,47 @@ const decimalesDe = (crudo: string): number => {
  * cuenta —tres y dos dan tres— con un piso de dos, que es lo que se acostumbra
  * leer en el informe cuando los componentes son enteros. El techo está para que
  * un valor cargado con diez decimales no arrastre a la fórmula.
+ *
+ * Esa cantidad de decimales se respeta tal cual, sin recortar ceros: si los
+ * componentes tienen dos decimales, `0.3` sale `"0.30"` y `3` sale `"3.00"`,
+ * porque son las cifras que se leyeron en esos componentes, no un capricho de
+ * formato. Antes se le sacaban los ceros de la derecha (`"3.00"` -> `"3"`) y
+ * eso hacía perder esa cantidad de cifras que la usuaria quiere ver siempre.
+ *
+ * EXCEPCIÓN: DETERMINACIONES CON `decimales` FIJO
+ * ================================================
+ * Esta regla automática no le sirve a un cociente como VCM, HCM o CHCM: por
+ * cifras significativas van sin decimales (o con uno), y la regla de arriba
+ * los infla igual al piso de dos. Para esos casos la determinación calculada
+ * trae su propio `decimales` (0 a 6, cargado en el catálogo) y ese valor pisa
+ * a la regla automática entera —sin piso ni techo—, incluido el caso
+ * `decimales: 0`. Si la determinación no tiene `decimales` cargado
+ * (`null`/`undefined`), se sigue usando la regla automática tal cual está
+ * descripta arriba.
  */
 const DECIMALES_MINIMOS = 2
 const DECIMALES_MAXIMOS = 6
 
-/** `"1.10"` -> `"1.1"`, `"3.00"` -> `"3"`. Un cero al final no es un dato. */
-const recortarCerosDeLaDerecha = (texto: string): string => {
-  if (!texto.includes(".")) return texto
-  const recortado = texto.replace(/0+$/, "").replace(/\.$/, "")
-  return recortado === "-0" ? "0" : recortado
-}
+/**
+ * `toFixed` deja un `"-0.00"` cuando el resultado redondea a cero pero venía
+ * de un cálculo negativo (por ejemplo `-0.001` con dos decimales). Un cero no
+ * tiene signo en un informe de laboratorio.
+ */
+const normalizarCeroNegativo = (texto: string): string =>
+  /^-0(\.0+)?$/.test(texto) ? texto.slice(1) : texto
 
-const formatFormulaNumber = (value: number, decimalesDeLosComponentes: number[]): string => {
+const formatFormulaNumber = (
+  value: number,
+  decimalesDeLosComponentes: number[],
+  decimalesFijos?: number | null,
+): string => {
   if (!Number.isFinite(value)) return ""
+  if (decimalesFijos !== undefined && decimalesFijos !== null) {
+    return normalizarCeroNegativo(value.toFixed(decimalesFijos))
+  }
   const pedidos = decimalesDeLosComponentes.length ? Math.max(...decimalesDeLosComponentes) : 0
   const decimales = Math.min(Math.max(pedidos, DECIMALES_MINIMOS), DECIMALES_MAXIMOS)
-  return recortarCerosDeLaDerecha(value.toFixed(decimales))
+  return normalizarCeroNegativo(value.toFixed(decimales))
 }
 
 const normalizeExpression = (formula: string): string => {
@@ -191,10 +227,23 @@ const evaluateExpression = (expression: string): number | null => {
   }
 }
 
+/**
+ * UN FALTANTE NO ES IGUAL A OTRO
+ * ==============================
+ * "Todavía no se cargó" y "salió del protocolo" llegaban los dos como un código
+ * en `missingCodes`, y quien llamaba no podía distinguirlos: el primero tiene
+ * que dejar el valor que haya en pantalla (se está tipeando), el segundo tiene
+ * que vaciarlo. Por eso los indisponibles van también en `codigosNoDisponibles`.
+ *
+ * `idsNoDisponibles` son las filas que, sin estar `excluido`, dejaron de tener
+ * valor por una exclusión: las fórmulas vaciadas en cascada. Quien recorre las
+ * pasadas las va juntando y las vuelve a pasar acá.
+ */
 export const calculateFormulaValue = (
   result: FormulaResult,
   allResults: FormulaResult[],
   values: Record<number, FormulaValue>,
+  opciones: { idsNoDisponibles?: ReadonlySet<number> } = {},
 ): FormulaCalculation | null => {
   const formula = result.determination.formula?.trim()
   if (!formula) return null
@@ -206,22 +255,28 @@ export const calculateFormulaValue = (
   })
 
   const missingCodes: string[] = []
+  const codigosNoDisponibles: string[] = []
   const decimalesDeLosComponentes: number[] = []
   const codesByNumber = buildCodesByNumber(allResults, result.analysis.code)
   // Un componente excluido es un componente que no está: la fórmula no aplica
   // en este protocolo, igual que para el backend cuando descarta el submódulo.
-  const excluidos = new Set(allResults.filter((r) => r.excluido).map((r) => r.id))
+  // A los excluidos se suman los que quien llama ya sabe fuera de juego.
+  const noDisponibles = new Set(allResults.filter((r) => r.excluido).map((r) => r.id))
+  opciones.idsNoDisponibles?.forEach((id) => noDisponibles.add(id))
   let expression = normalizeExpression(formula)
 
   expression = expression.replace(/\[([^\]]+)\]/g, (_match, rawCode: string) => {
     const code = resolveRelativeCode(rawCode.trim(), result.analysis.code, codesByNumber)
     const dependencyId = resultIdByCode.get(code)
-    const disponible = dependencyId !== undefined && !excluidos.has(dependencyId)
-    const crudo = disponible ? extraerNumero(values[dependencyId]?.value) : null
+    const fueraDelProtocolo = dependencyId !== undefined && noDisponibles.has(dependencyId)
+    const crudo = dependencyId !== undefined && !fueraDelProtocolo
+      ? extraerNumero(values[dependencyId]?.value)
+      : null
     const dependencyValue = crudo === null ? null : toFormulaNumber(crudo)
 
     if (crudo === null || dependencyValue === null) {
       missingCodes.push(code)
+      if (fueraDelProtocolo) codigosNoDisponibles.push(code)
       return "NaN"
     }
 
@@ -232,20 +287,42 @@ export const calculateFormulaValue = (
   })
 
   if (missingCodes.length > 0) {
-    return { value: "", missingCodes }
+    return { value: "", missingCodes, codigosNoDisponibles }
   }
 
   const calculated = evaluateExpression(expression)
   if (calculated === null) return null
 
-  return { value: formatFormulaNumber(calculated, decimalesDeLosComponentes), missingCodes: [] }
+  return {
+    value: formatFormulaNumber(calculated, decimalesDeLosComponentes, result.determination.decimales),
+    missingCodes: [],
+    codigosNoDisponibles: [],
+  }
 }
 
+/**
+ * Recalcula en pantalla todas las fórmulas, tantas pasadas como haga falta para
+ * que una fórmula de fórmula quede resuelta.
+ *
+ * POR QUÉ LA CASCADA NECESITA UN `Set`
+ * ====================================
+ * Cuando un componente sale del protocolo, su fórmula queda vacía. Pero un
+ * valor vacío en `nextValues` es indistinguible de "todavía no se cargó", y ese
+ * caso a propósito deja el número viejo en pantalla (no se vacía un cálculo a
+ * mitad de tipeo). Así, el dependiente del dependiente se quedaba con su número
+ * viejo calculado sobre algo que ya no existe.
+ *
+ * `vaciadosPorExclusion` guarda qué filas quedaron sin valor POR la exclusión y
+ * se pasa como `idsNoDisponibles`: la pasada siguiente las trata igual que a una
+ * excluida y la cascada llega hasta el final. El `Set` sólo crece, así que el
+ * `for` de pasadas termina igual que antes.
+ */
 export const applyFormulaCalculations = <T extends FormulaResult>(
   results: T[],
   values: Record<number, FormulaValue>,
 ): Record<number, FormulaValue> => {
   let nextValues = values
+  const vaciadosPorExclusion = new Set<number>()
 
   for (let pass = 0; pass < results.length; pass += 1) {
     let changed = false
@@ -259,8 +336,26 @@ export const applyFormulaCalculations = <T extends FormulaResult>(
       // no se le calcula nada. Lo que tenga cargado queda tal cual.
       if (result.excluido) return
 
-      const calculation = calculateFormulaValue(result, results, nextValues)
-      if (!calculation || calculation.missingCodes.length > 0) return
+      const calculation = calculateFormulaValue(result, results, nextValues, {
+        idsNoDisponibles: vaciadosPorExclusion,
+      })
+      if (!calculation) return
+
+      if (calculation.missingCodes.length > 0) {
+        // Todavía no cargado: se deja lo que haya en pantalla.
+        if (calculation.codigosNoDisponibles.length === 0) return
+        // Un componente que salió del protocolo: la fórmula no tiene valor, y su
+        // propio valor tampoco está disponible para las fórmulas que la usan.
+        if (!vaciadosPorExclusion.has(result.id)) {
+          vaciadosPorExclusion.add(result.id)
+          changed = true
+        }
+        const actual = nextValues[result.id] || { value: "", notes: "" }
+        if (actual.value === "") return
+        nextValues = { ...nextValues, [result.id]: { ...actual, value: "" } }
+        changed = true
+        return
+      }
 
       const current = nextValues[result.id] || { value: "", notes: "" }
       if (current.value === calculation.value) return
@@ -328,4 +423,123 @@ export function formulasParaGuardar<T extends FormulaGuardable>(
     if (soloVacias && guardado !== "") return false
     return calculado !== guardado
   })
+}
+
+export type TokenFormula =
+  | { tipo: "operador"; texto: string }
+  | { tipo: "numero"; texto: string }
+  | { tipo: "componente"; codigo: string; nombre: string; valor: string | null }
+
+export type ComponenteFaltante = { codigo: string; nombre: string }
+
+export type ExplicacionFormula = {
+  /** La fórmula original, tal cual vino de la base. */
+  formula: string
+  tokens: TokenFormula[]
+  faltantes: ComponenteFaltante[]
+  /** Valor calculado; `null` si falta un componente o la expresión no evalúa. */
+  resultado: string | null
+}
+
+const SIGNOS_TIPOGRAFICOS: Record<string, string> = {
+  "*": "×",
+  "/": "÷",
+  "-": "−",
+  "+": "+",
+}
+
+// Referencia primero (puede contener cualquier cosa entre corchetes), después
+// número, después la potencia de dos caracteres (tiene que ganarle al `*`
+// suelto) y por último un operador o paréntesis de un carácter. Lo que no
+// entra en ninguno de los cuatro grupos —espacios, algo raro que se coló—
+// simplemente no genera match y `matchAll` lo salta solo.
+const TOKEN_PATTERN = /\[([^\]]+)\]|(\d+(?:\.\d+)?)|(\*\*)|([+\-*/()])/g
+
+/**
+ * Arma la fórmula "explicada": cada token con el nombre de la determinación y
+ * el valor cargado en vez del código crudo, más la lista de lo que falta.
+ *
+ * POR QUÉ ES UNA FUNCIÓN PURA APARTE
+ * ===================================
+ * `calculateFormulaValue` ya sabe resolver códigos y evaluar la expresión,
+ * pero sólo devuelve el resultado final: para mostrarle al usuario "esto no
+ * calculó porque falta [Hematocrito]" hace falta el detalle de CADA término,
+ * no sólo si al final faltó algo. Separarla del render deja esa traducción
+ * —código a nombre, referencia a valor cargado— testeable y reutilizable sin
+ * arrastrar JSX ni estado de componente; la pantalla sólo la recorre y pinta.
+ *
+ * POR QUÉ EL VALOR ES TEXTO Y NO NÚMERO
+ * ======================================
+ * Mismo motivo que en `calculateFormulaValue`: lo que se muestra es lo que la
+ * persona cargó, con sus decimales tal cual los escribió. `Number("1.250")`
+ * da `1.25` y se comió un decimal que en un resultado de laboratorio puede
+ * importar.
+ */
+export const describirFormula = (
+  result: FormulaResult,
+  allResults: FormulaResult[],
+  values: Record<number, FormulaValue>,
+): ExplicacionFormula | null => {
+  const formula = result.determination.formula?.trim()
+  if (!formula) return null
+
+  const codeByResult = buildResultCodeMap(allResults)
+  const resultIdByCode = new Map<string, number>()
+  codeByResult.forEach((code, resultId) => {
+    resultIdByCode.set(code, resultId)
+  })
+  const resultsById = new Map(allResults.map((r) => [r.id, r]))
+
+  const codesByNumber = buildCodesByNumber(allResults, result.analysis.code)
+  // Mismo criterio que `calculateFormulaValue`: un componente excluido es un
+  // componente que no está.
+  const excluidos = new Set(allResults.filter((r) => r.excluido).map((r) => r.id))
+
+  const expression = normalizeExpression(formula)
+
+  const tokens: TokenFormula[] = []
+  const faltantes: ComponenteFaltante[] = []
+  const codigosFaltantesVistos = new Set<string>()
+
+  for (const match of expression.matchAll(TOKEN_PATTERN)) {
+    const [, referencia, numero, potencia, operador] = match
+
+    if (referencia !== undefined) {
+      const codigo = resolveRelativeCode(referencia.trim(), result.analysis.code, codesByNumber)
+      const dependencyId = resultIdByCode.get(codigo)
+      const componente = dependencyId !== undefined ? resultsById.get(dependencyId) : undefined
+      const disponible = dependencyId !== undefined && !excluidos.has(dependencyId)
+      const textoCargado = disponible ? values[dependencyId as number]?.value : undefined
+      const valor = textoCargado !== undefined && extraerNumero(textoCargado) !== null ? textoCargado : null
+      const nombre = componente?.determination.name ?? codigo
+
+      tokens.push({ tipo: "componente", codigo, nombre, valor })
+
+      if (valor === null && !codigosFaltantesVistos.has(codigo)) {
+        codigosFaltantesVistos.add(codigo)
+        faltantes.push({ codigo, nombre })
+      }
+      continue
+    }
+
+    if (numero !== undefined) {
+      tokens.push({ tipo: "numero", texto: numero })
+      continue
+    }
+
+    if (potencia !== undefined) {
+      tokens.push({ tipo: "operador", texto: "^" })
+      continue
+    }
+
+    if (operador !== undefined) {
+      const texto = operador === "(" || operador === ")" ? operador : SIGNOS_TIPOGRAFICOS[operador]
+      tokens.push({ tipo: "operador", texto })
+    }
+  }
+
+  const calculation = calculateFormulaValue(result, allResults, values)
+  const resultado = calculation && calculation.missingCodes.length === 0 ? calculation.value : null
+
+  return { formula, tokens, faltantes, resultado }
 }

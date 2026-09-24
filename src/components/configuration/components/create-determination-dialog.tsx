@@ -17,6 +17,8 @@ import { CATALOG_ENDPOINTS } from "@/config/api"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
 import { esExponenteValido } from "@/lib/notacion"
 import { CampoNotacionCientifica } from "./campo-notacion-cientifica"
+import { CampoDecimales } from "./campo-decimales"
+import { esDecimalesValido } from "@/lib/decimales"
 import {
   rangosConNombreParaEnviar,
   rangosParaEnviar,
@@ -51,6 +53,7 @@ export const CreateDeterminationDialog: React.FC<CreateDeterminationDialogProps>
   const [measureUnit, setMeasureUnit] = useState("")
   const [exponente, setExponente] = useState("")
   const [formula, setFormula] = useState("")
+  const [decimales, setDecimales] = useState("")
   const [ranges, setRanges] = useState<RangeMap>(rangosVacios)
   const [namedRanges, setNamedRanges] = useState<RangoConNombre[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -73,6 +76,7 @@ export const CreateDeterminationDialog: React.FC<CreateDeterminationDialogProps>
       setMeasureUnit("")
       setExponente("")
       setFormula("")
+      setDecimales("")
       setRanges(rangosVacios())
       setNamedRanges([])
       setErrors({})
@@ -86,6 +90,9 @@ export const CreateDeterminationDialog: React.FC<CreateDeterminationDialogProps>
     if (!measureUnit.trim()) newErrors.measureUnit = "La unidad de medida es requerida."
     if (exponente.trim() !== "" && !esExponenteValido(Number(exponente))) {
       newErrors.exponente = "La notación científica tiene que ser un número entero entre 1 y 30."
+    }
+    if (decimales.trim() !== "" && !esDecimalesValido(Number(decimales))) {
+      newErrors.decimales = "Los decimales tienen que ser un número entero entre 0 y 6."
     }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -102,6 +109,7 @@ export const CreateDeterminationDialog: React.FC<CreateDeterminationDialogProps>
         measure_unit: measureUnit,
         scientific_exponent: exponente.trim() === "" ? null : Number(exponente),
         formula: formula || "",
+        decimales: decimales.trim() === "" ? null : Number(decimales),
         reference_ranges: rangosParaEnviar(ranges),
         named_ranges: rangosConNombreParaEnviar(namedRanges),
       }
@@ -215,6 +223,15 @@ export const CreateDeterminationDialog: React.FC<CreateDeterminationDialogProps>
             />
             {errors.formula && <p className="text-xs md:text-sm text-red-500">{errors.formula}</p>}
           </div>
+
+          {formula.trim() !== "" && (
+            <CampoDecimales
+              id="determination-decimales"
+              decimales={decimales}
+              onChange={setDecimales}
+              error={errors.decimales}
+            />
+          )}
 
           <ValoresDeReferencia
             ranges={ranges}

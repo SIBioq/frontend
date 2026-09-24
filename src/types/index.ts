@@ -595,6 +595,13 @@ export interface SubmoduloEvaluado {
   cierra: boolean
   faltantes: string[]
   determinaciones: number[]
+  /**
+   * Todas las determinaciones activas del submódulo, sin filtrar por
+   * exclusión. Sirve para recalcular en el momento si el usuario reincluye
+   * una determinación que estaba excluida al abrir la pantalla: sin esto,
+   * su id no está en ninguna lista y no vuelve a sumar hasta recargar.
+   */
+  determinaciones_definidas?: number[]
 }
 
 export interface Determination {
@@ -605,6 +612,12 @@ export interface Determination {
   measure_unit: string
   /** Exponente de 10 de la unidad: `/µL` + 6 se imprime `4.500.000 /µL`. */
   scientific_exponent?: number | null
+  /**
+   * Decimales fijos para el resultado de una determinación CALCULADA (VCM,
+   * HCM, CHCM...). Vacío/null = el frontend usa la regla automática (ver
+   * `formatFormulaNumber` en `result-formulas.ts`).
+   */
+  decimales?: number | null
   formula: string
   reference_values?: ReferenceValues
   reference_ranges?: ReferenceRange[]
@@ -1154,6 +1167,11 @@ export interface ResultDetermination {
   measure_unit: string
   /** Exponente de 10 de la unidad: se carga `4,5` y el informe dice `4.500.000`. */
   scientific_exponent?: number | null
+  /**
+   * Decimales fijos para el resultado calculado. Vacío/null = regla
+   * automática. Ver `result-formulas.ts`.
+   */
+  decimales?: number | null
   formula: string
   reference_values?: ReferenceValues
   reference_ranges?: ReferenceRange[]
@@ -1202,6 +1220,9 @@ export interface Result {
   /** Estado NUEVO del protocolo dueño, recalculado por el backend tras guardar/validar. */
   protocol_status?: { id: number; name: string } | null
   protocol_id?: number | null
+  /** Los cálculos que el backend vació al excluir esta determinación: su
+   *  componente salió del protocolo, así que el valor viejo dejó de valer. */
+  dependientes_vaciados?: Result[]
 }
 
 // Response from GET /results/results/by-analysis/{id}/

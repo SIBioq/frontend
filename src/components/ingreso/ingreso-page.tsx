@@ -14,6 +14,7 @@ import { CreatePatientForm } from "./components/create-patient-form"
 import { CreateMedicoForm } from "./components/create-medico-form"
 import { CreateObraSocialForm } from "./components/create-obra-social-form"
 import { ProtocolSuccess } from "./components/protocol-success"
+import { AvisoDeBorrador } from "./components/aviso-de-borrador"
 import { useApi } from "../../hooks/use-api"
 import { CATALOG_ENDPOINTS, MEDICAL_ENDPOINTS, PROTOCOL_ENDPOINTS, PATIENT_ENDPOINTS } from "@/config/api"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
@@ -26,6 +27,9 @@ import { menosMovimiento } from "@/lib/menos-movimiento"
 import { cn } from "@/lib/utils"
 import { useProtocolQuote } from "@/hooks/use-protocol-quote"
 import { useLoDeLaUltimaVez } from "@/hooks/use-lo-de-la-ultima-vez"
+import { useBorradorDeIngreso } from "@/hooks/use-borrador-de-ingreso"
+import type { InstantaneaDeIngreso } from "@/lib/borrador-de-ingreso"
+import { useAuth } from "@/contexts/auth-context"
 import { parseMonto } from "@/lib/montos"
 import { RoundingConfirmDialog } from "@/components/protocolos/components/dialogs/rounding-confirm-dialog"
 import type {
@@ -90,6 +94,7 @@ type FormSnapshot = {
 
 export default function IngresoPage() {
   const { apiRequest } = useApi()
+  const { user } = useAuth()
 
   // Main states
   const [currentPatient, setCurrentPatient] = useState<Patient | null>(null)
@@ -178,6 +183,56 @@ export default function IngresoPage() {
   const seDeshizoElProtocolo = useRef(false)
   const [origenDelVerde, setOrigenDelVerde] = useState<{ x: number; y: number } | null>(null)
 
+  // Mientras se restaura un borrador (pedidos al backend en vuelo) no hay que
+  // guardar nada nuevo: se pisaría lo que se está trayendo.
+  const [restaurandoBorrador, setRestaurandoBorrador] = useState(false)
+
+  /** Foto del formulario ahora, para el borrador. Sólo ids y montos: ver PHI
+   *  en `src/lib/borrador-de-ingreso.ts`. */
+  const instantanea = useMemo<InstantaneaDeIngreso>(
+    () => ({
+      pacienteId: currentPatient?.id ?? null,
+      medicoId: selectedDoctor?.id ?? null,
+      obraSocialId: selectedInsurance?.id ?? null,
+      metodoDeEnvioId: selectedSendMethod?.id ?? null,
+      analisis: selectedAnalyses.map((a) => ({ id: a.id, autorizado: a.is_authorized })),
+      pagoEfectivo,
+      pagoTransferencia,
+      numeroDeAfiliado: affiliateNumber,
+      entidadFacturacionId: billingEntityId,
+      cuentaDeCobroId,
+      trajoOrden,
+      preauthStatus,
+      materialDescartable: extraAmounts.material_descartable_amount,
+      derivacion: extraAmounts.derivacion_amount,
+      coseguro: coseguroAmount,
+      transaccionesNoPlanificadas: unplannedTransactions,
+    }),
+    [
+      currentPatient?.id,
+      selectedDoctor?.id,
+      selectedInsurance?.id,
+      selectedSendMethod?.id,
+      selectedAnalyses,
+      pagoEfectivo,
+      pagoTransferencia,
+      affiliateNumber,
+      billingEntityId,
+      cuentaDeCobroId,
+      trajoOrden,
+      preauthStatus,
+      extraAmounts,
+      coseguroAmount,
+      unplannedTransactions,
+    ],
+  )
+
+  const borrador = useBorradorDeIngreso({
+    usuarioId: user?.id ?? null,
+    instantanea,
+    guardadoHabilitado: !isLoading && !restaurandoBorrador && !successData && faseDeCreacion === "idle",
+  })
+
   /**
    * Lo que este paciente usó la última vez, para subirlo en los combos.
    *
@@ -214,6 +269,21 @@ export default function IngresoPage() {
   const location = useLocation()
   const navigate = useNavigate()
 
+  // Si se entró desde "Nuevo protocolo" en la ficha de un paciente, ese
+  // paciente gana: no tiene sentido restaurar el borrador solo por encima y
+  // reemplazárselo. Se calcula una única vez, con el `location.state` que
+  // trajo el mount, porque el efecto de más abajo lo vacía enseguida
+  // (`navigate(..., { state: null })`) y para la segunda vuelta ya no está.
+  const vinoConPacientePreseteadoRef = useRef(
+    Boolean((location.state as { patient?: Patient } | null)?.patient),
+  )
+  // true en cuanto arranca `restaurarBorrador`, la haya disparado el efecto
+  // de auto-restauración o el clic en «Continuar». Evita repetir los pedidos
+  // al backend si las dos vías llegaran a coincidir, y le dice a «Continuar»
+  // si todavía tiene que restaurar él mismo (caso paciente preseteado) o si
+  // sólo le queda bajar el cartel.
+  const restauracionArrancadaRef = useRef(false)
+
   useEffect(() => {
     loadInitialData()
   }, [])
@@ -231,6 +301,26 @@ export default function IngresoPage() {
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // El pedido es "el formulario como lo dejé, no vacío": si hay un borrador
+  // para ofrecer, se restaura solo apenas termina de cargar la pantalla. El
+  // cartel se sigue mostrando (avisando lo que se recuperó), pero ya no hace
+  // falta apretar «Continuar» para ver los datos.
+  //
+  // Excepción: paciente preseteado (ver `vinoConPacientePreseteadoRef`). Ahí
+  // se deja el cartel como estaba antes de este cambio, restaurando sólo si
+  // el usuario lo pide con «Continuar».
+  //
+  // Se espera a que termine `isLoading`: `restaurarBorrador` necesita
+  // `sendMethods` ya cargado para poder reponer el método de envío guardado.
+  useEffect(() => {
+    if (isLoading) return
+    if (!borrador.borradorPendiente) return
+    if (vinoConPacientePreseteadoRef.current) return
+    if (restauracionArrancadaRef.current) return
+    void restaurarBorrador()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, borrador.borradorPendiente])
 
   const extractErrorMessage = (errorData: unknown): string => formatApiError(errorData)
 
@@ -522,6 +612,7 @@ export default function IngresoPage() {
     })
     setCoseguroAmount("")
     setUnplannedTransactions([])
+    borrador.borrar()
   }
 
   // Deshace un protocolo recién creado desde la pantalla de éxito: pide al
@@ -578,6 +669,147 @@ export default function IngresoPage() {
     } finally {
       setIsRollingBack(false)
     }
+  }
+
+  /** Pide un dato al backend por su id; si no se puede traer, degrada a
+   *  `null` en vez de tirar abajo el resto de la restauración. */
+  const pedirEntidadDelBorrador = async <T,>(url: string | null): Promise<T | null> => {
+    if (!url) return null
+    try {
+      const respuesta = await apiRequest(url)
+      if (!respuesta.ok) return null
+      return (await respuesta.json()) as T
+    } catch {
+      return null
+    }
+  }
+
+  // Reconstruye el formulario a partir del borrador guardado en `localStorage`.
+  // Ahí sólo hay ids (PHI mínima, ver `borrador-de-ingreso.ts`): cada entidad
+  // se vuelve a pedir al backend, y lo que ya no se pueda traer se avisa por
+  // toast pero no frena el resto de la restauración.
+  const restaurarBorrador = async () => {
+    const pendiente = borrador.borradorPendiente
+    if (!pendiente) return
+    // Sincrónico y antes del primer `await`: cubre tanto la doble invocación
+    // de efectos de `StrictMode` como un cruce entre la auto-restauración y
+    // un clic en «Continuar» que llegara a colarse.
+    restauracionArrancadaRef.current = true
+
+    setRestaurandoBorrador(true)
+    try {
+      const [pacienteTraido, medicoTraido, obraSocialTraida, analisisTraidos] = await Promise.all([
+        pedirEntidadDelBorrador<Patient>(
+          pendiente.pacienteId != null ? PATIENT_ENDPOINTS.PATIENT_DETAIL(pendiente.pacienteId) : null,
+        ),
+        pedirEntidadDelBorrador<Doctor>(
+          pendiente.medicoId != null ? MEDICAL_ENDPOINTS.DOCTOR_DETAIL(pendiente.medicoId) : null,
+        ),
+        pedirEntidadDelBorrador<Insurance>(
+          pendiente.obraSocialId != null ? MEDICAL_ENDPOINTS.INSURANCE_DETAIL(pendiente.obraSocialId) : null,
+        ),
+        Promise.all(
+          pendiente.analisis.map((item) =>
+            pedirEntidadDelBorrador<Analysis>(CATALOG_ENDPOINTS.ANALYSIS_DETAIL(item.id)),
+          ),
+        ),
+      ])
+
+      // El método de envío no se pide: ya está en el state cargado al entrar.
+      const metodoDeEnvioTraido =
+        pendiente.metodoDeEnvioId != null
+          ? sendMethods.find((metodo) => metodo.id === pendiente.metodoDeEnvioId) ?? null
+          : null
+
+      const analisisPorId = new Map(
+        analisisTraidos
+          .filter((analisis): analisis is Analysis => analisis != null)
+          .map((analisis) => [analisis.id, analisis]),
+      )
+      const analisisRestaurados: SelectedAnalysis[] = pendiente.analisis
+        .map((item) => {
+          const analisis = analisisPorId.get(item.id)
+          return analisis ? { ...analisis, is_authorized: item.autorizado } : null
+        })
+        .filter((analisis): analisis is SelectedAnalysis => analisis != null)
+
+      // Igual que en `handleRollbackAndEdit`: hay que anotar para qué
+      // paciente ya se resolvió el ABI ANTES de `setCurrentPatient`, así el
+      // efecto que le agrega el acto bioquímico al anónimo no le vuelve a
+      // sumar uno que el usuario quizás ya había sacado de la lista.
+      abiCargadoPara.current = pendiente.pacienteId ?? null
+      // Si el paciente no se pudo traer, esto deja `currentPatient` en
+      // `null` (ya lo estaba): el resto del formulario igual se restaura.
+      setCurrentPatient(pacienteTraido)
+      setSelectedDoctor(medicoTraido)
+      setSelectedAnalyses(analisisRestaurados)
+      // Directo con `setSelectedInsurance` y NO con `handleInsuranceSelect`:
+      // ese handler es para cuando el usuario ELIGE una obra social del
+      // combo, y de paso limpia afiliado, entidad, orden, preautorización y
+      // montos — justo los datos que se están restaurando acá abajo. Usarlo
+      // los pisaría con vacío apenas después de reponerlos.
+      setSelectedInsurance(obraSocialTraida)
+      setAffiliateNumber(pendiente.numeroDeAfiliado)
+      setBillingEntityId(pendiente.entidadFacturacionId)
+      setCuentaDeCobroId(pendiente.cuentaDeCobroId)
+      setTrajoOrden(pendiente.trajoOrden)
+      setPreauthStatus(pendiente.preauthStatus)
+      setExtraAmounts({
+        material_descartable_amount: pendiente.materialDescartable,
+        derivacion_amount: pendiente.derivacion,
+      })
+      setCoseguroAmount(pendiente.coseguro)
+      setUnplannedTransactions(pendiente.transaccionesNoPlanificadas)
+      setPagoEfectivo(pendiente.pagoEfectivo)
+      setPagoTransferencia(pendiente.pagoTransferencia)
+      setSelectedSendMethod(metodoDeEnvioTraido)
+      setPatientNotFound(false)
+      setCreatingAnonymous(false)
+
+      const faltantes: string[] = []
+      if (pendiente.pacienteId != null && !pacienteTraido) {
+        faltantes.push("El paciente ya no está en el sistema.")
+      }
+      if (pendiente.medicoId != null && !medicoTraido) {
+        faltantes.push("El médico ya no está en el sistema.")
+      }
+      if (pendiente.obraSocialId != null && !obraSocialTraida) {
+        faltantes.push("La obra social ya no está en el sistema.")
+      }
+      const analisisPerdidos = pendiente.analisis.length - analisisRestaurados.length
+      if (analisisPerdidos === 1) {
+        faltantes.push("Se perdió 1 análisis del catálogo.")
+      } else if (analisisPerdidos > 1) {
+        faltantes.push(`Se perdieron ${analisisPerdidos} análisis del catálogo.`)
+      }
+
+      if (faltantes.length > 0) {
+        toast.warning("Recuperamos el protocolo, pero faltan datos", {
+          description: faltantes.join(" "),
+        })
+      } else {
+        toast.success("Seguimos donde lo dejaste")
+      }
+
+      // El formulario ya es una copia del borrador: se rehabilita el guardado
+      // (sigue escribiendo por encima del mismo borrador) SIN bajar el
+      // cartel. El cartel lo baja quien apretó «Continuar» — acá puede haber
+      // llegado solo, sin que nadie lo apretara todavía.
+      borrador.marcarComoRestaurado()
+    } finally {
+      setRestaurandoBorrador(false)
+    }
+  }
+
+  // Click en «Continuar» del cartel. En el caso normal la restauración ya
+  // corrió sola (`restauracionArrancadaRef.current` en true) y sólo queda
+  // bajar el cartel; si hay un paciente preseteado, la restauración nunca
+  // arrancó y hay que hacerla ahora, a mano, antes de bajarlo.
+  const handleContinuarBorrador = async () => {
+    if (!restauracionArrancadaRef.current) {
+      await restaurarBorrador()
+    }
+    borrador.ocultarCartel()
   }
 
   const isPrivateInsurance = selectedInsurance?.name.toLowerCase() === "particular"
@@ -907,6 +1139,18 @@ export default function IngresoPage() {
           <FileText className="h-6 w-6 text-[#204983]" />
           <h1 className="text-xl font-bold text-gray-800 md:text-2xl">Ingreso de Protocolos</h1>
         </div>
+
+        {borrador.borradorPendiente && (
+          <div className="mb-4">
+            <AvisoDeBorrador
+              cantidadDeAnalisis={borrador.borradorPendiente.analisis.length}
+              guardadoEn={borrador.borradorPendiente.guardadoEn}
+              onContinuar={() => void handleContinuarBorrador()}
+              onDescartar={handleReset}
+              restaurando={restaurandoBorrador}
+            />
+          </div>
+        )}
 
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 justify-center">
           <div

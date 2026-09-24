@@ -46,3 +46,9 @@ llamadas, resumen y orden sin tocar backend.
 
 Ninguno dentro del alcance frontend. El acceso efectivo y la separación entre
 lectura y corrección siguen dependiendo del permiso backend existente.
+
+## Revertido el 2026-09-23
+
+La distinción entre «Lo hizo» (`usuario`) y «Registrado por» (`registrado_por`) se dio de baja por cambio de criterio de producto: tras revisar la pantalla, importa de dónde salió la plata, no quién hizo el gasto. Las filas ahora muestran solo «Registrado por». El selector «Lo hizo» se eliminó del modal, y el POST deja de enviar `usuario` (el backend lo rellena automáticamente con `request.user`).
+
+Detalles en [`docs/2026-09-23-libro-diario-sin-lo-hizo.md`](2026-09-23-libro-diario-sin-lo-hizo.md).

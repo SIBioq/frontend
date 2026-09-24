@@ -13,6 +13,7 @@ import { getVisibleUserMenuItems } from "@/config/user-menu-items"
 import { SessionNotificationToggle } from "@/components/session-notification-toggle"
 import { GlobalSearch } from "@/components/search/global-search"
 import { useScrollReveal } from "@/hooks/use-scroll-reveal"
+import { useHayBorradorDeIngreso } from "@/hooks/use-hay-borrador-de-ingreso"
 
 // En pantallas táctiles el hover no existe (el navegador lo emula con el tap y
 // deja la barra "pegada"), así que ahí la búsqueda se abre solo con el botón.
@@ -28,24 +29,35 @@ interface NavLinkProps {
   children: React.ReactNode
   isActive?: boolean
   onClick?: () => void
+  /** Hay un ingreso a medias esperando: el ítem se pinta en ámbar para que se
+   *  vea desde cualquier pantalla. No se usa junto con `isActive`: estando en la
+   *  pantalla, el pendiente ya está a la vista. */
+  destacado?: boolean
 }
 
-const NavLink: React.FC<NavLinkProps> = ({ to, children, isActive, onClick }) => {
+const NavLink: React.FC<NavLinkProps> = ({ to, children, isActive, onClick, destacado }) => {
+  // El aviso sólo se muestra si no estamos ya parados en la pantalla del ítem.
+  const avisoDestacado = destacado && !isActive
+
   return (
     <Link
       to={to}
       onClick={onClick}
+      title={avisoDestacado ? "Quedó un protocolo sin enviar" : undefined}
       className={`
         relative px-3 py-2 text-sm font-medium transition-colors duration-200
-        hover:text-[#204983] text-gray-700 group
+        group
+        ${avisoDestacado ? "text-amber-600 hover:text-amber-700" : "hover:text-[#204983] text-gray-700"}
         ${isActive ? "text-[#204983]" : ""}
       `}
     >
       {children}
+      {avisoDestacado && <span className="sr-only"> (quedó un protocolo sin enviar)</span>}
       <span
         className={`
-          absolute bottom-0 left-0 w-full h-0.5 bg-[#204983] transition-all duration-200
-          ${isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
+          absolute bottom-0 left-0 w-full h-0.5 transition-all duration-200
+          ${avisoDestacado ? "bg-amber-500 opacity-100" : "bg-[#204983]"}
+          ${avisoDestacado ? "" : isActive ? "opacity-100" : "opacity-0 group-hover:opacity-100"}
         `}
       />
     </Link>
@@ -56,6 +68,10 @@ export const Navbar: React.FC = () => {
   const { user, hasPermission, logout } = useAuth()
   const location = useLocation()
   const scrollState = useScrollReveal()
+  // Reactivo: si en esta PC quedó un ingreso a medias, el ítem "Ingreso" se
+  // pinta en ámbar. Va antes del `if (!user)` de abajo para no romper la
+  // regla de los hooks.
+  const hayBorrador = useHayBorradorDeIngreso()
   const navRef = useRef<HTMLElement>(null)
   // Alto real medido, no un valor fijo: la navbar cambia de alto entre desktop
   // y mobile, y el espaciador tiene que coincidir exacto o el salto se ve.
@@ -317,7 +333,12 @@ export const Navbar: React.FC = () => {
               {/* Left Navigation - Centrado entre borde izquierdo y logo */}
               <div className="flex-1 flex items-center justify-center space-x-8">
                 {leftNavItems.map((item) => (
-                  <NavLink key={item.path} to={item.path} isActive={isPathActive(item.path)}>
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    isActive={isPathActive(item.path)}
+                    destacado={item.path === "/ingreso" && hayBorrador}
+                  >
                     {item.label}
                   </NavLink>
                 ))}
@@ -465,6 +486,7 @@ export const Navbar: React.FC = () => {
                     to={item.path}
                     isActive={isPathActive(item.path)}
                     onClick={closeAllMenus}
+                    destacado={item.path === "/ingreso" && hayBorrador}
                   >
                     <div className="block px-3 py-2 text-base">{item.label}</div>
                   </NavLink>

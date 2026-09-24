@@ -61,7 +61,7 @@ type FilaAgrupada = {
   fuera_de_rango?: boolean
   movimiento_de_caja_id?: number
   detalle?: string
-  usuario?: string
+  /** El backend también manda `usuario` (quién hizo el gasto): no se muestra más, sólo importa quién lo registró. */
   registrado_por?: string
 }
 
@@ -613,15 +613,9 @@ export default function LibroDiarioPage() {
                                 )}
                               </span>
                             </div>
-                            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-gray-500">
-                              <span>
-                                <span className="font-medium text-gray-600">Lo hizo:</span>{" "}
-                                {autorInformado(fila.usuario)}
-                              </span>
-                              <span>
-                                <span className="font-medium text-gray-600">Registrado por:</span>{" "}
-                                {autorInformado(fila.registrado_por)}
-                              </span>
+                            <div className="mt-1 text-[11px] text-gray-500">
+                              <span className="font-medium text-gray-600">Registrado por:</span>{" "}
+                              {autorInformado(fila.registrado_por)}
                             </div>
                           </>
                         )}

@@ -2,6 +2,14 @@
 
 | Documento | Tema |
 |---|---|
+| [2026-09-24-correcciones-carga-e-informe.md](2026-09-24-correcciones-carga-e-informe.md) | Fórmulas preservan decimales, textarea que crece, navegación por teclado, fecha de informe y campo `decimales` |
+| [2026-09-23-exclusion-en-formulas.md](2026-09-23-exclusion-en-formulas.md) | Vaciar cálculos en pantalla cuando sale un componente del protocolo |
+| [2026-09-23-libro-diario-sin-lo-hizo.md](2026-09-23-libro-diario-sin-lo-hizo.md) | Quitar «Lo hizo» del libro diario, aclarar de dónde sale la plata |
+| [2026-09-23-exclusion-en-corroboracion.md](2026-09-23-exclusion-en-corroboracion.md) | Excluir una determinación dentro de un submódulo de corroboración |
+| [2026-09-23-carga-resultados-formula-y-carga-manual.md](2026-09-23-carga-resultados-formula-y-carga-manual.md) | Botón de carga manual debajo del input + tarjeta de fórmula al hover |
+| [2026-09-23-borrador-de-ingreso.md](2026-09-23-borrador-de-ingreso.md) | Guardar un protocolo a mitad de cargar y restaurarlo automáticamente |
+| [2026-09-23-avisar-submódulos-importación.md](2026-09-23-avisar-submódulos-importación.md) | Avisar cuántos submódulos se crearon en la importación del catálogo |
+| [2026-09-23-exclusion-estado-pantalla.md](2026-09-23-exclusion-estado-pantalla.md) | Pantalla de resultados pierde ediciones concurrentes por clausuras viejas |
 | [2026-09-23-excluir-determinacion-protocolo.md](2026-09-23-excluir-determinacion-protocolo.md) | Dejar una determinación fuera del protocolo en carga de resultados |
 | [2026-09-22-editar-cargos-facturacion-detalle.md](2026-09-22-editar-cargos-facturacion-detalle.md) | Edición de cargos en el detalle de facturación |
 | [2026-09-22-quitar-ciudad-por-defecto.md](2026-09-22-quitar-ciudad-por-defecto.md) | Evitar ciudad precargada al crear pacientes |

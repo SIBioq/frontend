@@ -20,16 +20,24 @@ export interface ResultGroup {
   determinations: Result[]
 }
 
+/** Un cálculo que va a quedar vacío al excluir su componente. */
+export interface DependienteAVaciar {
+  id: number
+  nombre: string
+  validado: boolean
+}
+
 /**
  * Lo que devuelve `alternarExclusion`.
  *
- * `requiereConfirmacion` es el 409 del backend: la fila ya tiene datos y hay
- * que preguntar antes. No es un error —nada cambió en el servidor—, así que la
+ * `requiereConfirmacion` es el 409 del backend: hay algo que perder —la fila ya
+ * tiene datos, o hay cálculos que la usan y van a quedar vacíos— y hay que
+ * preguntar antes. No es un error —nada cambió en el servidor—, así que la
  * pantalla lo usa para abrir el diálogo y no para mostrar una falla.
  */
 export type ResultadoExclusion =
   | { ok: true }
-  | { ok: false; requiereConfirmacion: true }
+  | { ok: false; requiereConfirmacion: true; dependientes: DependienteAVaciar[] }
   | { ok: false; requiereConfirmacion?: false }
 
 export interface ResultsProtocolHeader {
@@ -94,6 +102,24 @@ export function useProtocolResults(protocolId: number) {
   // `fetchResults` en el medio de la carga y dispararía un segundo fetch.
   const canceladoRef = useRef(cancelado)
   canceladoRef.current = cancelado
+
+  // `onSave`, `alternarCargaManual` y `alternarExclusion` leen `results` y
+  // `values` DESPUÉS de un `await`. Si dos de estas acciones se disparan casi
+  // juntas (guardar una fila y excluir otra, por ejemplo), la segunda que
+  // termina pisa el estado con lo que tenía en su clausura ANTES de que la
+  // primera terminara — la actualización de la primera desaparece de la
+  // pantalla aunque el backend la haya guardado bien. Leer de la ref en vez
+  // de la clausura evita eso: siempre parte de lo último, no de una foto
+  // vieja tomada al invocar la función.
+  const resultsRef = useRef<Result[]>(results)
+  useEffect(() => {
+    resultsRef.current = results
+  }, [results])
+
+  const valuesRef = useRef<Record<number, ResultValue>>(values)
+  useEffect(() => {
+    valuesRef.current = values
+  }, [values])
 
   /**
    * Guarda las fórmulas que ya se calcularon solas.
@@ -275,12 +301,14 @@ export function useProtocolResults(protocolId: number) {
           throw new Error(formatApiError(err, "Error al guardar el resultado"))
         }
         const updated: Result = await res.json()
-        const siguientes = results.map((r) => (r.id === resultId ? updated : r))
+        const siguientes = resultsRef.current.map((r) => (r.id === resultId ? updated : r))
+        resultsRef.current = siguientes
         setResults(siguientes)
         const valores = applyFormulaCalculations(siguientes, {
-          ...values,
+          ...valuesRef.current,
           [resultId]: { value: updated.value, notes: updated.notes },
         })
+        valuesRef.current = valores
         setValues(valores)
         if (updated.protocol_status !== undefined) {
           setProtocol((prev) => (prev ? { ...prev, status: updated.protocol_status ?? null } : prev))
@@ -301,7 +329,7 @@ export function useProtocolResults(protocolId: number) {
         setSaving((prev) => ({ ...prev, [resultId]: false }))
       }
     },
-    [apiRequest, values, results, canEditResults, guardarFormulasCalculadas],
+    [apiRequest, values, canEditResults, guardarFormulasCalculadas],
   )
 
   /**
@@ -333,11 +361,16 @@ export function useProtocolResults(protocolId: number) {
           throw new Error(formatApiError(err, "No se pudo cambiar el modo de carga"))
         }
         const updated: Result = await res.json()
-        const siguientes = results.map((r) => (r.id === resultId ? updated : r))
+        const siguientes = resultsRef.current.map((r) => (r.id === resultId ? updated : r))
+        resultsRef.current = siguientes
         setResults(siguientes)
         // Con la lista ya actualizada: si se apagó, el cálculo vuelve a correr
         // sobre esta fila; si se encendió, la saltea.
-        setValues((prev) => applyFormulaCalculations(siguientes, prev))
+        setValues((prev) => {
+          const siguientesValores = applyFormulaCalculations(siguientes, prev)
+          valuesRef.current = siguientesValores
+          return siguientesValores
+        })
         return true
       } catch (e) {
         toast.error(getErrorMessage(e, "No se pudo cambiar el modo de carga"))
@@ -346,24 +379,34 @@ export function useProtocolResults(protocolId: number) {
         setSaving((prev) => ({ ...prev, [resultId]: false }))
       }
     },
-    [apiRequest, canEditResults, results],
+    [apiRequest, canEditResults],
   )
 
   /**
    * Deja una determinación fuera de ESTE protocolo, o la vuelve
    * a incluir.
    *
-   * NO SE BORRA NADA
-   * ================
-   * Valor, notas, evaluación y firma de validación quedan tal cual: la fila
-   * simplemente deja de intervenir en el estado del protocolo, el informe y el
-   * envío. Al volver a incluirla reaparece completa.
+   * LA FILA EXCLUIDA NO PIERDE NADA; LOS CÁLCULOS QUE LA USABAN, SÍ
+   * ==============================================================
+   * De la fila que se deja fuera, valor, notas, evaluación y firma de
+   * validación quedan tal cual: simplemente deja de intervenir en el estado del
+   * protocolo, el informe y el envío, y al volver a incluirla reaparece
+   * completa.
+   *
+   * Lo que no puede quedar igual es un resultado calculado por fórmula que la
+   * usaba como componente: ese número se hizo con algo que ya no está en el
+   * protocolo. El backend lo vacía —y le quita la validación, porque no se
+   * firma una fila sin valor— y lo devuelve en `dependientes_vaciados` para
+   * que la pantalla lo refleje sin recargar. La validación no vuelve al
+   * reincluir: se firma de nuevo a mano.
    *
    * EL 409 NO ES UNA FALLA
    * ======================
-   * Si la fila ya tiene datos, el backend no cambia nada y pide confirmación.
-   * Eso se devuelve como `requiereConfirmacion` —sin aviso de error— para que
-   * la pantalla abra el diálogo y reintente con `confirmarConDatos`.
+   * Si hay algo que perder —la fila ya tiene datos, o hay cálculos con valor
+   * que dependen de ella, incluso estando la fila vacía— el backend no cambia
+   * nada y pide confirmación, con la lista de los cálculos afectados. Eso se
+   * devuelve como `requiereConfirmacion` —sin aviso de error— para que la
+   * pantalla abra el diálogo y reintente con `confirmarConDatos`.
    */
   const alternarExclusion = useCallback(
     async (
@@ -389,24 +432,61 @@ export function useProtocolResults(protocolId: number) {
           const err = (await res.json().catch(() => ({}))) as {
             detail?: string
             requires_confirmation?: boolean
+            dependientes?: DependienteAVaciar[]
           }
           if (res.status === 409 && err.requires_confirmation) {
-            return { ok: false, requiereConfirmacion: true }
+            // Un backend viejo —una PC de contingencia atrasada— no manda la
+            // clave: el diálogo pregunta igual, sin la lista.
+            const dependientes = Array.isArray(err.dependientes) ? err.dependientes : []
+            return { ok: false, requiereConfirmacion: true, dependientes }
           }
           throw new Error(formatApiError(err, "No se pudo cambiar la exclusión"))
         }
         const updated: Result = await res.json()
-        const siguientes = results.map((r) => (r.id === resultId ? updated : r))
+        // Los cálculos que el backend acabó de vaciar. Se aplican ANTES de
+        // recalcular: si se recalculara con los valores viejos, la fórmula
+        // volvería a ver el número que ya no vale.
+        const vaciados = updated.dependientes_vaciados ?? []
+        const porId = new Map<number, Result>([[updated.id, updated]])
+        vaciados.forEach((r) => porId.set(r.id, r))
+        const siguientes = resultsRef.current.map((r) => porId.get(r.id) ?? r)
+        resultsRef.current = siguientes
         setResults(siguientes)
         // Con la lista ya actualizada: las fórmulas que usaban esta fila como
         // componente dejan de resolver (o vuelven a hacerlo al reincluirla).
-        setValues((prev) => applyFormulaCalculations(siguientes, prev))
+        const valoresBase = { ...valuesRef.current }
+        vaciados.forEach((r) => {
+          valoresBase[r.id] = { value: "", notes: r.notes ?? "" }
+        })
+        const siguientesValores = applyFormulaCalculations(siguientes, valoresBase)
+        valuesRef.current = siguientesValores
+        setValues(siguientesValores)
         if (updated.protocol_status !== undefined) {
           setProtocol((prev) => (prev ? { ...prev, status: updated.protocol_status ?? null } : prev))
         }
-        toast.success(
-          excluido ? "Determinación dejada fuera del protocolo" : "Determinación vuelta a incluir",
-        )
+        // AL REINCLUIR HAY QUE GUARDAR; AL EXCLUIR, NO.
+        // Volver a incluir la fila hace que sus fórmulas resuelvan otra vez, y
+        // ese valor tiene que quedar en la base: va sin `soloVacias` justamente
+        // para pisar el vacío que dejó la exclusión. Al excluir no se guarda
+        // nada: el backend ya vació los dependientes en la misma transacción, y
+        // mandar PATCHs vacíos sería reescribir lo que ya está bien —sobre una
+        // fila excluida, además, que rechaza la escritura—.
+        if (!excluido) {
+          void guardarFormulasCalculadas(siguientes, siguientesValores)
+        }
+        if (excluido) {
+          const vaciadosEnPlural =
+            vaciados.length === 1
+              ? "Se vació 1 cálculo que la usaba."
+              : `Se vaciaron ${vaciados.length} cálculos que la usaban.`
+          toast.success(
+            vaciados.length > 0
+              ? `Determinación dejada fuera del protocolo. ${vaciadosEnPlural}`
+              : "Determinación dejada fuera del protocolo",
+          )
+        } else {
+          toast.success("Determinación vuelta a incluir")
+        }
         return { ok: true }
       } catch (e) {
         toast.error(getErrorMessage(e, "No se pudo cambiar la exclusión"))
@@ -415,7 +495,7 @@ export function useProtocolResults(protocolId: number) {
         setSaving((prev) => ({ ...prev, [resultId]: false }))
       }
     },
-    [apiRequest, canEditResults, results],
+    [apiRequest, canEditResults, guardarFormulasCalculadas],
   )
 
   /**
@@ -585,10 +665,27 @@ export function useProtocolResults(protocolId: number) {
     })
 
     return submodulos
-      // Si una de las determinaciones no corresponde en este protocolo, la suma
-      // del catálogo ya no aplica: mostrarla en rojo sería señalar un error que
-      // no existe. Mismo criterio que `corroboracion.py` en el backend.
-      .filter((s) => !s.determinaciones.some((id) => determinacionesExcluidas.has(id)))
+      // Una determinación excluida sale del submódulo; la fórmula sigue
+      // valiendo para las que quedan. Mismo criterio que `corroboracion.py`
+      // en el backend.
+      //
+      // Se parte de `determinaciones_definidas` (el catálogo completo del
+      // submódulo, sin filtrar) y no de `determinaciones`: esta última ya
+      // viene filtrada por las exclusiones que había al pedir la pantalla, así
+      // que una determinación que estaba excluida entonces no aparece ahí —y
+      // si el usuario la reincluye ahora, no hay forma de volver a sumarla
+      // porque su id ya no está en ninguna lista. Con el catálogo completo
+      // como base, el filtro de acá siempre refleja el estado ACTUAL.
+      .map(
+        (s): SubmoduloEvaluado => ({
+          ...s,
+          determinaciones: (s.determinaciones_definidas ?? s.determinaciones).filter(
+            (id) => !determinacionesExcluidas.has(id),
+          ),
+        }),
+      )
+      // Sin determinaciones no hay nada que corroborar.
+      .filter((s) => s.determinaciones.length > 0)
       .map((s) => {
         let suma = 0
         const faltantes: string[] = []

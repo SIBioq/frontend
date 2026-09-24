@@ -1,9 +1,8 @@
 "use client"
 
 import type React from "react"
-import { useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { Loader2, Save, AlertTriangle, ShieldCheck, History, CheckCircle2, Circle, PencilLine, Sigma, Trash2, CircleMinus, RotateCcw } from "lucide-react"
-import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -17,8 +16,10 @@ import {
 import { LAB_TIME_ZONE } from "@/lib/format-utils"
 import { cn } from "@/lib/utils"
 import { expandirNumero, unidadCompleta } from "@/lib/notacion"
+import type { ExplicacionFormula } from "@/lib/result-formulas"
 import type { PreviousResult, Result } from "@/types"
 import type { ResultValue } from "@/hooks/use-protocol-results"
+import { FormulaHoverCard } from "./formula-hover-card"
 
 interface ResultDeterminationRowProps {
   result: Result
@@ -31,6 +32,9 @@ interface ResultDeterminationRowProps {
   formulaResolved: boolean
   /** La fórmula quedó de lado: el valor se carga a mano. */
   cargaManual: boolean
+  /** La cuenta detallada de la fórmula, para mostrar al pasar el mouse por el
+   *  badge. `null`/`undefined` = no hay fórmula que explicar. */
+  formulaExplicacion?: ExplicacionFormula | null
   /** Enciende/apaga la carga a mano. `undefined` = no se puede (sin permiso,
    *  protocolo cancelado o resultado ya validado). */
   onToggleCargaManual?: () => void
@@ -45,10 +49,10 @@ interface ResultDeterminationRowProps {
   onChange: (field: "value" | "notes", value: string) => void
   onSave: () => void
   onLoadPrevious: () => void
-  registerInput: (el: HTMLInputElement | null) => void
+  /** El valor es un <textarea> que crece con el contenido, no un <input>. */
+  registerInput: (el: HTMLTextAreaElement | null) => void
   registerTextarea: (el: HTMLTextAreaElement | null) => void
-  onInputKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
-  onTextareaKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
+  onInputKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void
   previous: PreviousResult[]
   loadingPrevious: boolean
 }
@@ -75,6 +79,7 @@ export function ResultDeterminationRow({
   isFormula,
   formulaResolved,
   cargaManual,
+  formulaExplicacion,
   onToggleCargaManual,
   onToggleExclusion,
   onBorrarValor,
@@ -84,7 +89,6 @@ export function ResultDeterminationRow({
   registerInput,
   registerTextarea,
   onInputKeyDown,
-  onTextareaKeyDown,
   previous,
   loadingPrevious,
 }: ResultDeterminationRowProps) {
@@ -106,6 +110,57 @@ export function ResultDeterminationRow({
   const noWritePermission = Boolean(lockedReason)
   const cannotSave = locked || noWritePermission
 
+  // EL VALOR CRECE, NO SE DESMONTA.
+  // Es siempre el mismo <textarea>: si el resultado es corto se ve como el
+  // input de toda la vida (mismo alto, un renglón); si no entra, el alto crece
+  // solo, con una transición CSS. Cambiar de <input> a <textarea> al cruzar un
+  // umbral perdería el foco y la posición del cursor justo mientras se está
+  // escribiendo.
+  const valorTextareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const registrarValorRef = (el: HTMLTextAreaElement | null) => {
+    valorTextareaRef.current = el
+    registerInput(el)
+  }
+  const ajustarAltoDelValor = useCallback(() => {
+    const el = valorTextareaRef.current
+    if (!el) return
+    // Se resetea antes de medir: si no, `scrollHeight` arrastra el alto que ya
+    // tenía puesto y nunca detecta que el texto se acortó. Pero la transición
+    // no anima desde "auto": se vuelve al alto anterior en px, se fuerza el
+    // reflow y recién ahí se pone el nuevo, así el cambio se ve fluido.
+    const anterior = el.getBoundingClientRect().height
+    el.style.height = "auto"
+    // `scrollHeight` no cuenta el borde y el alto es border-box: sin sumarlo,
+    // la última línea queda 2px recortada.
+    const nuevo = el.scrollHeight + (el.offsetHeight - el.clientHeight)
+    el.style.height = `${anterior}px`
+    void el.offsetHeight
+    el.style.height = `${nuevo}px`
+  }, [])
+  // Recalcula con cada cambio de valor —tipeo, macro, precarga, borrado— y
+  // con el resize de la ventana, que cambia el ancho disponible y con él
+  // cuántas líneas hacen falta.
+  useLayoutEffect(() => {
+    ajustarAltoDelValor()
+  }, [ajustarAltoDelValor, value.value])
+  useEffect(() => {
+    window.addEventListener("resize", ajustarAltoDelValor)
+    return () => window.removeEventListener("resize", ajustarAltoDelValor)
+  }, [ajustarAltoDelValor])
+  // Pegar un valor con saltos de línea no debería crear un valor de varias
+  // líneas "de verdad": el resultado sigue siendo un dato de una sola línea
+  // lógica, sólo que puede envolver visualmente. Se normaliza a espacios.
+  const alPegarValor = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const texto = e.clipboardData.getData("text")
+    if (!/\r|\n/.test(texto)) return // sin saltos de línea, el pegado normal ya sirve
+    e.preventDefault()
+    const normalizado = texto.replace(/\r\n|\r|\n/g, " ").replace(/\s+/g, " ").trim()
+    const el = e.currentTarget
+    const inicio = el.selectionStart ?? el.value.length
+    const fin = el.selectionEnd ?? el.value.length
+    onChange("value", el.value.slice(0, inicio) + normalizado + el.value.slice(fin))
+  }
+
   // Lo que va a decir el informe. El valor se guarda como se escribe: quien
   // multiplica es el backend, al armar el informe. Esto está acá porque el
   // número que se carga y el que lee el paciente son distintos, y eso conviene
@@ -123,6 +178,24 @@ export function ResultDeterminationRow({
   const evaluation = result.reference_range_evaluation
   const isOutOfRange = result.is_out_of_reference_range || evaluation?.is_out_of_reference_range
   const evaluatedReference = formatEvaluatedReference(evaluation)
+
+  // El badge en una const propia: se muestra igual, esté o no envuelto en la
+  // tarjeta con la cuenta de la fórmula (`formulaExplicacion`).
+  const badgeDeFormula = isFormula ? (
+    <Badge
+      variant="outline"
+      className={cn(
+        "ml-2 text-[10px]",
+        cargaManual
+          ? "border-violet-200 bg-violet-50 text-violet-700"
+          : formulaResolved
+            ? "border-blue-200 bg-blue-50 text-blue-700"
+            : "border-amber-200 bg-amber-50 text-amber-700",
+      )}
+    >
+      {cargaManual ? "A mano" : formulaResolved ? "Auto" : "Fórmula pendiente"}
+    </Badge>
+  ) : null
 
   return (
     <div
@@ -147,41 +220,12 @@ export function ResultDeterminationRow({
               Fuera del protocolo
             </Badge>
           )}
-          {isFormula && (
-            <Badge
-              variant="outline"
-              className={cn(
-                "ml-2 text-[10px]",
-                cargaManual
-                  ? "border-violet-200 bg-violet-50 text-violet-700"
-                  : formulaResolved
-                    ? "border-blue-200 bg-blue-50 text-blue-700"
-                    : "border-amber-200 bg-amber-50 text-amber-700",
-              )}
-            >
-              {cargaManual ? "A mano" : formulaResolved ? "Auto" : "Fórmula pendiente"}
-            </Badge>
-          )}
-          {/* LA SALIDA CUANDO LA FÓRMULA ESTÁ MAL.
-              Una determinación calculada trae el valor sola y con el campo
-              bloqueado. Si la fórmula quedó mal cargada, eso trababa la fila
-              entera: no se podía escribir ni borrar, y el protocolo no cerraba.
-              El botón deja de lado el cálculo para ESTE protocolo; arreglar la
-              fórmula para todos es en Configuración. */}
-          {isFormula && onToggleCargaManual && (
-            <button
-              type="button"
-              onClick={onToggleCargaManual}
-              className="ml-2 inline-flex items-center gap-1 rounded border border-gray-200 px-1.5 py-0.5 align-middle text-[10px] font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
-              title={
-                cargaManual
-                  ? "Vuelve a calcular el valor con la fórmula"
-                  : "Deja de lado la fórmula y permite escribir el valor a mano"
-              }
-            >
-              {cargaManual ? <Sigma className="h-3 w-3" /> : <PencilLine className="h-3 w-3" />}
-              {cargaManual ? "Volver a la fórmula" : "Cargar a mano"}
-            </button>
+          {formulaExplicacion ? (
+            <FormulaHoverCard explicacion={formulaExplicacion} cargaManual={cargaManual}>
+              {badgeDeFormula}
+            </FormulaHoverCard>
+          ) : (
+            badgeDeFormula
           )}
           {result.is_sent && (
             <Badge variant="outline" className="ml-2 border-sky-200 bg-sky-50 text-[10px] text-sky-700">
@@ -218,12 +262,13 @@ export function ResultDeterminationRow({
       {/* Cuerpo: valor + referencia + historial + notas + guardar */}
       <div className="flex flex-col gap-2 lg:flex-row lg:items-start">
         <div className="lg:w-48">
-          <Input
-            ref={registerInput}
+          <textarea
+            ref={registrarValorRef}
             placeholder="Valor"
             value={value.value}
             onChange={(e) => onChange("value", e.target.value)}
             onKeyDown={onInputKeyDown}
+            onPaste={alPegarValor}
             onFocus={() => {
               setFocused(true)
               onLoadPrevious()
@@ -233,7 +278,18 @@ export function ResultDeterminationRow({
             // Excluida no se escribe, pero el valor sigue a la vista: es el dato
             // que se conserva, y esconderlo diría lo contrario.
             disabled={locked || excluido}
-            className={cn("h-11 text-base font-semibold", hasValue && !isValidated && "border-blue-300", isValidated && "border-emerald-300 bg-emerald-100", excluido && "border-orange-200 bg-orange-100/60 text-orange-900/70")}
+            rows={1}
+            className={cn(
+              // Mismo aspecto que el input de siempre (alto de un renglón,
+              // tipografía, borde) más lo propio del crecimiento: sin manija de
+              // resize, sin scroll propio (el alto sigue al contenido) y la
+              // altura anima sola. `motion-reduce` respeta a quien pidió menos
+              // movimiento en el sistema.
+              "block min-h-11 w-full min-w-0 resize-none overflow-hidden rounded-md border border-input bg-transparent px-3 py-2.5 text-base font-semibold leading-6 shadow-xs outline-none transition-[height,color,box-shadow] duration-200 ease-out motion-reduce:transition-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+              hasValue && !isValidated && "border-blue-300",
+              isValidated && "border-emerald-300 bg-emerald-100",
+              excluido && "border-orange-200 bg-orange-100/60 text-orange-900/70",
+            )}
           />
           {enElInforme && (
             <p className="mt-1 text-[11px] tabular-nums text-gray-500">
@@ -261,6 +317,36 @@ export function ResultDeterminationRow({
                   ))}
                 </ul>
               )}
+            </div>
+          )}
+          {/* LA SALIDA CUANDO LA FÓRMULA ESTÁ MAL.
+              Una determinación calculada trae el valor sola y con el campo
+              bloqueado. Si la fórmula quedó mal cargada, eso trababa la fila
+              entera: no se podía escribir ni borrar, y el protocolo no cerraba.
+              El botón deja de lado el cálculo para ESTE protocolo; arreglar la
+              fórmula para todos es en Configuración. Va debajo del valor,
+              separado, para que no se confunda con el resto de los badges. */}
+          {isFormula && onToggleCargaManual && (
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={onToggleCargaManual}
+                aria-pressed={cargaManual}
+                aria-label={
+                  cargaManual
+                    ? `Volver a calcular ${det.name} con la fórmula`
+                    : `Cargar ${det.name} a mano`
+                }
+                className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800"
+                title={
+                  cargaManual
+                    ? "Vuelve a calcular el valor con la fórmula"
+                    : "Deja de lado la fórmula y permite escribir el valor a mano"
+                }
+              >
+                {cargaManual ? <Sigma className="h-3 w-3" /> : <PencilLine className="h-3 w-3" />}
+                {cargaManual ? "Volver a la fórmula" : "Cargar a mano"}
+              </button>
             </div>
           )}
         </div>
@@ -291,7 +377,6 @@ export function ResultDeterminationRow({
           placeholder="Notas (opcional)"
           value={value.notes}
           onChange={(e) => onChange("notes", e.target.value)}
-          onKeyDown={onTextareaKeyDown}
           disabled={cannotSave || excluido}
           rows={2}
           title={lockedReason}

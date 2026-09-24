@@ -30,6 +30,11 @@ const MEDIA_HORA = 30 * 60 * 1000
  * Devuelve `null` para cualquier otra tecla (F5, las flechas, Espacio): no
  * hay macro posible ahí, y es lo que hace que el resto del teclado siga
  * funcionando como siempre.
+ *
+ * Las flechas en particular quedan afuera a propósito: Alt + flechas está
+ * reservado para moverse entre resultados (ver `onInputKeyDown` en
+ * `protocol-results-loader.tsx`), y una macro ahí se pisaría con esa
+ * navegación.
  */
 export function teclaDelEvento(code: string): string | null {
   const letra = /^Key([A-Z])$/.exec(code)
