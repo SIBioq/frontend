@@ -35,7 +35,7 @@ interface BatchActionBarProps {
   signatures: ReportSignature[]
   date: string
   onDateChange: (date: string) => void
-  /** El horario del informe, `HH:MM`. Vacío: el del protocolo. */
+  /** El horario del informe, `HH:MM`. Vacío: no se imprime hora en el informe. */
   time: string
   onTimeChange: (time: string) => void
   isProcessing: boolean
@@ -185,7 +185,7 @@ export function BatchActionBar({
                 value={date}
                 onChange={(e) => onDateChange(e.target.value)}
                 className="h-9 w-[150px]"
-                title="Fecha del reporte (opcional)"
+                title="Fecha del reporte (opcional, por defecto la de creación de cada protocolo)"
                 aria-label="Fecha del reporte"
               />
               <Input
@@ -194,7 +194,7 @@ export function BatchActionBar({
                 onChange={(e) => onTimeChange(e.target.value)}
                 step={60}
                 className="h-9 w-[110px]"
-                title="Horario del reporte (opcional)"
+                title="Horario del reporte (opcional, no se imprime si se deja vacío)"
                 aria-label="Horario del reporte"
               />
               {(date || time) && (

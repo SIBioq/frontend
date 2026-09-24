@@ -640,7 +640,7 @@ export function ReportDialog({
               />
 
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="report_date" className="text-sm font-medium">Fecha del reporte (opcional)</Label>
+                <Label htmlFor="report_date" className="text-sm font-medium">Fecha del reporte (opcional, por defecto la de creación del protocolo)</Label>
                 <Input
                   id="report_date"
                   name="report_date"
@@ -649,7 +649,7 @@ export function ReportDialog({
                   onChange={(e) => onReportDateChange(e.target.value)}
                 />
 
-                <Label htmlFor="report_time" className="text-sm font-medium mt-2">Horario del reporte (opcional)</Label>
+                <Label htmlFor="report_time" className="text-sm font-medium mt-2">Horario del reporte (opcional, no se imprime si se deja vacío)</Label>
                 <Input
                   id="report_time"
                   name="report_time"
@@ -663,7 +663,9 @@ export function ReportDialog({
                     Limpiar fecha y hora
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">La fecha y el horario son opcionales; podés enviar solo la fecha.</p>
+                <p className="text-xs text-muted-foreground">
+                  Si no completás la fecha, el informe usa la fecha de creación del protocolo. El horario sólo aparece impreso si lo completás acá.
+                </p>
               </div>
             </div>
 
@@ -797,7 +799,7 @@ export function ReportDialog({
                         />
 
                         <div className="flex flex-col gap-1.5">
-                          <Label htmlFor="report_date_mobile" className="text-sm font-medium">Fecha del reporte (opcional)</Label>
+                          <Label htmlFor="report_date_mobile" className="text-sm font-medium">Fecha del reporte (opcional, por defecto la de creación del protocolo)</Label>
                           <Input
                             id="report_date_mobile"
                             name="report_date"
@@ -806,7 +808,7 @@ export function ReportDialog({
                             onChange={(e) => onReportDateChange(e.target.value)}
                           />
 
-                          <Label htmlFor="report_time_mobile" className="mt-2 text-sm font-medium">Horario del reporte (opcional)</Label>
+                          <Label htmlFor="report_time_mobile" className="mt-2 text-sm font-medium">Horario del reporte (opcional, no se imprime si se deja vacío)</Label>
                           <Input
                             id="report_time_mobile"
                             name="report_time"
@@ -821,7 +823,9 @@ export function ReportDialog({
                               Limpiar fecha y hora
                             </Button>
                           </div>
-                          <p className="text-xs text-muted-foreground">La fecha y el horario son opcionales; podés enviar solo la fecha.</p>
+                          <p className="text-xs text-muted-foreground">
+                            Si no completás la fecha, el informe usa la fecha de creación del protocolo. El horario sólo aparece impreso si lo completás acá.
+                          </p>
                         </div>
 
                         <Separator />
