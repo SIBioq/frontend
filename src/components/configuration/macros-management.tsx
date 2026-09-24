@@ -97,6 +97,13 @@ function CamposDeLaMacro({
     }
     const tecla = teclaDelEvento(evento.code)
     if (!tecla) {
+      // Las flechas son las únicas que `teclaDelEvento` rechaza a propósito
+      // (ver su comentario): están reservadas para moverse entre resultados,
+      // y decirlo acá evita que alguien insista pensando que es un bug.
+      if (evento.code.startsWith("Arrow")) {
+        onError("Alt + flechas está reservado para moverse entre resultados.")
+        return
+      }
       onError("Esa tecla no sirve para un atajo. Tiene que ser una letra o un número.")
       return
     }

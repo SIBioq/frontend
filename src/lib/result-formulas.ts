@@ -25,6 +25,14 @@ type FormulaDetermination = {
   code?: string
   name: string
   formula?: string
+  /**
+   * Decimales fijos para el resultado calculado. Vacío/null = se usa la
+   * regla automática (`formatFormulaNumber`). Ver el comentario de esa
+   * función: existe para cocientes como VCM, HCM y CHCM, que por cifras
+   * significativas van sin decimales (o con 1), y la regla automática los
+   * infla a un piso de dos.
+   */
+  decimales?: number | null
 }
 
 type FormulaAnalysis = {
@@ -90,22 +98,47 @@ const decimalesDe = (crudo: string): number => {
  * cuenta —tres y dos dan tres— con un piso de dos, que es lo que se acostumbra
  * leer en el informe cuando los componentes son enteros. El techo está para que
  * un valor cargado con diez decimales no arrastre a la fórmula.
+ *
+ * Esa cantidad de decimales se respeta tal cual, sin recortar ceros: si los
+ * componentes tienen dos decimales, `0.3` sale `"0.30"` y `3` sale `"3.00"`,
+ * porque son las cifras que se leyeron en esos componentes, no un capricho de
+ * formato. Antes se le sacaban los ceros de la derecha (`"3.00"` -> `"3"`) y
+ * eso hacía perder esa cantidad de cifras que la usuaria quiere ver siempre.
+ *
+ * EXCEPCIÓN: DETERMINACIONES CON `decimales` FIJO
+ * ================================================
+ * Esta regla automática no le sirve a un cociente como VCM, HCM o CHCM: por
+ * cifras significativas van sin decimales (o con uno), y la regla de arriba
+ * los infla igual al piso de dos. Para esos casos la determinación calculada
+ * trae su propio `decimales` (0 a 6, cargado en el catálogo) y ese valor pisa
+ * a la regla automática entera —sin piso ni techo—, incluido el caso
+ * `decimales: 0`. Si la determinación no tiene `decimales` cargado
+ * (`null`/`undefined`), se sigue usando la regla automática tal cual está
+ * descripta arriba.
  */
 const DECIMALES_MINIMOS = 2
 const DECIMALES_MAXIMOS = 6
 
-/** `"1.10"` -> `"1.1"`, `"3.00"` -> `"3"`. Un cero al final no es un dato. */
-const recortarCerosDeLaDerecha = (texto: string): string => {
-  if (!texto.includes(".")) return texto
-  const recortado = texto.replace(/0+$/, "").replace(/\.$/, "")
-  return recortado === "-0" ? "0" : recortado
-}
+/**
+ * `toFixed` deja un `"-0.00"` cuando el resultado redondea a cero pero venía
+ * de un cálculo negativo (por ejemplo `-0.001` con dos decimales). Un cero no
+ * tiene signo en un informe de laboratorio.
+ */
+const normalizarCeroNegativo = (texto: string): string =>
+  /^-0(\.0+)?$/.test(texto) ? texto.slice(1) : texto
 
-const formatFormulaNumber = (value: number, decimalesDeLosComponentes: number[]): string => {
+const formatFormulaNumber = (
+  value: number,
+  decimalesDeLosComponentes: number[],
+  decimalesFijos?: number | null,
+): string => {
   if (!Number.isFinite(value)) return ""
+  if (decimalesFijos !== undefined && decimalesFijos !== null) {
+    return normalizarCeroNegativo(value.toFixed(decimalesFijos))
+  }
   const pedidos = decimalesDeLosComponentes.length ? Math.max(...decimalesDeLosComponentes) : 0
   const decimales = Math.min(Math.max(pedidos, DECIMALES_MINIMOS), DECIMALES_MAXIMOS)
-  return recortarCerosDeLaDerecha(value.toFixed(decimales))
+  return normalizarCeroNegativo(value.toFixed(decimales))
 }
 
 const normalizeExpression = (formula: string): string => {
@@ -261,7 +294,7 @@ export const calculateFormulaValue = (
   if (calculated === null) return null
 
   return {
-    value: formatFormulaNumber(calculated, decimalesDeLosComponentes),
+    value: formatFormulaNumber(calculated, decimalesDeLosComponentes, result.determination.decimales),
     missingCodes: [],
     codigosNoDisponibles: [],
   }
