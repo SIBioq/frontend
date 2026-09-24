@@ -90,22 +90,29 @@ const decimalesDe = (crudo: string): number => {
  * cuenta —tres y dos dan tres— con un piso de dos, que es lo que se acostumbra
  * leer en el informe cuando los componentes son enteros. El techo está para que
  * un valor cargado con diez decimales no arrastre a la fórmula.
+ *
+ * Esa cantidad de decimales se respeta tal cual, sin recortar ceros: si los
+ * componentes tienen dos decimales, `0.3` sale `"0.30"` y `3` sale `"3.00"`,
+ * porque son las cifras que se leyeron en esos componentes, no un capricho de
+ * formato. Antes se le sacaban los ceros de la derecha (`"3.00"` -> `"3"`) y
+ * eso hacía perder esa cantidad de cifras que la usuaria quiere ver siempre.
  */
 const DECIMALES_MINIMOS = 2
 const DECIMALES_MAXIMOS = 6
 
-/** `"1.10"` -> `"1.1"`, `"3.00"` -> `"3"`. Un cero al final no es un dato. */
-const recortarCerosDeLaDerecha = (texto: string): string => {
-  if (!texto.includes(".")) return texto
-  const recortado = texto.replace(/0+$/, "").replace(/\.$/, "")
-  return recortado === "-0" ? "0" : recortado
-}
+/**
+ * `toFixed` deja un `"-0.00"` cuando el resultado redondea a cero pero venía
+ * de un cálculo negativo (por ejemplo `-0.001` con dos decimales). Un cero no
+ * tiene signo en un informe de laboratorio.
+ */
+const normalizarCeroNegativo = (texto: string): string =>
+  /^-0(\.0+)?$/.test(texto) ? texto.slice(1) : texto
 
 const formatFormulaNumber = (value: number, decimalesDeLosComponentes: number[]): string => {
   if (!Number.isFinite(value)) return ""
   const pedidos = decimalesDeLosComponentes.length ? Math.max(...decimalesDeLosComponentes) : 0
   const decimales = Math.min(Math.max(pedidos, DECIMALES_MINIMOS), DECIMALES_MAXIMOS)
-  return recortarCerosDeLaDerecha(value.toFixed(decimales))
+  return normalizarCeroNegativo(value.toFixed(decimales))
 }
 
 const normalizeExpression = (formula: string): string => {
