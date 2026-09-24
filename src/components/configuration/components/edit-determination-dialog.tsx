@@ -16,7 +16,9 @@ import type { Determination } from "@/types"
 import { CATALOG_ENDPOINTS } from "@/config/api"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
 import { CampoNotacionCientifica } from "./campo-notacion-cientifica"
+import { CampoDecimales } from "./campo-decimales"
 import { esExponenteValido } from "@/lib/notacion"
+import { esDecimalesValido } from "@/lib/decimales"
 import {
   rangosConNombreDesde,
   rangosConNombreParaEnviar,
@@ -54,6 +56,7 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
   const [measureUnit, setMeasureUnit] = useState("")
   const [exponente, setExponente] = useState("")
   const [formula, setFormula] = useState("")
+  const [decimales, setDecimales] = useState("")
   const [ranges, setRanges] = useState<RangeMap>(rangosVacios)
   const [namedRanges, setNamedRanges] = useState<RangoConNombre[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -76,6 +79,11 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
         determination.scientific_exponent ? String(determination.scientific_exponent) : "",
       )
       setFormula(determination.formula || "")
+      setDecimales(
+        determination.decimales !== null && determination.decimales !== undefined
+          ? String(determination.decimales)
+          : "",
+      )
       // Los valores de referencia estructurados (reference_ranges) en los 4
       // grupos. Antes se leía el JSON `reference_values`, por eso no aparecían.
       setRanges(rangosDesde((determination as { reference_ranges?: RefRange[] }).reference_ranges))
@@ -94,6 +102,9 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
     if (exponente.trim() !== "" && !esExponenteValido(Number(exponente))) {
       newErrors.exponente = "La notación científica tiene que ser un número entero entre 1 y 30."
     }
+    if (decimales.trim() !== "" && !esDecimalesValido(Number(decimales))) {
+      newErrors.decimales = "Los decimales tienen que ser un número entero entre 0 y 6."
+    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -111,6 +122,10 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
       const exponenteNuevo = exponente.trim() === "" ? null : Number(exponente)
       if (exponenteNuevo !== exponenteActual) body.scientific_exponent = exponenteNuevo
       if (formula !== (determination.formula || "")) body.formula = formula.trim() || ""
+      // Vacío = automático, y hay que mandarlo para poder volver a la regla.
+      const decimalesActual = determination.decimales ?? null
+      const decimalesNuevo = decimales.trim() === "" ? null : Number(decimales)
+      if (decimalesNuevo !== decimalesActual) body.decimales = decimalesNuevo
 
       // Siempre mandamos los valores de referencia (por si se limpió un grupo).
       body.reference_ranges = rangosParaEnviar(ranges)
@@ -213,6 +228,15 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
               className="text-sm"
             />
           </div>
+
+          {formula.trim() !== "" && (
+            <CampoDecimales
+              id="edit-determination-decimales"
+              decimales={decimales}
+              onChange={setDecimales}
+              error={errors.decimales}
+            />
+          )}
 
           <ValoresDeReferencia
             ranges={ranges}

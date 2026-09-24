@@ -612,6 +612,12 @@ export interface Determination {
   measure_unit: string
   /** Exponente de 10 de la unidad: `/µL` + 6 se imprime `4.500.000 /µL`. */
   scientific_exponent?: number | null
+  /**
+   * Decimales fijos para el resultado de una determinación CALCULADA (VCM,
+   * HCM, CHCM...). Vacío/null = el frontend usa la regla automática (ver
+   * `formatFormulaNumber` en `result-formulas.ts`).
+   */
+  decimales?: number | null
   formula: string
   reference_values?: ReferenceValues
   reference_ranges?: ReferenceRange[]
@@ -1161,6 +1167,11 @@ export interface ResultDetermination {
   measure_unit: string
   /** Exponente de 10 de la unidad: se carga `4,5` y el informe dice `4.500.000`. */
   scientific_exponent?: number | null
+  /**
+   * Decimales fijos para el resultado calculado. Vacío/null = regla
+   * automática. Ver `result-formulas.ts`.
+   */
+  decimales?: number | null
   formula: string
   reference_values?: ReferenceValues
   reference_ranges?: ReferenceRange[]
