@@ -16,7 +16,29 @@ import { aSupraindice } from "@/lib/supraindices"
  * El carácter que se inserta es Unicode (`³`, no `<sup>3</sup>`): el campo es
  * un CharField y lo que se ve acá es exactamente lo que se guarda y lo que
  * imprime el informe.
+ *
+ * Abajo del campo van los símbolos que no están a mano en el teclado (µ, °,
+ * Δ…). Cada botón escribe el suyo donde está el cursor del input, reemplazando
+ * lo seleccionado; si el cursor no está en el campo, lo agrega al final.
  */
+
+/**
+ * Los símbolos con botón. Salen de las unidades que hay de verdad en el
+ * catálogo (`µg/dL`, `ΔDO450`) y de las de laboratorio que se escriben igual
+ * (`°C`, `mmol·L`, `‰`). Lo que está en el teclado (`%`, `/`) no va, y los
+ * supraíndices tampoco: para eso está el botón `x²`.
+ *
+ * El micro es U+00B5 (MICRO SIGN), no la mu griega U+03BC: es el que ya usa
+ * el catálogo, y mezclarlos haría que dos unidades iguales no coincidan.
+ */
+const SIMBOLOS: { simbolo: string; nombre: string }[] = [
+  { simbolo: "\u00B5", nombre: "micro" },
+  { simbolo: "°", nombre: "grado" },
+  { simbolo: "Δ", nombre: "delta" },
+  { simbolo: "·", nombre: "punto medio" },
+  { simbolo: "×", nombre: "por" },
+  { simbolo: "‰", nombre: "por mil" },
+]
 interface Props {
   id: string
   value: string
@@ -69,6 +91,22 @@ export function InputUnidadDeMedida({
     caretPendiente.current = desde + caracter.length
   }
 
+  const insertarSimbolo = (simbolo: string) => {
+    const input = inputRef.current
+    if (!input) return
+    // `onMouseDown` del botón no deja que el foco se vaya: si el input lo
+    // tenía, lo sigue teniendo y la selección es la del cursor. Si no lo
+    // tenía, la selección que queda guardada no es algo que la persona esté
+    // viendo, así que el símbolo va al final.
+    const conCursor = document.activeElement === input
+    const desde = conCursor ? (input.selectionStart ?? value.length) : value.length
+    const hasta = conCursor ? (input.selectionEnd ?? desde) : value.length
+
+    onChange(value.slice(0, desde) + simbolo + value.slice(hasta))
+    caretPendiente.current = desde + simbolo.length
+    input.focus()
+  }
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
@@ -118,6 +156,26 @@ export function InputUnidadDeMedida({
             x<sup className="text-[0.6em]">2</sup>
           </span>
         </Button>
+      </div>
+      <div className="flex flex-wrap gap-1" role="group" aria-label="Símbolos para la unidad">
+        {SIMBOLOS.map(({ simbolo, nombre }) => (
+          <Button
+            key={simbolo}
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            aria-label={`Insertar ${nombre} (${simbolo})`}
+            title={`Insertar ${nombre} (${simbolo})`}
+            // Igual que en `x²`: sin esto el foco se va al botón y se pierde
+            // dónde estaba el cursor.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => insertarSimbolo(simbolo)}
+            className="h-7 min-w-8 px-2 text-sm"
+          >
+            {simbolo}
+          </Button>
+        ))}
       </div>
       {armado && (
         <p className="text-xs text-[#204983]">El próximo carácter se escribe en supraíndice.</p>

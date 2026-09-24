@@ -2,6 +2,7 @@
 
 | Documento | Tema |
 |---|---|
+| [2026-09-24-simbolos-unidad-de-medida.md](2026-09-24-simbolos-unidad-de-medida.md) | Botones para insertar µ, °, Δ, ·, × y ‰ en la unidad de medida |
 | [2026-09-24-correcciones-carga-e-informe.md](2026-09-24-correcciones-carga-e-informe.md) | Fórmulas preservan decimales, textarea que crece, navegación por teclado, fecha de informe y campo `decimales` |
 | [2026-09-23-exclusion-en-formulas.md](2026-09-23-exclusion-en-formulas.md) | Vaciar cálculos en pantalla cuando sale un componente del protocolo |
 | [2026-09-23-libro-diario-sin-lo-hizo.md](2026-09-23-libro-diario-sin-lo-hizo.md) | Quitar «Lo hizo» del libro diario, aclarar de dónde sale la plata |
