@@ -473,9 +473,9 @@ export const Navbar: React.FC = () => {
           <div
             ref={mobileMenuRef}
             className={`
-              absolute left-0 w-full bg-white shadow-lg z-40 overflow-hidden rounded-b-lg
+              absolute left-0 w-full bg-white shadow-lg z-40 rounded-b-lg
               transition-all duration-200 ease-in-out
-              ${isMobileMenuOpen ? "opacity-100 max-h-[70vh]" : "opacity-0 max-h-0 pointer-events-none"}
+              ${isMobileMenuOpen ? "opacity-100 max-h-[70dvh] overflow-y-auto overscroll-contain" : "opacity-0 max-h-0 overflow-hidden pointer-events-none"}
             `}
           >
             <div className="px-4 py-4">
@@ -511,9 +511,9 @@ export const Navbar: React.FC = () => {
           <div
             ref={userMenuRef}
             className={`
-              absolute left-0 w-full bg-white shadow-lg z-40 overflow-hidden rounded-b-lg
+              absolute left-0 w-full bg-white shadow-lg z-40 rounded-b-lg
               transition-all duration-200 ease-in-out
-              ${isUserMenuOpen ? "opacity-100 max-h-[70vh]" : "opacity-0 max-h-0 pointer-events-none"}
+              ${isUserMenuOpen ? "opacity-100 max-h-[70dvh] overflow-y-auto overscroll-contain" : "opacity-0 max-h-0 overflow-hidden pointer-events-none"}
             `}
           >
             <div className="px-4 py-4">

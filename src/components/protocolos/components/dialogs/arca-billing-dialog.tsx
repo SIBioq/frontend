@@ -117,7 +117,7 @@ export function ArcaBillingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[560px] max-h-[90vh] overflow-x-hidden overflow-y-auto">
+      <DialogContent className="max-w-[560px] max-h-[90dvh] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Landmark className="h-5 w-5 text-amber-700" />
@@ -205,7 +205,7 @@ export function ArcaBillingDialog({
             <div className="space-y-2">
               <Label htmlFor="cbte_tipo">Tipo de comprobante</Label>
               <Select value={cbteTipo} onValueChange={setCbteTipo}>
-                <SelectTrigger id="cbte_tipo">
+                <SelectTrigger id="cbte_tipo" className="w-full min-w-0">
                   <SelectValue placeholder="Seleccionar" />
                 </SelectTrigger>
                 <SelectContent>
@@ -226,7 +226,7 @@ export function ArcaBillingDialog({
                   <div className="space-y-1 col-span-1">
                     <Label htmlFor="doc_type" className="text-xs">Tipo doc</Label>
                     <Select value={docType} onValueChange={(v) => setDocType(v as ArcaDocType)}>
-                      <SelectTrigger id="doc_type">
+                      <SelectTrigger id="doc_type" className="w-full min-w-0">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>

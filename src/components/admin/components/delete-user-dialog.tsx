@@ -65,15 +65,15 @@ export function DeleteUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeading icon={Trash} tone="danger" title="Eliminar usuario" description="Esta acción no se puede deshacer." />
         <div className="py-4">
           <p className="text-sm sm:text-base">
-            ¿Estás seguro de que deseas eliminar al usuario <strong>{user.username}</strong>? Esta acción no se puede
+            ¿Estás seguro de que deseas eliminar al usuario <strong className="break-all">{user.username}</strong>? Esta acción no se puede
             deshacer.
           </p>
         </div>
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="gap-2">
           <DialogClose asChild>
             <Button type="button" variant="outline" className="w-full sm:w-auto bg-transparent">
               Cancelar

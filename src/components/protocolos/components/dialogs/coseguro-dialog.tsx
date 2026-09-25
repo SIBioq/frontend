@@ -53,7 +53,7 @@ export function CoseguroDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[420px]">
+      <DialogContent className="max-w-[420px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-teal-600" />

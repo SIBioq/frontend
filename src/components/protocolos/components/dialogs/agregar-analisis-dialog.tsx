@@ -154,7 +154,7 @@ export function AgregarAnalisisDialog({ open, onOpenChange, insuranceId, yaEstan
                 hacer en esta pantalla: se busca por código y un dígito de más
                 trae otra práctica. Sin esto había que cancelar el diálogo
                 entero y volver a cargar los que sí estaban bien. */}
-            <ul className="max-h-56 divide-y divide-slate-100 overflow-y-auto">
+            <ul className="max-h-[25dvh] divide-y divide-slate-100 overflow-y-auto sm:max-h-56">
               {elegidos.map((a) => {
                 const precio = cotizacionPorId.get(a.id)
                 const precioFijo = precio?.precio_fijo != null || (preciosFijosHabilitados && a.cobra_precio_fijo)

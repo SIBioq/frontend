@@ -66,8 +66,8 @@ export function ExclusionConfirmDialog({
   const validados = dependientes.filter((d) => d.validado)
   return (
     <Dialog open={open} onOpenChange={(o) => !confirmando && onOpenChange(o)}>
-      <DialogContent className="max-w-md overflow-hidden p-0">
-        <div className="border-b border-[#cbd8ea] bg-[#f4f7fb] px-6 py-5">
+      <DialogContent className="flex max-w-md flex-col gap-0 overflow-hidden p-0">
+        <div className="shrink-0 rounded-t-xl border-b border-[#cbd8ea] bg-[#f4f7fb] px-6 py-5">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg text-gray-900">
               <CircleMinus className="h-5 w-5 shrink-0 text-[#204983]" />
@@ -82,7 +82,7 @@ export function ExclusionConfirmDialog({
           </DialogHeader>
         </div>
 
-        <div className="space-y-3 px-6 py-5 text-sm text-gray-600">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-5 text-sm text-gray-600">
           <div className="flex items-start gap-2 rounded-lg border border-emerald-100 bg-emerald-50/60 p-3">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
             <p>
@@ -127,7 +127,7 @@ export function ExclusionConfirmDialog({
           </p>
         </div>
 
-        <DialogFooter className="gap-2 border-t border-gray-100 bg-gray-50 px-6 py-4">
+        <DialogFooter className="shrink-0 gap-2 rounded-b-xl border-t border-gray-100 bg-gray-50 px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={confirmando}>
             Cancelar
           </Button>

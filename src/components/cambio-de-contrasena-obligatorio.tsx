@@ -88,7 +88,7 @@ export function CambioDeContrasenaObligatorio() {
     // hay nada detrás que se pueda usar.
     <Dialog open>
       <DialogContent
-        className="w-[95vw] max-w-md [&>button]:hidden"
+        className="max-w-md [&>button]:hidden"
         onEscapeKeyDown={(e) => e.preventDefault()}
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}

@@ -192,7 +192,7 @@ export function MergePatientDialog({ open, onOpenChange, source, onMerged }: Mer
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[680px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <GitMerge className="h-5 w-5 text-[#204983]" />
@@ -205,9 +205,9 @@ export function MergePatientDialog({ open, onOpenChange, source, onMerged }: Mer
 
         <div className="space-y-4 py-2">
           <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-md border border-gray-200 p-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-[10px] font-semibold text-gray-500 uppercase">Origen (se desactiva)</p>
-              <p className="font-semibold text-sm text-gray-800">
+              <p className="break-words font-semibold text-sm text-gray-800">
                 {source ? `${source.first_name || ""} ${source.last_name || ""}`.trim() : "—"}
               </p>
               <p className="text-xs text-gray-500 font-mono">
@@ -215,11 +215,11 @@ export function MergePatientDialog({ open, onOpenChange, source, onMerged }: Mer
               </p>
             </div>
             <ArrowRightLeft className="h-5 w-5 text-[#204983] mx-auto rotate-90 md:rotate-0" />
-            <div>
+            <div className="min-w-0">
               <p className="text-[10px] font-semibold text-gray-500 uppercase">Destino (queda activo)</p>
               {target ? (
                 <>
-                  <p className="font-semibold text-sm text-gray-800">
+                  <p className="break-words font-semibold text-sm text-gray-800">
                     {`${target.first_name || ""} ${target.last_name || ""}`.trim()}
                   </p>
                   <p className="text-xs text-gray-500 font-mono">
@@ -278,7 +278,7 @@ export function MergePatientDialog({ open, onOpenChange, source, onMerged }: Mer
                   <ul className="text-xs text-gray-700 space-y-0.5">
                     {preview.auto_filled.map((item) => (
                       <li key={item.field}>
-                        • {FIELD_LABELS[item.field] || item.field}: <span className="font-mono">{formatValue(item.value)}</span>
+                        • {FIELD_LABELS[item.field] || item.field}: <span className="break-all font-mono">{formatValue(item.value)}</span>
                       </li>
                     ))}
                   </ul>
@@ -295,30 +295,30 @@ export function MergePatientDialog({ open, onOpenChange, source, onMerged }: Mer
                       <p className="text-xs font-semibold text-amber-900 mb-2">
                         {FIELD_LABELS[conflict.field] || conflict.field}
                       </p>
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         <button
                           type="button"
                           onClick={() => handleResolutionChange(conflict.field, conflict.source_value)}
-                          className={`text-left p-2 rounded border text-xs ${
+                          className={`min-w-0 text-left p-2 rounded border text-xs ${
                             resolutions[conflict.field] === conflict.source_value
                               ? "border-[#204983] bg-[#204983]/10 ring-2 ring-[#204983]/40"
                               : "border-gray-200 bg-white hover:border-gray-300"
                           }`}
                         >
                           <p className="text-[10px] text-gray-500 uppercase">Origen</p>
-                          <p className="font-mono">{formatValue(conflict.source_value)}</p>
+                          <p className="break-all font-mono">{formatValue(conflict.source_value)}</p>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleResolutionChange(conflict.field, conflict.target_value)}
-                          className={`text-left p-2 rounded border text-xs ${
+                          className={`min-w-0 text-left p-2 rounded border text-xs ${
                             resolutions[conflict.field] === conflict.target_value
                               ? "border-[#204983] bg-[#204983]/10 ring-2 ring-[#204983]/40"
                               : "border-gray-200 bg-white hover:border-gray-300"
                           }`}
                         >
                           <p className="text-[10px] text-gray-500 uppercase">Destino</p>
-                          <p className="font-mono">{formatValue(conflict.target_value)}</p>
+                          <p className="break-all font-mono">{formatValue(conflict.target_value)}</p>
                         </button>
                       </div>
                     </div>

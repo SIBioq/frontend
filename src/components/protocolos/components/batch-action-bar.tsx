@@ -155,7 +155,7 @@ export function BatchActionBar({
       <div className={cn(ENTRADA_ABAJO, "pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center px-3")}>
         <div
           ref={barraRef}
-          className="pointer-events-auto max-h-[70vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-200 bg-white/95 p-3 shadow-xl backdrop-blur-sm"
+          className="pointer-events-auto max-h-[70dvh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-gray-200 bg-white/95 p-3 shadow-xl backdrop-blur-sm"
         >
           {/* Opciones (centradas) */}
           <div className="flex flex-wrap items-center justify-center gap-2">

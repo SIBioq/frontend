@@ -292,7 +292,7 @@ function EditorDeRango({ rango, onChange, disabled }: EditorDeRangoProps) {
         onValueChange={(modo) => onChange({ ...rango, modo: modo as ModoDeRango })}
         disabled={disabled}
       >
-        <SelectTrigger className="h-9 text-sm">
+        <SelectTrigger className="h-9 w-full min-w-0 text-sm">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -376,7 +376,7 @@ export function ValoresDeReferencia({
         </p>
         <div className="space-y-2">
           {REF_GROUPS.map((g) => (
-            <div key={g.key} className="grid grid-cols-[80px_110px_1fr_1fr] items-center gap-2">
+            <div key={g.key} className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[80px_110px_1fr_1fr]">
               <span className="text-sm font-medium text-gray-700">{g.label}</span>
               <EditorDeRango
                 rango={ranges[g.key]}
@@ -416,7 +416,7 @@ export function ValoresDeReferencia({
               {conNombre.map((rango, indice) => (
                 <div
                   key={indice}
-                  className="grid grid-cols-[1fr_110px_1fr_1fr_36px] items-center gap-2"
+                  className="grid grid-cols-2 items-center gap-2 sm:grid-cols-[1fr_110px_1fr_1fr_36px]"
                 >
                   <Input
                     value={rango.label}
@@ -438,7 +438,7 @@ export function ValoresDeReferencia({
                       onNamedRangesChange(conNombre.filter((_, i) => i !== indice))
                     }
                     disabled={disabled}
-                    className="h-9 w-9 text-gray-400 hover:text-red-600"
+                    className="col-span-2 h-9 w-9 justify-self-end text-gray-400 hover:text-red-600 sm:col-span-1"
                     aria-label={`Quitar el rango ${rango.label || indice + 1}`}
                   >
                     <Trash2 className="h-4 w-4" />

@@ -101,7 +101,7 @@ export function SelectorDeCuenta({
   return (
     <div className="space-y-1">
       <Select value={cuentaId} onValueChange={onCuentaChange} disabled={disabled || cargando}>
-        <SelectTrigger id={id} className="bg-white">
+        <SelectTrigger id={id} className="w-full min-w-0 bg-white">
           <SelectValue placeholder={cargando ? "Cargando cuentas..." : "Elegir cuenta"} />
         </SelectTrigger>
         <SelectContent>

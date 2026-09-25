@@ -20,8 +20,8 @@ export function RoundingConfirmDialog({
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md overflow-hidden p-0">
-        <div className="border-b border-amber-100 bg-amber-50 px-6 py-5">
+      <DialogContent className="flex max-w-md flex-col gap-0 overflow-hidden p-0">
+        <div className="shrink-0 rounded-t-xl border-b border-amber-100 bg-amber-50 px-6 py-5">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg text-amber-950">
               <Coins className="h-5 w-5 text-amber-600" />
@@ -32,7 +32,7 @@ export function RoundingConfirmDialog({
             </DialogDescription>
           </DialogHeader>
         </div>
-        <div className="space-y-3 px-6 py-5">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-6 py-5">
           <p className="text-sm text-gray-600">Elegí qué hacer con la diferencia:</p>
           <div className="grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={onRedondear} disabled={isProcessing} className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-left transition hover:border-amber-400 hover:bg-amber-100 disabled:opacity-50">
@@ -47,7 +47,7 @@ export function RoundingConfirmDialog({
             </button>
           </div>
         </div>
-        <DialogFooter className="border-t border-gray-100 bg-gray-50 px-6 py-4">
+        <DialogFooter className="shrink-0 rounded-b-xl border-t border-gray-100 bg-gray-50 px-6 py-4">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>Cancelar</Button>
         </DialogFooter>
       </DialogContent>

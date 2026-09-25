@@ -196,7 +196,7 @@ export function TempPermissionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeading
           icon={mode === "assign" ? Shield : ShieldX}
           tone={mode === "assign" ? "brand" : "danger"}
@@ -217,7 +217,7 @@ export function TempPermissionDialog({
                     Permiso *
                   </Label>
                   <Select value={permissionId} onValueChange={setPermissionId}>
-                    <SelectTrigger id="permission" className="w-full">
+                    <SelectTrigger id="permission" className="w-full min-w-0">
                       <SelectValue placeholder="Selecciona un permiso" />
                     </SelectTrigger>
                     <SelectContent position="popper" sideOffset={5}>
@@ -264,12 +264,12 @@ export function TempPermissionDialog({
                 Permiso Temporal
               </Label>
               <Select value={selectedTempPermId} onValueChange={setSelectedTempPermId}>
-                <SelectTrigger id="temp-perm" className="w-full">
+                <SelectTrigger id="temp-perm" className="w-full min-w-0">
                   <SelectValue placeholder="Selecciona un permiso" />
                 </SelectTrigger>
-                <SelectContent position="popper" sideOffset={5}>
+                <SelectContent position="popper" sideOffset={5} className="max-w-[calc(100vw-2rem)]">
                   {activeTempPerms.map((tp) => (
-                    <SelectItem key={tp.id} value={tp.id.toString()}>
+                    <SelectItem key={tp.id} value={tp.id.toString()} className="whitespace-normal break-words">
                       {tp.permission_details.name} - Expira: {new Date(tp.expires_at).toLocaleString()}
                     </SelectItem>
                   ))}
@@ -278,7 +278,7 @@ export function TempPermissionDialog({
             </div>
           )}
         </div>
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="gap-2">
           <DialogClose asChild>
             <Button variant="outline" disabled={isSubmitting} className="w-full sm:w-auto bg-transparent">
               Cancelar

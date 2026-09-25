@@ -176,8 +176,8 @@ export function CuentasDeCobro() {
                           ${cuenta.is_active ? "border-gray-200 bg-white" : "border-gray-200 bg-gray-50 opacity-60"}`}
             >
               <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">{cuenta.nombre}</p>
-                <p className="text-xs text-gray-500">{cuenta.alias || "sin alias"}</p>
+                <p className="break-words text-sm font-medium text-gray-900">{cuenta.nombre}</p>
+                <p className="break-all text-xs text-gray-500">{cuenta.alias || "sin alias"}</p>
               </div>
               <div className="flex items-center gap-2">
                 {guardando === cuenta.id && (

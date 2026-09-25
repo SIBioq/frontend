@@ -56,12 +56,12 @@ export function BillingEntityCard({ entity, saving, onPatch }: BillingEntityCard
     <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <p className="font-medium text-gray-800">{entity.name}</p>
+          <p className="break-words font-medium text-gray-800">{entity.name}</p>
           <p className="text-xs text-gray-500">
             {entity.reports_breakdown_by_ooss ? "Informa el cobro discriminado por OOSS" : "Deposita un monto único"}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="flex items-center gap-2">
             <Switch
               checked={entity.reports_breakdown_by_ooss}

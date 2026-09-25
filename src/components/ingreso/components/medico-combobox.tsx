@@ -122,12 +122,12 @@ export function MedicoCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between border-gray-300 focus:border-[#204983] focus:ring-[#204983] bg-transparent"
+          className="w-full min-w-0 justify-between overflow-hidden border-gray-300 focus:border-[#204983] focus:ring-[#204983] bg-transparent"
         >
           {selectedMedico ? (
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-[#204983]" />
-              <span>{`${selectedMedico.first_name} ${selectedMedico.last_name}`}</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <User className="h-4 w-4 shrink-0 text-[#204983]" />
+              <span className="truncate">{`${selectedMedico.first_name} ${selectedMedico.last_name}`}</span>
             </div>
           ) : (
             <span className="text-gray-500">Seleccionar médico...</span>
@@ -136,7 +136,7 @@ export function MedicoCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
+        className="max-h-(--radix-popover-content-available-height) w-[var(--radix-popover-trigger-width)] overflow-y-auto p-0"
         onCloseAutoFocus={(event) => {
           if (!pidioCrear.current) return
           pidioCrear.current = false

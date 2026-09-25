@@ -166,7 +166,7 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[500px] max-h-[90dvh] overflow-y-auto">
         <DialogHeading icon={FlaskConical} title="Editar determinación" description={determination.name} />
         <div className="space-y-4 md:space-y-6 py-4">
           {errors.form && (
@@ -251,7 +251,7 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
           />
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter className="gap-2">
           <DialogClose asChild>
             <Button
               type="button"

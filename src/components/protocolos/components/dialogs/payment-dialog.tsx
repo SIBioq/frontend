@@ -9,6 +9,9 @@ import { Input } from "../../../ui/input"
 import { Label } from "../../../ui/label"
 import { FormaDePago } from "@/components/common/forma-de-pago"
 
+const formatoMonto = (n: number) =>
+  n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 type OperationType = "patient_paid" | "refunded_to_patient"
 
 interface PaymentDialogProps {
@@ -134,7 +137,7 @@ export function PaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] max-w-[480px]">
+      <DialogContent className="max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-emerald-600" />
@@ -154,29 +157,29 @@ export function PaymentDialog({
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-gray-50 rounded-md p-3">
                 <p className="text-xs text-gray-500">Total a pagar</p>
-                <p className="text-lg font-bold text-gray-900">${due.toFixed(2)}</p>
+                <p className="break-words text-lg font-bold tabular-nums text-gray-900">${formatoMonto(due)}</p>
               </div>
               <div className="bg-emerald-50 rounded-md p-3">
                 <p className="text-xs text-gray-500">Pagado</p>
-                <p className="text-lg font-bold text-emerald-700">${paid.toFixed(2)}</p>
+                <p className="break-words text-lg font-bold tabular-nums text-emerald-700">${formatoMonto(paid)}</p>
               </div>
               <div className="bg-orange-50 rounded-md p-3">
                 <p className="text-xs text-gray-500">Pendiente</p>
-                <p className="text-lg font-bold text-orange-700">${pending.toFixed(2)}</p>
+                <p className="break-words text-lg font-bold tabular-nums text-orange-700">${formatoMonto(pending)}</p>
               </div>
               <div className="bg-amber-50 rounded-md p-3">
                 <p className="text-xs text-gray-500">A devolver</p>
-                <p className="text-lg font-bold text-amber-700">${toReturn.toFixed(2)}</p>
+                <p className="break-words text-lg font-bold tabular-nums text-amber-700">${formatoMonto(toReturn)}</p>
               </div>
             </div>
           </div>
 
           {/* Operation Type Tabs */}
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
             <Button
               variant={operation === "patient_paid" ? "default" : "outline"}
               size="sm"
-              className={`flex-1 ${operation === "patient_paid" ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
+              className={`h-auto min-w-0 whitespace-normal py-2 ${operation === "patient_paid" ? "bg-emerald-600 hover:bg-emerald-700" : ""}`}
               onClick={() => {
                 setOperation("patient_paid")
                 setAmount("")
@@ -189,7 +192,7 @@ export function PaymentDialog({
             <Button
               variant={operation === "refunded_to_patient" ? "default" : "outline"}
               size="sm"
-              className={`flex-1 ${operation === "refunded_to_patient" ? "bg-amber-600 hover:bg-amber-700" : ""}`}
+              className={`h-auto min-w-0 whitespace-normal py-2 ${operation === "refunded_to_patient" ? "bg-amber-600 hover:bg-amber-700" : ""}`}
               onClick={() => {
                 setOperation("refunded_to_patient")
                 setAmount("")
@@ -197,7 +200,7 @@ export function PaymentDialog({
               disabled={toReturn <= 0}
             >
               <ArrowUpRight className="h-4 w-4 mr-1" />
-            Registrar devolución
+              Registrar devolución
             </Button>
           </div>
 
@@ -212,7 +215,7 @@ export function PaymentDialog({
                 type="number"
                 step="0.01"
                 min="0.01"
-                placeholder={`Saldo pendiente: $${maxAmount.toFixed(2)}`}
+                placeholder={`Saldo pendiente: $${formatoMonto(maxAmount)}`}
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 disabled={maxAmount <= 0}
@@ -254,7 +257,7 @@ export function PaymentDialog({
           />
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => handleClose(false)} className="w-full sm:w-auto">
             Cancelar
           </Button>

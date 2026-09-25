@@ -65,7 +65,7 @@ export function TwoFactorDisableDialog({ open, onOpenChange, onDisabled }: TwoFa
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeading
           icon={ShieldOff}
           tone="danger"
@@ -100,7 +100,7 @@ export function TwoFactorDisableDialog({ open, onOpenChange, onDisabled }: TwoFa
             {errorMessage && <p className="mt-1 whitespace-pre-line text-sm text-red-600">{errorMessage}</p>}
           </div>
 
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
+          <DialogFooter className="gap-2">
             <Button
               type="button"
               variant="outline"

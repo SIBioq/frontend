@@ -178,7 +178,7 @@ export function ObjectHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-5xl xl:max-w-6xl 2xl:max-w-[1400px] max-h-[85vh] overflow-x-hidden overflow-y-auto">
+      <DialogContent className="max-w-5xl xl:max-w-6xl 2xl:max-w-[1400px] max-h-[85dvh] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-start gap-2 flex-wrap min-w-0">
             <History className="mt-0.5 h-5 w-5 text-[#204983] flex-shrink-0" />

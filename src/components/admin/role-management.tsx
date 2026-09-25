@@ -331,7 +331,7 @@ export function RoleManagement({ roles, setRoles, refreshData }: RoleManagementP
                 <Plus className="mr-2 h-4 w-4" /> Crear Rol
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[500px] max-h-[90dvh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-base sm:text-lg">Crear Rol</DialogTitle>
               </DialogHeader>
@@ -366,7 +366,7 @@ export function RoleManagement({ roles, setRoles, refreshData }: RoleManagementP
                   </div>
                 </div>
               </div>
-              <DialogFooter className="flex-col sm:flex-row gap-2">
+              <DialogFooter className="gap-2">
                 <DialogClose asChild>
                   <Button variant="outline" className="w-full sm:w-auto bg-transparent">
                     Cancelar
@@ -400,7 +400,7 @@ export function RoleManagement({ roles, setRoles, refreshData }: RoleManagementP
           }
         }}
       >
-        <DialogContent className="w-[95vw] sm:max-w-5xl max-h-[90vh] overflow-x-hidden overflow-y-auto">
+        <DialogContent className="sm:max-w-5xl max-h-[90dvh] overflow-x-hidden overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Detalles del Rol</DialogTitle>
           </DialogHeader>
@@ -461,7 +461,7 @@ export function RoleManagement({ roles, setRoles, refreshData }: RoleManagementP
               </div>
             </div>
           ) : null}
-          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
+          <DialogFooter className="sm:justify-between">
             <div className="flex gap-2">
               {canEdit && (
                 <Button
@@ -516,7 +516,7 @@ export function RoleManagement({ roles, setRoles, refreshData }: RoleManagementP
           if (!open) resetForm()
         }}
       >
-        <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[500px] max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Editar Rol</DialogTitle>
           </DialogHeader>
@@ -544,7 +544,7 @@ export function RoleManagement({ roles, setRoles, refreshData }: RoleManagementP
               </div>
             </div>
           </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button variant="outline" className="w-full sm:w-auto bg-transparent">
                 Cancelar
@@ -565,7 +565,7 @@ export function RoleManagement({ roles, setRoles, refreshData }: RoleManagementP
           if (!open) resetForm()
         }}
       >
-        <DialogContent className="w-[95vw] sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Eliminar Rol</DialogTitle>
           </DialogHeader>
@@ -575,7 +575,7 @@ export function RoleManagement({ roles, setRoles, refreshData }: RoleManagementP
               deshacer.
             </p>
           </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button variant="outline" className="w-full sm:w-auto bg-transparent">
                 Cancelar

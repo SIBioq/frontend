@@ -220,13 +220,13 @@ export function SecurityBlocksPanel({ onManualRefresh }: SecurityBlocksPanelProp
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Desbloquear {pendingRelease?.identifier}?</AlertDialogTitle>
+            <AlertDialogTitle className="break-all">¿Desbloquear {pendingRelease?.identifier}?</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingRelease?.kind === "ip"
                 ? "Esa dirección va a poder volver a intentar iniciar sesión inmediatamente. Hacelo solo si estás seguro de que el bloqueo fue un falso positivo."
                 : "Esa cuenta va a poder volver a intentar iniciar sesión inmediatamente. Hacelo solo si estás seguro de que el bloqueo fue un falso positivo."}
               {pendingRelease && (
-                <span className="mt-2 block text-xs text-gray-500">
+                <span className="mt-2 block break-words text-xs text-gray-500">
                   Motivo del bloqueo: {pendingRelease.reason} · Queda registrado en la
                   auditoría a tu nombre.
                 </span>

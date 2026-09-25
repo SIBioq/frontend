@@ -354,7 +354,7 @@ export const AnalysisList: React.FC<AnalysisListProps> = ({ analysis, showInacti
                       <p className="text-[10px] md:text-xs text-gray-500">
                         Fórmula:{" "}
                         {analysisItem.formula ? (
-                          <span className="font-mono text-blue-600">{analysisItem.formula}</span>
+                          <span className="font-mono break-all text-blue-600">{analysisItem.formula}</span>
                         ) : (
                           <span className="italic text-gray-400">Sin fórmula</span>
                         )}
