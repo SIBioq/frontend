@@ -198,6 +198,7 @@ export function RequestLogPanel({ onManualRefresh }: RequestLogPanelProps) {
 
       <p className="text-xs text-gray-400">
         {entries.length} petición{entries.length === 1 ? "" : "es"}
+        {(logQuery.data?.total ?? 0) > entries.length && ` de ${logQuery.data?.total}`}
         {paused && " · en pausa, no se está actualizando"}
       </p>
     </div>

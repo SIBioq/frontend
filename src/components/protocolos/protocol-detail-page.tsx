@@ -80,7 +80,6 @@ export default function ProtocolDetailPage() {
       missing_info: detail.missing_info,
       created_at: detail.created_at,
       is_arca_billed: detail.is_arca_billed,
-      arca_billing_status: detail.arca_billing_status,
       creation: detail.creation,
       last_change: detail.last_change,
     } as ProtocolListItem

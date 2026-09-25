@@ -55,7 +55,7 @@ export type LoginOutcome =
    *  contexto porque el login lo necesita en el mismo tick: para cuando
    *  `user` se actualiza, la pantalla ya decidió qué animar. */
   | { status: "success"; mustChangePassword: boolean }
-  | { status: "two_factor_required"; ephemeralToken: string; expiresIn: number; method: TwoFactorMethod; methods: TwoFactorMethod[] }
+  | { status: "two_factor_required"; ephemeralToken: string; expiresIn: number; method: TwoFactorMethod; methods: TwoFactorMethod[]; trustHours?: number }
   /** Está obligada a tener segundo factor y todavía no se enroló: falta el alta. */
   | { status: "two_factor_enrollment_required"; ephemeralToken: string; expiresIn: number }
   | { status: "error"; message?: string }
@@ -429,6 +429,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             methods: data.two_factor_methods?.length
               ? data.two_factor_methods
               : [data.two_factor_method || "totp"],
+            trustHours: Number(data.trust_hours) > 0 ? Number(data.trust_hours) : undefined,
           }
         }
 

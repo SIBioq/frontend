@@ -5,10 +5,13 @@ import { useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTable, type Column } from "@/components/common/data-table"
-import { Search, Plus, Loader2 } from "lucide-react"
+import { Search, Plus, Loader2, RotateCcw } from "lucide-react"
 import { useDebounce } from "@/hooks/use-debounce"
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll"
 import { useApiInfiniteQuery, flattenPages } from "@/hooks/use-api-infinite-query"
+import { useApiQuery } from "@/hooks/use-api-query"
+import { useApi } from "@/hooks/use-api"
+import { getErrorMessage, readApiError } from "@/lib/api-error"
 import { MEDICAL_ENDPOINTS } from "@/config/api"
 import { toast } from "sonner"
 import { CreateMedicoDialog } from "./components/create-medico-dialog"
@@ -29,6 +32,9 @@ export function MedicosManagement() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetMedico, setSheetMedico] = useState<Medico | null>(null)
+  const [verBajas, setVerBajas] = useState(false)
+  const [reactivando, setReactivando] = useState<number | null>(null)
+  const { apiRequest } = useApi()
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
 
@@ -67,6 +73,35 @@ export function MedicosManagement() {
 
   const invalidateDoctors = () => {
     queryClient.invalidateQueries({ queryKey: ["doctors"] })
+  }
+
+  // Los dados de baja se piden aparte y sólo al abrir la lista: el listado
+  // principal sigue trayendo únicamente activos.
+  const bajasQuery = useApiQuery<{ results: Medico[] }>({
+    queryKey: ["doctors", "inactivos"],
+    url: `${MEDICAL_ENDPOINTS.DOCTORS}?is_active=false`,
+    enabled: verBajas,
+  })
+  const bajas = bajasQuery.data?.results ?? []
+
+  const reactivar = async (medico: Medico) => {
+    setReactivando(medico.id)
+    try {
+      const response = await apiRequest(MEDICAL_ENDPOINTS.DOCTOR_DETAIL(medico.id), {
+        method: "PATCH",
+        body: { is_active: true },
+      })
+      if (!response.ok) {
+        toast.error(await readApiError(response, "No se pudo reactivar el médico."))
+        return
+      }
+      toast.success(`${medico.first_name} ${medico.last_name} vuelve a estar activo.`)
+      invalidateDoctors()
+    } catch (err) {
+      toast.error("No se pudo reactivar el médico.", { description: getErrorMessage(err) })
+    } finally {
+      setReactivando(null)
+    }
   }
 
   const handleCreateSuccess = () => {
@@ -180,6 +215,49 @@ export function MedicosManagement() {
           </div>
         }
       />
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setVerBajas((v) => !v)}
+          className="text-sm font-medium text-[#204983] hover:underline"
+        >
+          {verBajas ? "Ocultar médicos dados de baja" : "Ver médicos dados de baja"}
+        </button>
+        {verBajas && (
+          <div className="mt-3 rounded-xl border border-gray-200">
+            {bajasQuery.isLoading ? (
+              <p className="p-4 text-sm text-gray-500">Cargando…</p>
+            ) : bajasQuery.isError ? (
+              <p className="p-4 text-sm text-red-600">No se pudo cargar la lista.</p>
+            ) : bajas.length === 0 ? (
+              <p className="p-4 text-sm text-gray-500">No hay médicos dados de baja.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {bajas.map((m) => (
+                  <li key={m.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-gray-900">
+                        {m.first_name} {m.last_name}
+                      </p>
+                      <p className="truncate text-xs text-gray-500">Mat: {m.license}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={reactivando === m.id}
+                      onClick={() => reactivar(m)}
+                    >
+                      <RotateCcw className="mr-2 h-4 w-4" />
+                      Reactivar
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
 
       <CreateMedicoDialog
         isOpen={showCreateDialog}

@@ -20,6 +20,8 @@ interface TwoFactorChallengeProps {
   expiresIn: number
   method?: TwoFactorMethod
   methods?: TwoFactorMethod[]
+  /** Horas de confianza en el equipo; si el backend no las manda, 8. */
+  trustHours?: number
   onSubmit: (code: string, rememberDevice: boolean, method?: TwoFactorMethod) => Promise<TwoFactorSubmitResult>
   onSelectMethod: (method: TwoFactorMethod) => Promise<TwoFactorSubmitResult>
   /** Volver al formulario de usuario y contraseña. */
@@ -28,7 +30,7 @@ interface TwoFactorChallengeProps {
 
 const CODE_LENGTH = 6
 
-export function TwoFactorChallenge({ username, expiresIn, method = "totp", methods = [method], onSubmit, onSelectMethod, onCancel }: TwoFactorChallengeProps) {
+export function TwoFactorChallenge({ username, expiresIn, method = "totp", methods = [method], trustHours = 8, onSubmit, onSelectMethod, onCancel }: TwoFactorChallengeProps) {
   const availableMethods = Array.from(new Set(methods))
   const [selectedMethod, setSelectedMethod] = useState<TwoFactorMethod | null>(
     availableMethods.length === 1 ? availableMethods[0] : null,
@@ -270,7 +272,7 @@ export function TwoFactorChallenge({ username, expiresIn, method = "totp", metho
           className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#204983] focus:ring-[#204983]"
         />
         <span>
-          Confiar en este equipo por 8 horas.
+          Confiar en este equipo por {trustHours} horas.
           <span className="block text-xs text-gray-500">
             Vas a poder volver a entrar con usuario y contraseña sin el código hasta que venza. Desactivalo si la
             computadora no es de confianza.

@@ -38,6 +38,7 @@ export function ProtocolHistoryDialog({
   const { apiRequest } = useApi()
   const [events, setEvents] = useState<HistoryEntry[]>([])
   const [count, setCount] = useState(0)
+  const [truncado, setTruncado] = useState(false)
   const [loading, setLoading] = useState(false)
   const [activeCategories, setActiveCategories] = useState<Set<AuditCategory>>(new Set())
 
@@ -64,7 +65,16 @@ export function ProtocolHistoryDialog({
               ? allEvents.filter((event) => event.category && categories.has(event.category as AuditCategory))
               : allEvents
           setEvents(filtered)
-          setCount(data.count ?? filtered.length)
+          // Con una categoría el backend ya filtró y `total` es el real. Con
+          // varias se filtra acá: el total es lo filtrado, y si el backend
+          // cortó en `limit` puede haber más que no llegaron.
+          if (categories.size > 1) {
+            setCount(filtered.length)
+            setTruncado((data.total ?? 0) > (data.count ?? 0))
+          } else {
+            setCount(data.total ?? data.count ?? filtered.length)
+            setTruncado(false)
+          }
         } else {
           const errorData = await response.json().catch(() => ({}))
           toast.error("No se pudo cargar el timeline", {
@@ -171,7 +181,9 @@ export function ProtocolHistoryDialog({
               {loading
                 ? "Cargando eventos..."
                 : `${events.length} evento${events.length === 1 ? "" : "s"}${
-                    activeCategories.size > 0 ? " (filtrados)" : count > 0 ? ` de ${count}` : ""
+                    count > events.length ? ` de ${count}` : ""
+                  }${activeCategories.size > 0 ? " (filtrados)" : ""}${
+                    truncado ? " entre los últimos 500" : ""
                   }`}
             </span>
           </div>

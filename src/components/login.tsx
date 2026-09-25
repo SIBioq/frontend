@@ -68,6 +68,7 @@ interface PendingTwoFactor {
   username: string
   method?: TwoFactorMethod
   methods?: TwoFactorMethod[]
+  trustHours?: number
 }
 
 export default function Login() {
@@ -245,6 +246,7 @@ export default function Login() {
         username,
         method: outcome.method,
         methods: outcome.methods,
+        trustHours: outcome.trustHours,
       })
     } else if (outcome.status === "two_factor_enrollment_required") {
       // Credenciales OK, pero está obligada al segundo factor y no lo tiene:
@@ -461,6 +463,7 @@ export default function Login() {
                   method={pendingTwoFactor.method}
                   methods={pendingTwoFactor.methods}
                   expiresIn={pendingTwoFactor.expiresIn}
+                  trustHours={pendingTwoFactor.trustHours}
                   onSubmit={handleTwoFactorSubmit}
                   onSelectMethod={handleTwoFactorMethod}
                   onCancel={cancelTwoFactor}

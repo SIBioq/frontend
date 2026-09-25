@@ -849,7 +849,6 @@ export interface Protocol {
   payment_status: PaymentStatus
   billing_status?: BillingStatus
   is_arca_billed?: boolean
-  arca_billing_status?: "pendiente" | "emitida" | "error" | "anulada" | string
   arca_billed_at?: string | null
   arca_reference?: string
   arca_bill_to?: "patient" | "third_party"
@@ -875,8 +874,6 @@ export interface Protocol {
   missing_info?: string[]
   details: ProtocolDetail[]
   unplanned_transactions?: UnplannedTransaction[]
-  unplanned_charges_total?: string
-  unplanned_payments_total?: string
   creation?: CreationAudit
   last_change?: LastChangeAudit
   history?: HistoryEntry[]
@@ -955,7 +952,6 @@ export interface ProtocolListItem {
   missing_info?: string[]
   created_at?: string
   is_arca_billed?: boolean
-  arca_billing_status?: "pendiente" | "emitida" | "error" | "anulada" | string
   arca_billed_at?: string | null
   arca_reference?: string
   arca_bill_to?: "patient" | "third_party"
@@ -1765,7 +1761,10 @@ export interface RequestLogEntry {
 }
 
 export interface RequestLogResponse {
+  /** Las que vinieron (el backend corta en `limit`). */
   count: number
+  /** Cuántas coinciden con el filtro en total. */
+  total?: number
   results: RequestLogEntry[]
 }
 
@@ -1785,6 +1784,7 @@ export interface TwoFactorRequiredResponse {
   expires_in: number
   two_factor_method?: TwoFactorMethod
   two_factor_methods?: TwoFactorMethod[]
+  trust_hours?: number
 }
 
 export type TwoFactorMethod = "totp" | "email"
@@ -1818,6 +1818,14 @@ export interface TwoFactorStatus {
   method: TwoFactorMethod | null
   methods: TwoFactorMethod[]
   email: string | null
+  /** El kill switch del sistema: apagado, el segundo factor no se pide. */
+  system_enabled: boolean
+  /** Horas que dura la confianza en un equipo. */
+  trust_hours: number
+  /** Está obligado a tener segundo factor: no puede desactivarlo. */
+  required: boolean
+  /** Se le pide el código en cada ingreso, sin ventana de confianza. */
+  always_prompt: boolean
 }
 
 export interface TwoFactorSetupResponse {
