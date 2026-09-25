@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { AlertTriangle, Loader2, Shield } from "lucide-react"
 
 import { ObraSocialCombobox } from "@/components/ingreso/components/obra-social-combobox"
+import { CreateObraSocialForm } from "@/components/ingreso/components/create-obra-social-form"
 import { BillingEntitySelect } from "@/components/configuration/components/billing-entity-select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -84,10 +85,14 @@ export function ObraSocialDialog({
   const [numero, setNumero] = useState(numeroDeAfiliadoActual)
   /** Los números que este paciente ya usó, por obra social. */
   const [afiliacionesConocidas, setAfiliacionesConocidas] = useState<Record<number, string>>({})
+  // "Crear nueva obra social" del combo: antes no hacía nada. Se abre el mismo
+  // formulario del ingreso y la recién creada queda elegida.
+  const [creando, setCreando] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setElegida(null)
+    setCreando(false)
     setEntidad(entidadActualId ? String(entidadActualId) : "")
     setNumero(numeroDeAfiliadoActual)
     apiRequest(`${MEDICAL_ENDPOINTS.INSURANCES}?limit=20&offset=0&is_active=true`)
@@ -140,7 +145,7 @@ export function ObraSocialDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-[#204983]" />
@@ -158,9 +163,20 @@ export function ObraSocialDialog({
               obrasSociales={obrasSociales}
               selectedObraSocial={elegida}
               onObraSocialSelect={elegirObraSocial}
-              onShowCreateObraSocial={() => {}}
+              onShowCreateObraSocial={() => setCreando(true)}
             />
           </div>
+
+          {creando && (
+            <CreateObraSocialForm
+              onObraSocialCreated={(nueva) => {
+                setObrasSociales((lista) => [...lista, nueva])
+                elegirObraSocial(nueva)
+                setCreando(false)
+              }}
+              onCancel={() => setCreando(false)}
+            />
+          )}
 
           {!esParticular && (
             <div className="space-y-1.5">

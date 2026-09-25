@@ -24,14 +24,14 @@ export interface PendingProtocolToBill {
   insurance: {
     id: number
     name: string
-    ub_value_at_protocol_creation: string
     requires_preauthorization?: boolean
   } | null
   total_ub_authorized: string
-  expected_amount: string
+  // Sin monto esperado: el valor de la UB se carga al cerrar la presentación.
   trajo_orden?: string
   preauth_status?: string
   is_printed?: boolean
+  is_summary_printed?: boolean
   /** Lista de faltantes; vacía = puede facturar. El backend igual bloquea con 400 si falta algo. */
   missing_paperwork: string[]
 }

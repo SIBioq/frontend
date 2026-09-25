@@ -61,7 +61,7 @@ type FilaAgrupada = {
   fuera_de_rango?: boolean
   movimiento_de_caja_id?: number
   detalle?: string
-  /** El backend también manda `usuario` (quién hizo el gasto): no se muestra más, sólo importa quién lo registró. */
+  /** En los gastos, `usuario` y `registrado_por` son la misma persona: quien lo cargó. */
   registrado_por?: string
 }
 
@@ -583,6 +583,11 @@ export default function LibroDiarioPage() {
                             <span className="font-medium text-[#204983]">
                               Protocolo {fila.protocolo}
                             </span>
+                            {fila.estado ? (
+                              <span className="ml-2 inline-flex items-center rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[11px] font-medium text-gray-600">
+                                {fila.estado}
+                              </span>
+                            ) : null}
                             {fila.paciente ? (
                               <div className="truncate text-xs text-gray-600">{fila.paciente}</div>
                             ) : null}
@@ -665,6 +670,9 @@ export default function LibroDiarioPage() {
                           {total >= 0 ? "+" : ""}
                           {plata(fila.total)}
                         </div>
+                        {esProtocolo && fila.pagado ? (
+                          <div className="text-[11px] text-gray-500">pagado {plata(fila.pagado)}</div>
+                        ) : null}
                         {debePaciente > 0 ? (
                           <div className="text-[11px] text-orange-700">
                             debe {plata(fila.debe_el_paciente)}

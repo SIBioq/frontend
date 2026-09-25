@@ -104,6 +104,8 @@ interface ProtocolDetailResponse {
   /** A qué entidad se le presenta ESTE protocolo. */
   billing_entity?: { id: number; name: string } | null
   affiliate_number?: string
+  /** Análisis con resultado cargado sobre los que llevan resultado. */
+  results_summary?: { loaded: number; total: number }
   status: ProtocolStatus
   send_method: {
     id: number

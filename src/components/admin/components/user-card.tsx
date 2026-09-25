@@ -25,6 +25,9 @@ export type UserCardAction =
   | "requirePasswordChange"
   | "cancelPasswordChange"
 
+const formatFechaHora = (iso: string): string =>
+  new Date(iso).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })
+
 interface UserCardProps {
   user: User
   roles: Role[]
@@ -68,6 +71,11 @@ export function UserCard({
   const activeRoles: Group[] = user.groups || user.roles || []
   const activeRoleIds = new Set(activeRoles.map((r) => r.id))
   const hasTemp = user.permissions?.some((p) => p.temporary) || false
+  // El que vence primero: es lo que hay que saber para renovarlo a tiempo.
+  const venceTemp = (user.permissions || [])
+    .filter((p) => p.temporary && p.expires_at)
+    .map((p) => p.expires_at as string)
+    .sort()[0]
   const debeCambiarContrasena = Boolean(user.must_change_password)
   const fullName = `${user.first_name} ${user.last_name}`.trim() || user.username
 
@@ -149,6 +157,18 @@ export function UserCard({
         <span className="truncate">{user.email || "Sin email"}</span>
       </div>
 
+      {(user.date_joined || user.last_login !== undefined) && (
+        <p className="text-[11px] text-gray-400">
+          {user.date_joined ? `Alta ${formatFechaHora(user.date_joined)}` : ""}
+          {user.date_joined && user.last_login !== undefined ? " · " : ""}
+          {user.last_login !== undefined
+            ? user.last_login
+              ? `Último ingreso ${formatFechaHora(user.last_login)}`
+              : "Nunca ingresó"
+            : ""}
+        </p>
+      )}
+
       {(user.is_superuser || hasTemp || debeCambiarContrasena || user.is_active === false) && (
         <div className="flex flex-wrap gap-1">
           {user.is_superuser && <Badge variant="destructive" className="text-[10px]">Superusuario</Badge>}
@@ -156,6 +176,7 @@ export function UserCard({
             <Badge variant="secondary" className="text-[10px]">
               <Clock className="mr-1 h-3 w-3" />
               Permiso temporal
+              {venceTemp ? ` · vence ${formatFechaHora(venceTemp)}` : ""}
             </Badge>
           )}
           {debeCambiarContrasena && (

@@ -52,7 +52,10 @@ export function ObraSocialDetailDialog({
   if (!obraSocial) return null
 
   const data = details ?? obraSocial
-  const nbuLabel = getNbuDisplayName(data.nbu, nbus)
+  const nbuLabel = data.nbu_name || getNbuDisplayName(data.nbu, nbus)
+  const umbralUb = Number.parseFloat(data.descuento_desde_ub || "0")
+  const porcentajeACobrar = Number.parseFloat(data.descuento_porcentaje_a_cobrar || "100")
+  const tieneDescuento = umbralUb > 0 && porcentajeACobrar < 100
   const flags = [
     { label: "Coseguro", active: data.charges_coseguro },
     { label: "Material descartable", active: data.charges_material_descartable },
@@ -134,6 +137,15 @@ export function ObraSocialDetailDialog({
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Nomenclador</p>
             <p className="text-sm font-medium text-gray-800">{nbuLabel || "—"}</p>
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Descuento por análisis</p>
+            <p className="text-sm font-medium text-gray-800">
+              {tieneDescuento
+                ? `Desde ${umbralUb.toLocaleString("es-AR")} UB se cobra el ${porcentajeACobrar.toLocaleString("es-AR")}%`
+                : "Sin descuento"}
+            </p>
           </div>
 
           <div className="space-y-1">

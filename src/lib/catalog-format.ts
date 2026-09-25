@@ -82,8 +82,38 @@ export const formatReferenceBounds = (
   return ""
 }
 
+const sexoLabels: Record<string, string> = { male: "Hombre", female: "Mujer", any: "Ambos sexos" }
+const edadLabels: Record<string, string> = { adult: "adulto", child: "niño/a", neonate: "neonato" }
+
+/**
+ * Cómo se llama el grupo de un rango.
+ *
+ * Los cuatro de la grilla tienen nombre fijo. El resto (sexo indistinto, un
+ * tramo de edad) viene de las importaciones NBU y antes se mostraba con la
+ * clave cruda, `any_adult`, o sin decir el tramo.
+ */
+const formatReferenceRangeGroup = (range: ReferenceRange): string => {
+  const desde = range.age_min_years
+  const hasta = range.age_max_years
+  const tieneTramo = desde != null || hasta != null
+  let nombre = referenceGroupLabels[range.group]
+  if (!nombre || (tieneTramo && range.group !== "neonato")) {
+    const sexo = sexoLabels[range.sex] || range.sex
+    const edad = edadLabels[range.age_group] || range.age_group
+    nombre = range.age_group === "neonate" ? "Neonato" : `${sexo} ${edad}`.trim()
+  }
+  if (!tieneTramo) return nombre
+  const tramo =
+    desde != null && hasta != null
+      ? `${desde} a ${hasta} años`
+      : desde != null
+        ? `desde ${desde} años`
+        : `hasta ${hasta} años`
+  return `${nombre} (${tramo})`
+}
+
 export const formatReferenceRange = (range: ReferenceRange): string =>
-  `${formatReferenceGroup(range.group)}: ${formatReferenceBounds(range.min_value, range.max_value, range) || "-"}`
+  `${formatReferenceRangeGroup(range)}: ${formatReferenceBounds(range.min_value, range.max_value, range) || "-"}`
 
 /** Un rango con nombre: el nombre lo puso el laboratorio y va tal cual. */
 export const formatNamedReferenceRange = (range: NamedReferenceRange): string =>

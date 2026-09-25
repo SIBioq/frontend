@@ -9,8 +9,10 @@ import { History, Pencil, Trash, TestTube } from "lucide-react"
 import { AnalysisList } from "./analysis-list"
 import { CopiarDeterminaciones } from "./copiar-determinaciones"
 import { formatBioUnitValues, formatAnalysisCategory } from "@/lib/catalog-format"
-import type { Analysis } from "@/types"
+import type { Analysis, SubmoduloDeCorroboracion } from "@/types"
 import { usePreciosFijos } from "@/hooks/use-precios-fijos"
+import { useApiQuery } from "@/hooks/use-api-query"
+import { CATALOG_ENDPOINTS } from "@/config/api"
 
 interface AnalysisDetailDialogProps {
   analysis: Analysis | null
@@ -39,6 +41,17 @@ export function AnalysisDetailDialog({
   // Sin la función habilitada el precio cargado no cotiza nada, y la ficha no
   // puede anunciar un cobro que no va a pasar.
   const { habilitados: preciosFijosHabilitados } = usePreciosFijos()
+  // Los submódulos se editan en su propio diálogo; acá sólo se listan para que
+  // la ficha diga qué sumas controla el análisis sin tener que abrirlo.
+  const submodulosQuery = useApiQuery<SubmoduloDeCorroboracion[] | { results: SubmoduloDeCorroboracion[] }>({
+    queryKey: ["catalog", "submodulos", analysis?.id, refreshKey],
+    url: `${CATALOG_ENDPOINTS.SUBMODULOS_CORROBORACION}?analysis=${analysis?.id}`,
+    enabled: open && Boolean(analysis?.id),
+  })
+  const datosSubmodulos = submodulosQuery.data
+  const submodulos: SubmoduloDeCorroboracion[] = (Array.isArray(datosSubmodulos) ? datosSubmodulos : datosSubmodulos?.results ?? []).filter(
+    (s) => s.analysis === analysis?.id && s.is_active !== false,
+  )
 
   if (!analysis) return null
   const bioUnitItems = formatBioUnitValues(analysis.bio_unit_values)
@@ -98,6 +111,39 @@ export function AnalysisDetailDialog({
               {analysis.lleva_resultado ? "Sí" : "No"}
             </Badge>
           </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <span className="text-sm font-medium text-gray-600">Requiere derivación</span>
+            <Badge
+              variant="outline"
+              className={analysis.requires_derivacion ? "bg-orange-50 text-orange-700" : "bg-gray-100 text-gray-600"}
+            >
+              {analysis.requires_derivacion ? "Sí" : "No"}
+            </Badge>
+          </div>
+
+          {submodulos.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Submódulos de corroboración</p>
+              <ul className="mt-2 space-y-1.5">
+                {submodulos.map((sub) => (
+                  <li key={sub.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                    <span className="font-medium">{sub.nombre}</span>
+                    <span className="text-gray-500">
+                      {" "}
+                      · suma {Number(sub.total_esperado)}
+                      {Number(sub.tolerancia) > 0 && ` ± ${Number(sub.tolerancia)}`}
+                    </span>
+                    {sub.determinaciones_detalle && sub.determinaciones_detalle.length > 0 && (
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {sub.determinaciones_detalle.map((d) => d.name).join(", ")}
+                      </p>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {bioUnitItems.length > 0 && (
             <div>

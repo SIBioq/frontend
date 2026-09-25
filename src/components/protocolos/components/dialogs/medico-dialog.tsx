@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Loader2, Stethoscope } from "lucide-react"
 
+import { CreateMedicoForm } from "@/components/ingreso/components/create-medico-form"
 import { MedicoCombobox } from "@/components/ingreso/components/medico-combobox"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -46,11 +47,15 @@ export function MedicoDialog({ open, onOpenChange, medicoActual, onGuardar, proc
   const { apiRequest } = useApi()
   const [medicos, setMedicos] = useState<Medico[]>([])
   const [elegido, setElegido] = useState<Medico | null>(null)
+  // "Crear nuevo médico" del combo: antes no hacía nada. Se abre el mismo
+  // formulario del ingreso y el recién creado queda elegido.
+  const [creando, setCreando] = useState(false)
 
   // La primera página se trae acá: el combobox sin lista inicial no muestra
   // nada hasta que se escribe, y lo más común es elegir uno de los de siempre.
   useEffect(() => {
     if (!open) return
+    setCreando(false)
     setElegido((medicoActual?.id ? (medicoActual as Medico) : null))
     apiRequest(`${MEDICAL_ENDPOINTS.DOCTORS}?limit=20&offset=0&is_active=true`)
       .then((r) => (r.ok ? r.json() : null))
@@ -65,7 +70,7 @@ export function MedicoDialog({ open, onOpenChange, medicoActual, onGuardar, proc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Stethoscope className="h-5 w-5 text-[#204983]" />
@@ -82,8 +87,18 @@ export function MedicoDialog({ open, onOpenChange, medicoActual, onGuardar, proc
             medicos={medicos}
             selectedMedico={elegido}
             onMedicoSelect={setElegido}
-            onShowCreateMedico={() => {}}
+            onShowCreateMedico={() => setCreando(true)}
           />
+          {creando && (
+            <CreateMedicoForm
+              onMedicoCreated={(nuevo) => {
+                setMedicos((lista) => [...lista, nuevo])
+                setElegido(nuevo)
+                setCreando(false)
+              }}
+              onCancel={() => setCreando(false)}
+            />
+          )}
         </div>
 
         <DialogFooter>

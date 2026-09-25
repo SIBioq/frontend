@@ -351,6 +351,9 @@ export const AnalysisList: React.FC<AnalysisListProps> = ({ analysis, showInacti
                       <p className="text-xs md:text-sm font-medium text-gray-800 truncate">{analysisItem.name}</p>
                       <p className="text-[10px] md:text-xs text-gray-500">Código: {analysisItem.code || "N/A"}</p>
                       <p className="text-[10px] md:text-xs text-gray-500">Unidad: {unidadCompleta(analysisItem.measure_unit, analysisItem.scientific_exponent)}</p>
+                      {analysisItem.decimales != null && (
+                        <p className="text-[10px] md:text-xs text-gray-500">Decimales: {analysisItem.decimales}</p>
+                      )}
                       <p className="text-[10px] md:text-xs text-gray-500">
                         Fórmula:{" "}
                         {analysisItem.formula ? (

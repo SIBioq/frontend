@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { PaperStatusChips } from "./paper-status-chips"
+import { PaperChecklist } from "./paper-status-chips"
 import type { BillingEntity, PendingProtocolToBill } from "../types"
 
 interface ProtocolBillingRowProps {
@@ -44,11 +44,14 @@ export function ProtocolBillingRow({ protocol, onMarkBilled, isMarking, otherEnt
           <span className="text-xs text-gray-500">{protocol.insurance?.name ?? "Sin obra social"}</span>
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
-          <PaperStatusChips missingPaperwork={protocol.missing_paperwork} />
+          <PaperChecklist
+            trajoOrden={protocol.trajo_orden}
+            preauthStatus={protocol.preauth_status}
+            requierePreautorizacion={protocol.insurance?.requires_preauthorization}
+            isSummaryPrinted={protocol.is_summary_printed}
+          />
           <span className="text-xs text-gray-400">UB: {protocol.total_ub_authorized}</span>
         </div>
-        {/* Se removió el texto genérico "Faltan papeles": los chips de arriba
-            (PaperStatusChips) ya detallan exactamente qué falta. */}
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         <Button size="sm" variant="outline" asChild title="Ver protocolo">

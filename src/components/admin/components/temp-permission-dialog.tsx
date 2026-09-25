@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import type { ApiRequestOptions } from "@/hooks/use-api"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
 import { Shield, ShieldX } from "lucide-react"
+import { formatDateTime } from "@/utils/date-utils"
 
 const extractErrorMessage = (errorData: unknown): string => formatApiError(errorData, "Error desconocido")
 
@@ -38,6 +39,10 @@ interface TempPermissionItem {
   }
   expires_at: string
   is_expired: boolean
+  reason?: string
+  granted_at?: string
+  granted_by_details?: { id: number; username: string } | null
+  time_remaining?: string | null
 }
 
 export function TempPermissionDialog({
@@ -275,6 +280,35 @@ export function TempPermissionDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {(() => {
+                const elegido = activeTempPerms.find((tp) => tp.id.toString() === selectedTempPermId)
+                if (!elegido) return null
+                return (
+                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs">
+                    {elegido.time_remaining ? (
+                      <>
+                        <dt className="text-gray-500">Le queda</dt>
+                        <dd className="text-gray-800">{elegido.time_remaining}</dd>
+                      </>
+                    ) : null}
+                    {elegido.granted_by_details || elegido.granted_at ? (
+                      <>
+                        <dt className="text-gray-500">Lo dio</dt>
+                        <dd className="text-gray-800">
+                          {elegido.granted_by_details?.username ?? "—"}
+                          {elegido.granted_at ? ` · ${formatDateTime(elegido.granted_at)}` : ""}
+                        </dd>
+                      </>
+                    ) : null}
+                    {elegido.reason ? (
+                      <>
+                        <dt className="text-gray-500">Motivo</dt>
+                        <dd className="whitespace-pre-wrap break-words text-gray-800">{elegido.reason}</dd>
+                      </>
+                    ) : null}
+                  </dl>
+                )
+              })()}
             </div>
           )}
         </div>

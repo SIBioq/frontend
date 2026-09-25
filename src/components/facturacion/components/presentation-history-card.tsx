@@ -25,8 +25,8 @@ interface PresentationHistoryCardProps {
   presentation: ClosedPresentation
   entity: BillingEntity
   onSaveUbValue: (presentationId: number, insuranceId: number, value: number) => Promise<void>
-  onSaveCollected: (presentationId: number, insuranceId: number, value: number) => Promise<void>
-  onSaveCollectedTotal: (presentationId: number, value: number) => Promise<void>
+  onSaveCollected: (presentationId: number, insuranceId: number, value: number, reason: string) => Promise<void>
+  onSaveCollectedTotal: (presentationId: number, value: number, reason: string) => Promise<void>
 }
 
 /**
@@ -43,6 +43,8 @@ export function PresentationHistoryCard({
 }: PresentationHistoryCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [collectedTotalDraft, setCollectedTotalDraft] = useState("")
+  // Pre-cargado con el motivo guardado: el backend lo pisa en cada cobro.
+  const [reasonDraft, setReasonDraft] = useState(presentation.difference_reason ?? "")
   const [savingTotal, setSavingTotal] = useState(false)
 
   const totalExpected = Number.parseFloat(presentation.expected_amount)
@@ -56,7 +58,7 @@ export function PresentationHistoryCard({
     if (Number.isNaN(parsed) || parsed < 0) return
     setSavingTotal(true)
     try {
-      await onSaveCollectedTotal(presentation.id, parsed)
+      await onSaveCollectedTotal(presentation.id, parsed, reasonDraft.trim())
       setCollectedTotalDraft("")
     } finally {
       setSavingTotal(false)
@@ -111,7 +113,7 @@ export function PresentationHistoryCard({
                 onSaveUbValue={(insuranceId, value) => onSaveUbValue(presentation.id, insuranceId, value)}
                 onSaveCollected={
                   entity.reports_breakdown_by_ooss
-                    ? (insuranceId, value) => onSaveCollected(presentation.id, insuranceId, value)
+                    ? (insuranceId, value, reason) => onSaveCollected(presentation.id, insuranceId, value, reason)
                     : undefined
                 }
               />
@@ -140,6 +142,29 @@ export function PresentationHistoryCard({
                   {savingTotal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 </Button>
               </div>
+              <Input
+                placeholder="Motivo de la diferencia (opcional)"
+                aria-label="Motivo de la diferencia"
+                maxLength={500}
+                className="mt-2 h-8 text-xs"
+                value={reasonDraft}
+                onChange={(e) => setReasonDraft(e.target.value)}
+              />
+            </div>
+          )}
+
+          {(presentation.collected_at || presentation.notes) && (
+            <div className="space-y-1 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-700">
+              {presentation.collected_at && (
+                <p>
+                  <strong>Cobrada el:</strong> {formatDateAR(presentation.collected_at)}
+                </p>
+              )}
+              {presentation.notes && (
+                <p className="whitespace-pre-wrap">
+                  <strong>Notas:</strong> {presentation.notes}
+                </p>
+              )}
             </div>
           )}
 
