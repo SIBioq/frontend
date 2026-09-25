@@ -82,7 +82,6 @@ export interface ClosedPresentationProtocol {
   invoice_id: number
   invoice_number: string
   insurance: { id: number; name: string } | null
-  patient: { id: number; first_name: string; last_name: string } | null
   expected_amount: string
   paid_amount?: string
   difference_amount?: string

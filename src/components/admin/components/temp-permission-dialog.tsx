@@ -87,7 +87,7 @@ export function TempPermissionDialog({
             }
           }
         } else {
-          const res = await apiRequest(`${AC_ENDPOINTS.TEMP_PERMISSIONS}?user_id=${user.id}`)
+          const res = await apiRequest(`${AC_ENDPOINTS.TEMP_PERMISSIONS}?user=${user.id}`)
           if (!cancelled && res.ok) {
             const data = await res.json()
             const tempPerms = data.results || []
