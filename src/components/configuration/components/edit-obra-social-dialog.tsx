@@ -155,9 +155,9 @@ export function EditObraSocialDialog({ open, onOpenChange, obraSocial, onSuccess
   const getChangedFields = () => {
     const changes: Record<string, unknown> = {}
     if (formData.name !== obraSocial.name) changes.name = formData.name
-    if (formData.description !== (obraSocial.description || "")) changes.description = formData.description || undefined
+    if (formData.description !== (obraSocial.description || "")) changes.description = formData.description
     if (formData.ub_value !== (obraSocial.ub_value || "")) {
-      changes.ub_value = formData.ub_value ? Number.parseFloat(formData.ub_value) : undefined
+      changes.ub_value = formData.ub_value ? Number.parseFloat(formData.ub_value) : null
     }
     if (formData.charges_coseguro !== (obraSocial.charges_coseguro ?? false)) {
       changes.charges_coseguro = formData.charges_coseguro

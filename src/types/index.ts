@@ -321,6 +321,7 @@ export interface PatientFormData {
   province: string
   city: string
   address: string
+  observations: string
 }
 
 // ============================================================================

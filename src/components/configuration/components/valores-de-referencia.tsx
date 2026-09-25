@@ -88,6 +88,8 @@ export type RangeMap = Record<string, Rango>
 export type RefRange = {
   sex?: string
   age_group?: string
+  age_min_years?: number | null
+  age_max_years?: number | null
   min_value?: string
   max_value?: string
   min_inclusive?: boolean
@@ -178,12 +180,22 @@ const tieneAlgo = (rango: Rango): boolean => {
   return Boolean(min_value || max_value)
 }
 
+/**
+ * Si el valor entra en uno de los 4 casilleros. Neonato, "cualquier sexo" y
+ * los tramos por edad los carga el NBU y la grilla no los edita: el backend
+ * los deja como están cuando se guarda la grilla.
+ */
+const esDeLaGrilla = (r: RefRange): boolean =>
+  REF_GROUPS.some((g) => g.sex === r.sex && g.age_group === r.age_group) &&
+  r.age_min_years == null &&
+  r.age_max_years == null
+
 /** Lo que viene del backend, en los 4 casilleros. */
 export function rangosDesde(existentes?: RefRange[]): RangeMap {
   const mapa = rangosVacios()
   for (const grupo of REF_GROUPS) {
     const encontrado = (existentes || []).find(
-      (r) => r.sex === grupo.sex && r.age_group === grupo.age_group,
+      (r) => esDeLaGrilla(r) && r.sex === grupo.sex && r.age_group === grupo.age_group,
     )
     if (encontrado) {
       mapa[grupo.key] = rangoDesde(
@@ -204,6 +216,46 @@ export function rangosParaEnviar(ranges: RangeMap): RefRange[] {
     age_group: g.age_group,
     ...limitesDe(ranges[g.key]),
   }))
+}
+
+/** Los valores que no entran en la grilla, para mostrarlos sin editar. */
+export function rangosFueraDeLaGrilla(existentes?: RefRange[]): RefRange[] {
+  return (existentes || []).filter((r) => !esDeLaGrilla(r))
+}
+
+/** Si la grilla cambió respecto de lo guardado. Si no, no hace falta mandarla. */
+export function grillaCambio(ranges: RangeMap, existentes?: RefRange[]): boolean {
+  const antes = rangosParaEnviar(rangosDesde(existentes))
+  return JSON.stringify(rangosParaEnviar(ranges)) !== JSON.stringify(antes)
+}
+
+const SEXOS: Record<string, string> = {
+  male: "Hombre",
+  female: "Mujer",
+  any: "Cualquier sexo",
+}
+const EDADES: Record<string, string> = {
+  neonate: "Neonato",
+  child: "Niño",
+  adult: "Adulto",
+}
+
+/** "Neonato · Cualquier sexo", "Hombre · 18–65 años". */
+const etiquetaDe = (r: RefRange): string => {
+  const partes = [SEXOS[r.sex ?? ""] ?? r.sex ?? ""]
+  const desde = r.age_min_years
+  const hasta = r.age_max_years
+  if (desde != null && hasta != null) partes.push(`${desde}–${hasta} años`)
+  else if (desde != null) partes.push(`desde ${desde} años`)
+  else if (hasta != null) partes.push(`hasta ${hasta} años`)
+  else partes.unshift(EDADES[r.age_group ?? ""] ?? r.age_group ?? "")
+  return partes.filter(Boolean).join(" · ")
+}
+
+const textoDe = (r: RefRange): string => {
+  const { modo, min, max } = rangoDesde(r.min_value, r.max_value, r.min_inclusive, r.max_inclusive)
+  if (modo === "rango") return min === max ? min : `${min} – ${max}`
+  return `${SIGNO[modo]} ${min || max}`
 }
 
 /** Los rangos con nombre que vienen del backend, en orden. */
@@ -296,6 +348,8 @@ interface Props {
   /** Los rangos con nombre. Si no se pasan, la sección no aparece. */
   namedRanges?: RangoConNombre[]
   onNamedRangesChange?: (rangos: RangoConNombre[]) => void
+  /** Los valores que la grilla no edita (neonato, tramos por edad): se listan sin tocar. */
+  fueraDeLaGrilla?: RefRange[]
   disabled?: boolean
 }
 
@@ -304,6 +358,7 @@ export function ValoresDeReferencia({
   onChange,
   namedRanges,
   onNamedRangesChange,
+  fueraDeLaGrilla,
   disabled,
 }: Props) {
   const setRange = (key: string, rango: Rango) => onChange({ ...ranges, [key]: rango })
@@ -331,6 +386,22 @@ export function ValoresDeReferencia({
             </div>
           ))}
         </div>
+        {fueraDeLaGrilla && fueraDeLaGrilla.length > 0 && (
+          <div className="space-y-1 rounded-md border border-dashed border-gray-200 p-2">
+            <p className="text-xs text-gray-500">
+              También tiene estos, que vienen del nomenclador y no se editan acá. Guardar no los
+              cambia.
+            </p>
+            <ul className="space-y-0.5">
+              {fueraDeLaGrilla.map((r, indice) => (
+                <li key={indice} className="flex flex-wrap justify-between gap-x-3 text-sm">
+                  <span className="text-gray-700">{etiquetaDe(r)}</span>
+                  <span className="font-mono text-gray-900">{textoDe(r)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {onNamedRangesChange && (
