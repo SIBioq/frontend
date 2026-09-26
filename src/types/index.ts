@@ -139,7 +139,8 @@ export interface ActiveTempPermission {
 
 // Fila de "Configuración → Auditoría". La pantalla pide la vista por defecto
 // (`?view=user`), que devuelve `HumanAuditEventSerializer`: sin modelo, versión,
-// before/after ni datos del request. Esos sólo vienen con `?view=admin`.
+// before/after ni datos del request. Esos sólo vienen con `?view=admin`, que
+// el backend reserva a superusuarios (403 para el resto).
 export interface AuditEntry {
   id: number
   date: string
