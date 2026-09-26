@@ -55,6 +55,25 @@ export function AnalysisDetailDialog({
 
   if (!analysis) return null
   const bioUnitItems = formatBioUnitValues(analysis.bio_unit_values)
+  const siNo = (valor: boolean | undefined) => (valor ? "Sí" : "No")
+  const camposDeLaFicha = [
+    { etiqueta: "Código", valor: analysis.code || "—" },
+    { etiqueta: "UB vigente", valor: analysis.bio_unit || "—" },
+    { etiqueta: "Categoría NBU", valor: (analysis.category && formatAnalysisCategory(analysis.category)) || "—" },
+    { etiqueta: "Urgente", valor: siNo(analysis.is_urgent) },
+    { etiqueta: "Lleva resultado", valor: siNo(analysis.lleva_resultado) },
+    { etiqueta: "Requiere derivación", valor: siNo(analysis.requires_derivacion) },
+    { etiqueta: "Normalizado (N)", valor: siNo(analysis.is_ref_normalized) },
+    { etiqueta: "En desuso", valor: siNo(analysis.is_obsolete) },
+    ...(preciosFijosHabilitados
+      ? [
+          {
+            etiqueta: "Precio particular fijo",
+            valor: analysis.cobra_precio_fijo ? `$${analysis.precio_particular ?? "0.00"}` : "No",
+          },
+        ]
+      : []),
+  ]
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -102,25 +121,20 @@ export function AnalysisDetailDialog({
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
-          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <span className="text-sm font-medium text-gray-600">Lleva resultado</span>
-            <Badge
-              variant="outline"
-              className={analysis.lleva_resultado ? "bg-emerald-50 text-emerald-700" : "bg-gray-100 text-gray-600"}
-            >
-              {analysis.lleva_resultado ? "Sí" : "No"}
-            </Badge>
-          </div>
-
-          <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-3">
-            <span className="text-sm font-medium text-gray-600">Requiere derivación</span>
-            <Badge
-              variant="outline"
-              className={analysis.requires_derivacion ? "bg-orange-50 text-orange-700" : "bg-gray-100 text-gray-600"}
-            >
-              {analysis.requires_derivacion ? "Sí" : "No"}
-            </Badge>
-          </div>
+          {/* Todos los campos del formulario, también los que están en "No":
+              la ficha tiene que alcanzar para saber cómo está cargado el
+              análisis sin abrir la edición. */}
+          <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {camposDeLaFicha.map((campo) => (
+              <div
+                key={campo.etiqueta}
+                className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+              >
+                <dt className="text-sm font-medium text-gray-600">{campo.etiqueta}</dt>
+                <dd className="text-right text-sm font-semibold text-gray-800">{campo.valor}</dd>
+              </div>
+            ))}
+          </dl>
 
           {submodulos.length > 0 && (
             <div>

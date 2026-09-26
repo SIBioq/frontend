@@ -101,36 +101,41 @@ export function ObraSocialDetailDialog({
             </div>
           </div>
 
-          {data.description && <p className="text-sm text-gray-600">{data.description}</p>}
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Descripción</p>
+            <p className="whitespace-pre-line text-sm text-gray-700">{data.description || "Sin descripción"}</p>
+          </div>
 
-          {data.ub_value && (
-            <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3">
-              <DollarSign className="h-5 w-5 text-green-600" />
-              <div>
-                <p className="text-xs font-medium text-gray-600">Valor UB</p>
-                <p className="text-lg font-semibold text-green-700">{data.ub_value}</p>
-              </div>
+          <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3">
+            <DollarSign className="h-5 w-5 text-green-600" />
+            <div>
+              <p className="text-xs font-medium text-gray-600">Valor UB</p>
+              <p className="text-lg font-semibold text-green-700">{data.ub_value || "Sin cargar"}</p>
             </div>
-          )}
+          </div>
 
           <Separator />
 
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Conceptos que cobra</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Qué cobra y cómo</p>
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
             ) : (
-              <div className="flex flex-wrap gap-1.5">
+              <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200">
                 {flags.map((f) => (
-                  <Badge
-                    key={f.label}
-                    variant={f.active ? "default" : "secondary"}
-                    className={f.active ? "bg-[#204983] hover:bg-[#1a3d6f]" : "bg-gray-200 text-gray-500"}
-                  >
-                    {f.label}
-                  </Badge>
+                  <div key={f.label} className="flex items-center justify-between gap-2 px-3 py-1.5">
+                    <dt className="text-sm text-gray-700">{f.label}</dt>
+                    <dd>
+                      <Badge
+                        variant={f.active ? "default" : "secondary"}
+                        className={f.active ? "bg-[#204983] hover:bg-[#1a3d6f]" : "bg-gray-200 text-gray-500"}
+                      >
+                        {f.active ? "Sí" : "No"}
+                      </Badge>
+                    </dd>
+                  </div>
                 ))}
-              </div>
+              </dl>
             )}
           </div>
 
