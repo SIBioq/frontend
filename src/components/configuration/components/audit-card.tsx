@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Clock, User, ArrowRight, FileText } from "lucide-react"
 import type { AuditEntry, AuditUser } from "@/types"
 import { CATEGORY_META } from "@/components/common/history-list"
+import { MensajeDeAuditoria } from "@/components/common/mensaje-de-auditoria"
 import { formatUtcDateTime } from "@/lib/format-utils"
 import { getProtocolStatusBadgeClassByName } from "@/lib/status-styles"
 
@@ -111,9 +112,12 @@ export function AuditCard({ entry }: AuditCardProps) {
               </div>
             )}
 
-            {entry.message && (
-              <div className="text-sm text-slate-700 break-words whitespace-pre-wrap">{entry.message}</div>
-            )}
+            <MensajeDeAuditoria
+              message={entry.message}
+              encabezado={entry.encabezado}
+              detalle={entry.detalle}
+              className="text-sm"
+            />
 
           </div>
         </div>

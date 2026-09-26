@@ -92,6 +92,9 @@ export interface HistoryEntry {
   before_state?: Record<string, unknown>
   after_state?: Record<string, unknown>
   message?: string
+  // Con varios campos: encabezado + un ítem por campo (si no, sólo message).
+  encabezado?: string | null
+  detalle?: string[]
   request?: {
     id: string
     path: string
@@ -152,6 +155,8 @@ export interface AuditEntry {
   state_from?: string | null
   state_to?: string | null
   message?: string
+  encabezado?: string | null
+  detalle?: string[]
   related_protocol_id?: number | null
 }
 
