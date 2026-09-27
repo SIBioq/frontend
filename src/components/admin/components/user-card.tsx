@@ -169,6 +169,14 @@ export function UserCard({
         </p>
       )}
 
+      {/* Se edita en el mismo diálogo que el nombre: si no se ve acá, sólo se
+          lo conoce abriendo la edición. */}
+      {user.inactivity_logout_minutes != null && (
+        <p className="text-[11px] text-gray-400">
+          Cierra la sesión tras {user.inactivity_logout_minutes} min sin actividad
+        </p>
+      )}
+
       {(user.is_superuser || hasTemp || debeCambiarContrasena || user.is_active === false) && (
         <div className="flex flex-wrap gap-1">
           {user.is_superuser && <Badge variant="destructive" className="text-[10px]">Superusuario</Badge>}

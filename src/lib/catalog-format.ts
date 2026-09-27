@@ -1,5 +1,4 @@
 import type {
-  BioUnitValue,
   NamedReferenceRange,
   ReferenceRange,
   ReferenceRangeEvaluation,
@@ -131,14 +130,6 @@ export const formatReferenceValues = (values?: ReferenceValues): string[] => {
   return Object.entries(values)
     .filter(([, bounds]) => bounds && (bounds.min || bounds.max))
     .map(([group, bounds]) => `${formatReferenceGroup(group)}: ${formatReferenceBounds(bounds?.min, bounds?.max) || "-"}`)
-}
-
-export const formatBioUnitValues = (values?: BioUnitValue[]): string[] => {
-  if (!values?.length) return []
-
-  return [...values]
-    .sort((a, b) => a.year - b.year)
-    .map((item) => `${item.year}: ${item.value || "N/A"}`)
 }
 
 export const getReferenceEvaluationLabel = (evaluation?: ReferenceRangeEvaluation | null): string => {

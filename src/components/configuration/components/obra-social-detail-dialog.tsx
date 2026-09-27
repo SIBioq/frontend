@@ -144,13 +144,25 @@ export function ObraSocialDetailDialog({
             <p className="text-sm font-medium text-gray-800">{nbuLabel || "—"}</p>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Descuento por análisis</p>
             <p className="text-sm font-medium text-gray-800">
               {tieneDescuento
                 ? `Desde ${umbralUb.toLocaleString("es-AR")} UB se cobra el ${porcentajeACobrar.toLocaleString("es-AR")}%`
                 : "Sin descuento"}
             </p>
+            {/* Los dos valores van siempre, aunque no apliquen: si no, lo cargado
+                sólo se ve al abrir la edición. */}
+            <dl className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between gap-2 px-3 py-1.5">
+                <dt className="text-sm text-gray-700">Tope de UB por análisis</dt>
+                <dd className="text-sm font-medium text-gray-800">{umbralUb.toLocaleString("es-AR")}</dd>
+              </div>
+              <div className="flex items-center justify-between gap-2 px-3 py-1.5">
+                <dt className="text-sm text-gray-700">Porcentaje a cobrar</dt>
+                <dd className="text-sm font-medium text-gray-800">{porcentajeACobrar.toLocaleString("es-AR")}%</dd>
+              </div>
+            </dl>
           </div>
 
           <div className="space-y-1">
