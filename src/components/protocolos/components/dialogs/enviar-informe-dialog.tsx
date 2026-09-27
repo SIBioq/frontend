@@ -159,7 +159,7 @@ export function EnviarInformeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[560px] max-h-[90vh] overflow-x-hidden overflow-y-auto">
+      <DialogContent className="max-w-[560px] max-h-[90dvh] overflow-x-hidden overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Icono className={`h-5 w-5 shrink-0 ${colorDelIcono}`} />

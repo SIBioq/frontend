@@ -1,11 +1,16 @@
 /**
  * Persistencia del borrador de ingreso en `localStorage`.
  *
- * Por qué sólo ids: lo que queda en el disco del cliente es PHI por
- * asociación (paciente + análisis pedidos), así que se guarda el mínimo
- * posible — nada de nombre, DNI ni ningún dato legible del paciente. Al
- * restaurar el borrador, la pantalla vuelve a pedir esas entidades al
- * backend con los ids guardados acá.
+ * Por qué casi todo son ids: lo que queda en el disco del cliente es PHI
+ * por asociación (paciente + análisis pedidos), así que se guarda el mínimo
+ * posible. Al restaurar el borrador, la pantalla vuelve a pedir esas
+ * entidades al backend con los ids guardados acá.
+ *
+ * La excepción es `pacienteNuevo`: el paciente que se está dando de alta
+ * porque el DNI no existía todavía no tiene id, y lo que se tipeó en su
+ * formulario sólo puede recuperarse guardándolo tal cual. Se decidió así a
+ * pedido del laboratorio (2026-09-25): perder ese formulario a medias era
+ * peor. Vive en la misma clave, por usuario, y se borra con el borrador.
  *
  * Nadie más que este archivo toca `localStorage` para el borrador de
  * ingreso: es la única Fabricación Pura que conoce la clave y el esquema.
@@ -21,7 +26,15 @@ const PREFIJO_DE_CLAVE = "sibioq:borrador-ingreso:v1"
 
 const PREAUTH_STATUS_VALIDOS: PreauthStatus[] = ["not_required", "no_trajo", "incompleta", "completa"]
 
-/** Sólo ids y montos: nada de nombre, DNI ni datos del paciente. Ver PHI en el plan. */
+/** Lo que se venía tipeando en el alta de un paciente que no se encontró. */
+export type PacienteNuevoDelBorrador = {
+  dni: string
+  sexo: "M" | "F" | ""
+  anonimo: boolean
+  datos: Record<string, string>
+}
+
+/** Ids y montos, salvo `pacienteNuevo` (ver el encabezado). */
 export type InstantaneaDeIngreso = {
   pacienteId: number | null
   medicoId: number | null
@@ -39,6 +52,7 @@ export type InstantaneaDeIngreso = {
   derivacion: string
   coseguro: string
   transaccionesNoPlanificadas: UnplannedTransactionInput[]
+  pacienteNuevo: PacienteNuevoDelBorrador | null
 }
 
 export type BorradorDeIngreso = InstantaneaDeIngreso & {
@@ -77,6 +91,21 @@ function comoTransaccionesSanas(valor: unknown): UnplannedTransactionInput[] {
   return Array.isArray(valor) ? (valor as UnplannedTransactionInput[]) : []
 }
 
+function comoPacienteNuevoSano(valor: unknown): PacienteNuevoDelBorrador | null {
+  if (typeof valor !== "object" || valor === null) return null
+
+  const objeto = valor as Record<string, unknown>
+  const datosCrudos = typeof objeto.datos === "object" && objeto.datos !== null ? objeto.datos : {}
+  const datos = Object.fromEntries(
+    Object.entries(datosCrudos as Record<string, unknown>).filter(
+      (entrada): entrada is [string, string] => typeof entrada[1] === "string",
+    ),
+  )
+  const sexo = objeto.sexo === "M" || objeto.sexo === "F" ? objeto.sexo : ""
+
+  return { dni: comoStringSano(objeto.dni), sexo, anonimo: Boolean(objeto.anonimo), datos }
+}
+
 function comoTrajoOrdenSano(valor: unknown): TrajoOrdenStatus | "" {
   const esValido = TRAJO_ORDEN_OPTIONS.some((opcion) => opcion.value === valor)
   return esValido ? (valor as TrajoOrdenStatus) : ""
@@ -112,6 +141,8 @@ function sanear(crudo: unknown): BorradorDeIngreso | null {
     derivacion: comoStringSano(objeto.derivacion),
     coseguro: comoStringSano(objeto.coseguro),
     transaccionesNoPlanificadas: comoTransaccionesSanas(objeto.transaccionesNoPlanificadas),
+    // Los borradores guardados antes de este campo no lo traen: quedan en null.
+    pacienteNuevo: comoPacienteNuevoSano(objeto.pacienteNuevo),
   }
 
   if (!tieneDatosSignificativos(instantanea)) return null
@@ -186,9 +217,23 @@ export function hayBorrador(usuarioId: number | null): boolean {
   return leerBorrador(usuarioId) != null
 }
 
+/**
+ * ¿El formulario tiene aunque sea un cambio respecto del vacío?
+ *
+ * Alcanza con uno: elegir un médico, tipear un monto o haber buscado un DNI
+ * que no existía ya es trabajo que no se quiere perder. Material descartable
+ * y derivación arrancan con el monto de la configuración, así que la pantalla
+ * los manda vacíos mientras no se toquen (ver `ingreso-page.tsx`).
+ */
 export function tieneDatosSignificativos(instantanea: InstantaneaDeIngreso | null): boolean {
   if (instantanea == null) return false
-  return instantanea.pacienteId != null || instantanea.analisis.length > 0
+
+  const { analisis, transaccionesNoPlanificadas, pacienteNuevo, ...resto } = instantanea
+  if (analisis.length > 0 || transaccionesNoPlanificadas.length > 0 || pacienteNuevo != null) return true
+
+  return Object.values(resto).some((valor) =>
+    typeof valor === "string" ? valor.trim() !== "" : valor != null,
+  )
 }
 
 /** Suscripción pensada para `useSyncExternalStore`: se entera de los cambios

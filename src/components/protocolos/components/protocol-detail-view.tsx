@@ -35,6 +35,7 @@ import { AuditTimelineMini } from "@/components/common/audit-timeline-mini"
 import { getPreauthStatusInfo, getSendMethodInfo } from "@/lib/status-styles"
 import { isActoBioquimico } from "@/lib/codigos-analisis"
 import { cn } from "@/lib/utils"
+import { formatDateTime } from "@/utils/date-utils"
 import { MensajesDeWhatsApp } from "./mensajes-de-whatsapp"
 import { AnalysisPriceSummary } from "./analysis-price-summary"
 import { ProtocolBillingBreakdown } from "./protocol-billing-breakdown"
@@ -78,6 +79,11 @@ export interface ProtocolDetailViewData {
   trajo_orden?: string
   preauth_status?: string
   preauth_reference?: string
+  preauth_notes?: string
+  /** Cuándo pasó a Completado; null mientras no lo está. */
+  completed_at?: string | null
+  /** Análisis con resultado cargado sobre los que llevan resultado. */
+  results_summary?: { loaded: number; total: number }
   details?: ProtocolDetailType[]
 }
 
@@ -269,6 +275,19 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
                     {patientSex && ` · ${patientSex === "M" ? "Masculino" : patientSex === "F" ? "Femenino" : patientSex}`}
                   </p>
                 )}
+                {/* El avance de la carga y el cierre se leían sólo entrando a
+                    Resultados; el backend ya los manda con el detalle. */}
+                {(detail.results_summary && detail.results_summary.total > 0) || detail.completed_at ? (
+                  <p className="mt-1 text-xs text-gray-500">
+                    {detail.results_summary && detail.results_summary.total > 0 && (
+                      <span>
+                        Resultados cargados: {detail.results_summary.loaded}/{detail.results_summary.total}
+                      </span>
+                    )}
+                    {detail.results_summary && detail.results_summary.total > 0 && detail.completed_at && " · "}
+                    {detail.completed_at && <span>Completado el {formatDateTime(detail.completed_at)}</span>}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -535,6 +554,12 @@ export function ProtocolDetailView(props: ProtocolDetailViewProps) {
                 </button>
               </div>
             </div>
+          )}
+          {showPreauthAction && detail.preauth_reference && (
+            <Row label="N° de autorización" value={detail.preauth_reference} />
+          )}
+          {showPreauthAction && detail.preauth_notes && (
+            <p className="whitespace-pre-wrap py-1 text-xs text-gray-500">{detail.preauth_notes}</p>
           )}
         </SidebarCard>
 

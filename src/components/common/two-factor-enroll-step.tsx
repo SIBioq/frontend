@@ -81,7 +81,7 @@ export function TwoFactorEnrollStep({
         <div className="mt-2 flex items-center gap-2">
           {/* `break-words` y no `break-all`: corta entre grupos de 4 en vez de
               dejar una letra huérfana en la última línea. */}
-          <code className="flex-1 break-words font-mono text-sm tracking-wider text-gray-800">
+          <code className="min-w-0 flex-1 break-words font-mono text-sm tracking-wider text-gray-800">
             {groupSecret(setup.secret)}
           </code>
           <Button type="button" variant="outline" size="sm" onClick={() => void handleCopySecret()}>

@@ -20,6 +20,11 @@ interface UserTwoFactorPanelProps {
   user: User
 }
 
+const NOMBRE_METODO: Record<string, string> = {
+  totp: "app de autenticación",
+  email: "correo",
+}
+
 const twoFactorQueryKey = (userId: number) => ["admin", "users", userId, "2fa"] as const
 
 /**
@@ -172,6 +177,14 @@ export function UserTwoFactorPanel({ user }: UserTwoFactorPanelProps) {
 
           {data.enabled ? (
             <div className="space-y-1 text-xs text-gray-600">
+              <p>
+                Método: {(data.methods?.length ? data.methods : data.method ? [data.method] : [])
+                  .map((m) => NOMBRE_METODO[m] ?? m)
+                  .join(" y ") || "—"}
+                {data.confirmed_at && (
+                  <span className="text-gray-500"> · desde {formatUtcDateTime(data.confirmed_at)}</span>
+                )}
+              </p>
               <p className="flex items-center gap-1.5">
                 <KeyRound className="h-3.5 w-3.5 text-gray-400" />
                 {data.recovery_codes_left} código{data.recovery_codes_left === 1 ? "" : "s"} de recuperación

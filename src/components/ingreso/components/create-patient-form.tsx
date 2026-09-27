@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { AlertCircle, CheckCircle, User, Save, X, UserCog } from "lucide-react"
 import { Button } from "../../ui/button"
 import { Input } from "../../ui/input"
@@ -24,6 +24,10 @@ interface CreatePatientFormProps {
   onPatientCreated: (patient: Patient) => void
   onCancel: () => void
   defaultAnonymous?: boolean
+  /** Lo que había quedado tipeado en el borrador de ingreso, para reponerlo. */
+  datosIniciales?: Record<string, string>
+  /** Avisa cada cambio, para que el borrador de ingreso lo guarde. */
+  onCambio?: (cambio: { anonimo: boolean; datos: Record<string, string> }) => void
 }
 
 type ValidationResult = { isValid: boolean; message: string }
@@ -35,6 +39,8 @@ export function CreatePatientForm({
   onPatientCreated,
   onCancel,
   defaultAnonymous = false,
+  datosIniciales,
+  onCambio,
 }: CreatePatientFormProps) {
   const { apiRequest } = useApi()
   const [isAnonymous, setIsAnonymous] = useState(defaultAnonymous)
@@ -43,7 +49,6 @@ export function CreatePatientForm({
     last_name: "",
     dni: normalizeDni(initialDni),
     birth_date: "",
-    sex: initialSex,
     phone_mobile: "",
     phone_landline: "",
     email: "",
@@ -52,8 +57,15 @@ export function CreatePatientForm({
     city: "",
     address: "",
     observations: "",
+    ...datosIniciales,
+    // El sexo se valida aparte: del borrador sólo se acepta M o F.
+    sex: (datosIniciales?.sex === "M" || datosIniciales?.sex === "F" ? datosIniciales.sex : initialSex) as "M" | "F" | "",
   })
   const [isCreating, setIsCreating] = useState(false)
+
+  useEffect(() => {
+    onCambio?.({ anonimo: isAnonymous, datos: formData })
+  }, [formData, isAnonymous, onCambio])
   const [touched, setTouched] = useState<Record<string, boolean>>({
     dni: Boolean(normalizeDni(initialDni)),
   })

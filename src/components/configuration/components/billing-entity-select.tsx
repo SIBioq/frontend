@@ -60,7 +60,7 @@ export function BillingEntitySelect({
       onValueChange={(next) => onValueChange(next === NONE_VALUE ? "" : next)}
       disabled={disabled || isLoading}
     >
-      <SelectTrigger id={id}>
+      <SelectTrigger id={id} className="w-full min-w-0">
         <SelectValue
           placeholder={
             isLoading ? "Cargando entidades..." : placeholder || "Seleccionar entidad"

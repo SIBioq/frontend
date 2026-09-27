@@ -20,9 +20,11 @@ import { CampoDecimales } from "./campo-decimales"
 import { esExponenteValido } from "@/lib/notacion"
 import { esDecimalesValido } from "@/lib/decimales"
 import {
+  grillaCambio,
   rangosConNombreDesde,
   rangosConNombreParaEnviar,
   rangosDesde,
+  rangosFueraDeLaGrilla,
   rangosParaEnviar,
   rangosVacios,
   ValoresDeReferencia,
@@ -62,6 +64,7 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
   const [isLoading, setIsLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  const guardados = (determination as { reference_ranges?: RefRange[] }).reference_ranges
   const isDialogOpen = open ?? isOpen ?? false
   const handleOpenChange = (newOpen: boolean) => {
     if (onOpenChange) {
@@ -127,8 +130,9 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
       const decimalesNuevo = decimales.trim() === "" ? null : Number(decimales)
       if (decimalesNuevo !== decimalesActual) body.decimales = decimalesNuevo
 
-      // Siempre mandamos los valores de referencia (por si se limpió un grupo).
-      body.reference_ranges = rangosParaEnviar(ranges)
+      // Sólo si la grilla cambió: mandarla reemplaza esos 4 grupos, y no
+      // mandarla deja todo como estaba. Vaciar un grupo también es un cambio.
+      if (grillaCambio(ranges, guardados)) body.reference_ranges = rangosParaEnviar(ranges)
       // Ídem los rangos con nombre: la lista que se manda es la que queda.
       body.named_ranges = rangosConNombreParaEnviar(namedRanges)
 
@@ -162,7 +166,7 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[500px] max-h-[90dvh] overflow-y-auto">
         <DialogHeading icon={FlaskConical} title="Editar determinación" description={determination.name} />
         <div className="space-y-4 md:space-y-6 py-4">
           {errors.form && (
@@ -243,10 +247,11 @@ export const EditDeterminationDialog: React.FC<EditDeterminationDialogProps> = (
             onChange={setRanges}
             namedRanges={namedRanges}
             onNamedRangesChange={setNamedRanges}
+            fueraDeLaGrilla={rangosFueraDeLaGrilla(guardados)}
           />
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter className="gap-2">
           <DialogClose asChild>
             <Button
               type="button"

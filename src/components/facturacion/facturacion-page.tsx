@@ -274,8 +274,8 @@ export default function FacturacionPage() {
         open={closeDialogOpen}
         onOpenChange={setCloseDialogOpen}
         entity={entity}
-        onConfirm={async (nextDate) => {
-          await m.closePresentation(nextDate)
+        onConfirm={async (nextDate, name, notes) => {
+          await m.closePresentation(nextDate, name, notes)
         }}
       />
     </div>

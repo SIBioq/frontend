@@ -2,11 +2,12 @@
 
 import type React from "react"
 import { useState } from "react"
+import { useApiQuery } from "@/hooks/use-api-query"
 import { toast } from "sonner"
 import useAuth from "@/contexts/auth-context"
 import { useApi } from "@/hooks/use-api"
 import { AC_ENDPOINTS, USER_ENDPOINTS } from "@/config/api"
-import { formatApiError, getErrorMessage } from "@/lib/api-error"
+import { formatApiError, getErrorMessage, readApiError } from "@/lib/api-error"
 import type { User, Role, Permission, Group } from "@/types"
 import { UserCard, type UserCardAction } from "./components/user-card"
 import { CreateUserDialog } from "./components/create-user-dialog"
@@ -16,7 +17,7 @@ import { DeleteUserDialog } from "./components/delete-user-dialog"
 import { UserHistoryDialog } from "./components/user-history-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Plus, AlertCircle, Search, Users } from "lucide-react"
+import { Plus, AlertCircle, Search, Users, RotateCcw } from "lucide-react"
 import { PERMISSIONS } from "@/config/permissions"
 
 interface UserManagementProps {
@@ -38,6 +39,8 @@ export function UserManagement({ users, roles, permissions, setUsers, refreshDat
   const [isRevokeTempPermission, setIsRevokeTempPermission] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isHistory, setIsHistory] = useState(false)
+  const [verBajas, setVerBajas] = useState(false)
+  const [reactivando, setReactivando] = useState<number | null>(null)
 
   const canViewUsers = hasPermission(PERMISSIONS.MANAGE_USERS.codename)
   const canCreateUser = hasPermission(PERMISSIONS.MANAGE_USERS.codename)
@@ -49,6 +52,35 @@ export function UserManagement({ users, roles, permissions, setUsers, refreshDat
   // los superusuarios pero también a cualquiera con el permiso, y el segundo
   // factor ajeno es exclusivo de superusuarios (el backend responde 403).
   const canManageTwoFactor = Boolean(currentUser?.is_superuser)
+
+  // Los dados de baja se piden aparte y sólo al abrir la lista: el listado
+  // principal sigue trayendo únicamente activos.
+  const bajasQuery = useApiQuery<{ results: User[] }>({
+    queryKey: ["admin", "users", "inactivos"],
+    url: `${USER_ENDPOINTS.USERS}?is_active=false&is_superuser=false`,
+    enabled: verBajas && canViewUsers,
+  })
+  const bajas = bajasQuery.data?.results ?? []
+
+  const reactivar = async (user: User) => {
+    setReactivando(user.id)
+    try {
+      const response = await apiRequest(USER_ENDPOINTS.USER_DETAIL(user.id), {
+        method: "PATCH",
+        body: { is_active: true },
+      })
+      if (!response.ok) {
+        toast.error(await readApiError(response, "No se pudo reactivar el usuario."))
+        return
+      }
+      toast.success(`${user.username} vuelve a estar activo.`)
+      await Promise.all([bajasQuery.refetch(), refreshData()])
+    } catch (err) {
+      toast.error("No se pudo reactivar el usuario.", { description: getErrorMessage(err) })
+    } finally {
+      setReactivando(null)
+    }
+  }
 
   const closeAllDialogs = () => {
     setSelectedUser(null)
@@ -196,6 +228,51 @@ export function UserManagement({ users, roles, permissions, setUsers, refreshDat
               onToggleRole={handleToggleRole}
             />
           ))}
+        </div>
+      )}
+
+      {canEditUser && (
+        <div className="mt-8">
+          <button
+            type="button"
+            onClick={() => setVerBajas((v) => !v)}
+            className="text-sm font-medium text-[#204983] hover:underline"
+          >
+            {verBajas ? "Ocultar usuarios dados de baja" : "Ver usuarios dados de baja"}
+          </button>
+          {verBajas && (
+            <div className="mt-3 rounded-xl border border-gray-200">
+              {bajasQuery.isLoading ? (
+                <p className="p-4 text-sm text-gray-500">Cargando…</p>
+              ) : bajasQuery.isError ? (
+                <p className="p-4 text-sm text-red-600">No se pudo cargar la lista.</p>
+              ) : bajas.length === 0 ? (
+                <p className="p-4 text-sm text-gray-500">No hay usuarios dados de baja.</p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {bajas.map((u) => (
+                    <li key={u.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-900">
+                          {`${u.first_name} ${u.last_name}`.trim() || u.username}
+                        </p>
+                        <p className="truncate text-xs text-gray-500">@{u.username}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={reactivando === u.id}
+                        onClick={() => reactivar(u)}
+                      >
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Reactivar
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       )}
 

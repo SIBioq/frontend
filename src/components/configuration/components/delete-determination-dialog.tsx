@@ -93,7 +93,7 @@ export const DeleteDeterminationDialog: React.FC<DeleteDeterminationDialogProps>
               <div className="flex items-start gap-3">
                 <TestTube2 className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-red-900 mb-1">{determination.name}</h4>
+                  <h4 className="mb-1 break-words font-medium text-red-900">{determination.name}</h4>
                   <div className="space-y-1 text-sm text-red-700">
                     <p>
                       <span className="font-medium">Código:</span> {determination.code || "N/A"}

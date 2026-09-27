@@ -154,7 +154,7 @@ export function PropagarPreciosDialog({ open, onOpenChange, analysisId, titulo }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[85vh] w-[95vw] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="flex max-h-[85dvh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
         <DialogHeader className="border-b border-gray-100 p-5 text-left">
           <DialogTitle className="flex items-center gap-2">
             <RefreshCw className="h-5 w-5 text-[#204983]" />

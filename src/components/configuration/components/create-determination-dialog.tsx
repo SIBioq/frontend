@@ -158,7 +158,7 @@ export const CreateDeterminationDialog: React.FC<CreateDeterminationDialogProps>
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[500px] max-h-[90dvh] overflow-y-auto">
         <DialogHeading
           icon={FlaskConical}
           title="Nueva determinación"
@@ -241,7 +241,7 @@ export const CreateDeterminationDialog: React.FC<CreateDeterminationDialogProps>
           />
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter className="gap-2">
           <DialogClose asChild>
             <Button
               type="button"

@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label"
 import { CheckCircle2, Loader2, Pencil, Star, Trash2 } from "lucide-react"
 import type { Signature } from "@/types"
 
+const nombreDeQuienSubio = (usuario: NonNullable<Signature["uploaded_by"]>): string =>
+  [usuario.first_name, usuario.last_name].filter(Boolean).join(" ") || usuario.username
+
 interface SignatureDetailDialogProps {
   signature: Signature | null
   open: boolean
@@ -114,6 +117,13 @@ export function SignatureDetailDialog({
                 <span className="text-sm text-gray-400">Sin imagen</span>
               )}
             </div>
+            {(signature.uploaded_by || signature.created_at) && (
+              <p className="text-xs text-gray-500">
+                Cargada
+                {signature.uploaded_by ? ` por ${nombreDeQuienSubio(signature.uploaded_by)}` : ""}
+                {signature.created_at ? ` el ${new Date(signature.created_at).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}` : ""}
+              </p>
+            )}
           </div>
         )}
 

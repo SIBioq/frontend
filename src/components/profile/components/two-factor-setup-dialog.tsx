@@ -112,7 +112,7 @@ export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed, activeMe
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="w-[95vw] sm:max-w-[520px]"
+        className="sm:max-w-[520px]"
         showCloseButton={canDismiss}
         onPointerDownOutside={(event) => {
           if (!canDismiss) event.preventDefault()
@@ -194,7 +194,7 @@ export function TwoFactorSetupDialog({ open, onOpenChange, onConfirmed, activeMe
           </div>
         )}
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter className="gap-2">
           {step === "codes" ? (
             <Button
               type="button"

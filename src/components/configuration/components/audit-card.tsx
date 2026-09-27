@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Clock, User, ArrowRight, FileText } from "lucide-react"
 import type { AuditEntry, AuditUser } from "@/types"
 import { CATEGORY_META } from "@/components/common/history-list"
+import { MensajeDeAuditoria } from "@/components/common/mensaje-de-auditoria"
 import { formatUtcDateTime } from "@/lib/format-utils"
 import { getProtocolStatusBadgeClassByName } from "@/lib/status-styles"
 
@@ -35,12 +36,6 @@ const getActionBadgeVariant = (action: string): string => {
   return "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
 }
 
-const formatActionName = (name?: string): string => {
-  if (!name) return ""
-  const last = name.split(".").pop() || name
-  return last.replace(/_/g, " ")
-}
-
 // El valor que manda la API ("creacion", "negocio") sirve para comparar y para
 // elegir el color; escrito así, sin tilde y en minúscula, no sirve para leer.
 const ACTION_LABEL: Record<string, string> = {
@@ -54,12 +49,7 @@ const ACTION_LABEL: Record<string, string> = {
 
 export function AuditCard({ entry }: AuditCardProps) {
   const user: AuditUser = entry.user || { id: null, username: "Sistema", display_name: "Sistema", photo: null }
-  const timestamp = entry.date || entry.created_at || null
-  // La vista de usuario (HumanAuditEventSerializer) no manda `object_repr` ni
-  // `object_id`: manda el mensaje ya escrito. El fallback "Evento" hacía que
-  // TODAS las filas de esa pantalla mostraran esa palabra en negrita, arriba
-  // del texto que sí dice lo que pasó. Sin dato, no va la línea.
-  const objectLabel = entry.object_repr || entry.object || entry.object_id || ""
+  const timestamp = entry.date || null
   const categoryMeta = entry.category ? CATEGORY_META[entry.category] : undefined
   const hasStateTransition = entry.state_from && entry.state_to
   const borderClassName = categoryMeta?.borderClassName || getActionBorderColor(entry.action || "")
@@ -79,21 +69,20 @@ export function AuditCard({ entry }: AuditCardProps) {
             <div className="flex flex-col gap-2 min-w-0 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                 <span className="font-medium break-all text-sm sm:text-base">{user.display_name || user.username}</span>
-                {entry.version && (
-                  <Badge variant="outline" className="text-[10px] sm:text-xs px-2 py-0.5">
-                    v{entry.version}
-                  </Badge>
-                )}
                 {entry.action && (
                   <Badge className={`text-[10px] sm:text-xs px-2 py-0.5 ${getActionBadgeVariant(entry.action)}`}>
                     {ACTION_LABEL[entry.action] || entry.action}
                   </Badge>
                 )}
-                {categoryMeta && (
+                {categoryMeta ? (
                   <Badge className={`text-[10px] sm:text-xs px-2 py-0.5 ${categoryMeta.className}`}>
                     {categoryMeta.label}
                   </Badge>
-                )}
+                ) : entry.category_label ? (
+                  <Badge variant="outline" className="text-[10px] sm:text-xs px-2 py-0.5">
+                    {entry.category_label}
+                  </Badge>
+                ) : null}
               </div>
               <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground whitespace-nowrap shrink-0">
                 <Clock className="h-3 w-3 shrink-0" />
@@ -101,32 +90,11 @@ export function AuditCard({ entry }: AuditCardProps) {
               </div>
             </div>
 
-            {(objectLabel || entry.related_protocol_id) && (
-              <div className="flex items-center gap-2 text-sm flex-wrap min-w-0">
-                {entry.model && (
-                  <>
-                    <Badge variant="secondary" className="text-xs">
-                      {entry.model.display}
-                    </Badge>
-                    <span className="text-muted-foreground shrink-0">→</span>
-                  </>
-                )}
-                {objectLabel && (
-                  <span className="font-medium text-slate-700 break-all min-w-0">{objectLabel}</span>
-                )}
-                {entry.related_protocol_id && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-sky-700 border-sky-300">
-                    <FileText className="h-2.5 w-2.5 mr-1" />
-                    Protocolo #{entry.related_protocol_id}
-                  </Badge>
-                )}
-              </div>
-            )}
-
-            {entry.action_name && (
-              <div className="text-[11px] font-mono text-slate-400 break-all">
-                {formatActionName(entry.action_name)}
-              </div>
+            {entry.related_protocol_id && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-sky-700 border-sky-300">
+                <FileText className="h-2.5 w-2.5 mr-1" />
+                Protocolo #{entry.related_protocol_id}
+              </Badge>
             )}
 
             {hasStateTransition && (
@@ -144,19 +112,13 @@ export function AuditCard({ entry }: AuditCardProps) {
               </div>
             )}
 
-            {entry.message && (
-              <div className="text-sm text-slate-700 break-words whitespace-pre-wrap">{entry.message}</div>
-            )}
+            <MensajeDeAuditoria
+              message={entry.message}
+              encabezado={entry.encabezado}
+              detalle={entry.detalle}
+              className="text-sm"
+            />
 
-            {entry.changes && entry.changes.length > 0 && (
-              <div className="text-sm text-muted-foreground space-y-1 pl-4 border-l-2 border-gray-200 dark:border-gray-700 min-w-0">
-                {entry.changes.map((change, idx) => (
-                  <div key={idx} className="leading-snug break-words whitespace-pre-wrap">
-                    • {change}
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </CardContent>

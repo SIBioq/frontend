@@ -110,7 +110,7 @@ export const UserDropdown: React.FC<UserDropdownProps> = ({ isMobile = false, on
           absolute z-50 bg-white shadow-lg overflow-hidden transition-all duration-200 ease-in-out
           right-0 mt-0 w-48 rounded-b-lg
           ${isOpen
-            ? "opacity-100 max-h-[calc(100vh-5rem)] overflow-y-auto"
+            ? "opacity-100 max-h-[calc(100dvh-5rem)] overflow-y-auto"
             : "opacity-0 max-h-0 pointer-events-none"}
         `}
         style={{

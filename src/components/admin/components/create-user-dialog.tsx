@@ -246,7 +246,7 @@ export function CreateUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90dvh] overflow-y-auto">
         <DialogHeading icon={UserPlus} title="Nuevo usuario" description="Creá una cuenta y asigná sus roles." />
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -394,7 +394,7 @@ export function CreateUserDialog({
             <RoleChips roles={Array.isArray(roles) ? roles : []} selectedIds={userData.selectedRoles} onToggle={handleToggleRole} />
           </div>
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
+          <DialogFooter className="gap-2">
             <DialogClose asChild>
               <Button
                 type="button"

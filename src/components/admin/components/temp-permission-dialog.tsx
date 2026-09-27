@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast"
 import type { ApiRequestOptions } from "@/hooks/use-api"
 import { formatApiError, getErrorMessage } from "@/lib/api-error"
 import { Shield, ShieldX } from "lucide-react"
+import { formatDateTime } from "@/utils/date-utils"
 
 const extractErrorMessage = (errorData: unknown): string => formatApiError(errorData, "Error desconocido")
 
@@ -38,6 +39,10 @@ interface TempPermissionItem {
   }
   expires_at: string
   is_expired: boolean
+  reason?: string
+  granted_at?: string
+  granted_by_details?: { id: number; username: string } | null
+  time_remaining?: string | null
 }
 
 export function TempPermissionDialog({
@@ -87,7 +92,7 @@ export function TempPermissionDialog({
             }
           }
         } else {
-          const res = await apiRequest(`${AC_ENDPOINTS.TEMP_PERMISSIONS}?user_id=${user.id}`)
+          const res = await apiRequest(`${AC_ENDPOINTS.TEMP_PERMISSIONS}?user=${user.id}`)
           if (!cancelled && res.ok) {
             const data = await res.json()
             const tempPerms = data.results || []
@@ -196,7 +201,7 @@ export function TempPermissionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeading
           icon={mode === "assign" ? Shield : ShieldX}
           tone={mode === "assign" ? "brand" : "danger"}
@@ -217,7 +222,7 @@ export function TempPermissionDialog({
                     Permiso *
                   </Label>
                   <Select value={permissionId} onValueChange={setPermissionId}>
-                    <SelectTrigger id="permission" className="w-full">
+                    <SelectTrigger id="permission" className="w-full min-w-0">
                       <SelectValue placeholder="Selecciona un permiso" />
                     </SelectTrigger>
                     <SelectContent position="popper" sideOffset={5}>
@@ -264,21 +269,50 @@ export function TempPermissionDialog({
                 Permiso Temporal
               </Label>
               <Select value={selectedTempPermId} onValueChange={setSelectedTempPermId}>
-                <SelectTrigger id="temp-perm" className="w-full">
+                <SelectTrigger id="temp-perm" className="w-full min-w-0">
                   <SelectValue placeholder="Selecciona un permiso" />
                 </SelectTrigger>
-                <SelectContent position="popper" sideOffset={5}>
+                <SelectContent position="popper" sideOffset={5} className="max-w-[calc(100vw-2rem)]">
                   {activeTempPerms.map((tp) => (
-                    <SelectItem key={tp.id} value={tp.id.toString()}>
+                    <SelectItem key={tp.id} value={tp.id.toString()} className="whitespace-normal break-words">
                       {tp.permission_details.name} - Expira: {new Date(tp.expires_at).toLocaleString()}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {(() => {
+                const elegido = activeTempPerms.find((tp) => tp.id.toString() === selectedTempPermId)
+                if (!elegido) return null
+                return (
+                  <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 rounded-md border border-gray-200 bg-gray-50 p-3 text-xs">
+                    {elegido.time_remaining ? (
+                      <>
+                        <dt className="text-gray-500">Le queda</dt>
+                        <dd className="text-gray-800">{elegido.time_remaining}</dd>
+                      </>
+                    ) : null}
+                    {elegido.granted_by_details || elegido.granted_at ? (
+                      <>
+                        <dt className="text-gray-500">Lo dio</dt>
+                        <dd className="text-gray-800">
+                          {elegido.granted_by_details?.username ?? "—"}
+                          {elegido.granted_at ? ` · ${formatDateTime(elegido.granted_at)}` : ""}
+                        </dd>
+                      </>
+                    ) : null}
+                    {elegido.reason ? (
+                      <>
+                        <dt className="text-gray-500">Motivo</dt>
+                        <dd className="whitespace-pre-wrap break-words text-gray-800">{elegido.reason}</dd>
+                      </>
+                    ) : null}
+                  </dl>
+                )
+              })()}
             </div>
           )}
         </div>
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="gap-2">
           <DialogClose asChild>
             <Button variant="outline" disabled={isSubmitting} className="w-full sm:w-auto bg-transparent">
               Cancelar

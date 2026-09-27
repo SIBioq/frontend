@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, Plus, Trash2, Wallet } from "lucide-react"
+import { Check, Loader2, Pencil, Plus, Trash2, Wallet, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -46,6 +46,8 @@ export function CuentasDeCobro() {
   const [guardando, setGuardando] = useState<number | null>(null)
   const [nombre, setNombre] = useState("")
   const [alias, setAlias] = useState("")
+  // Una cuenta a la vez: lo que se está editando vive acá y no en la fila.
+  const [editando, setEditando] = useState<{ id: number; nombre: string; alias: string } | null>(null)
 
   const traer = async () => {
     try {
@@ -113,6 +115,35 @@ export function CuentasDeCobro() {
     }
   }
 
+  // Cualquiera del laboratorio puede corregir nombre y alias (decisión de
+  // producto): si el alias cambió en el banco, esperar a un administrador deja
+  // a los pacientes transfiriendo a una cuenta vieja.
+  const guardarEdicion = async () => {
+    if (!editando) return
+    if (!editando.nombre.trim()) {
+      toast.error("La cuenta necesita un nombre", { duration: TOAST_DURATION })
+      return
+    }
+    setGuardando(editando.id)
+    try {
+      const respuesta = await apiRequest(BILLING_ENDPOINTS.CUENTA_DE_COBRO(editando.id), {
+        method: "PATCH",
+        body: { nombre: editando.nombre.trim(), alias: editando.alias.trim() },
+      })
+      if (!respuesta.ok) {
+        toast.error(await readApiError(respuesta, "No se pudo guardar la cuenta"),
+          { duration: TOAST_DURATION })
+        return
+      }
+      const actualizada = await respuesta.json() as CuentaDeCobro
+      setCuentas((previas) => previas.map((c) => (c.id === actualizada.id ? actualizada : c)))
+      setEditando(null)
+      toast.success("Cuenta actualizada", { duration: TOAST_DURATION })
+    } finally {
+      setGuardando(null)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div>
@@ -175,11 +206,61 @@ export function CuentasDeCobro() {
               className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3
                           ${cuenta.is_active ? "border-gray-200 bg-white" : "border-gray-200 bg-gray-50 opacity-60"}`}
             >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900">{cuenta.nombre}</p>
-                <p className="text-xs text-gray-500">{cuenta.alias || "sin alias"}</p>
-              </div>
+              {editando?.id === cuenta.id ? (
+                <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
+                  <Input
+                    value={editando.nombre}
+                    onChange={(e) => setEditando({ ...editando, nombre: e.target.value })}
+                    aria-label="Nombre"
+                    className="h-8 bg-white"
+                  />
+                  <Input
+                    value={editando.alias}
+                    onChange={(e) => setEditando({ ...editando, alias: e.target.value })}
+                    aria-label="Alias / CBU"
+                    placeholder="Alias / CBU"
+                    className="h-8 bg-white"
+                  />
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      className="h-8 bg-[#204983] hover:bg-[#1a3d6f]"
+                      onClick={guardarEdicion}
+                      disabled={guardando === cuenta.id}
+                      aria-label="Guardar"
+                    >
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8"
+                      onClick={() => setEditando(null)}
+                      disabled={guardando === cuenta.id}
+                      aria-label="Cancelar"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="min-w-0">
+                  <p className="break-words text-sm font-medium text-gray-900">{cuenta.nombre}</p>
+                  <p className="break-all text-xs text-gray-500">{cuenta.alias || "sin alias"}</p>
+                </div>
+              )}
               <div className="flex items-center gap-2">
+                {editando?.id !== cuenta.id && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2 text-gray-500 hover:text-[#204983]"
+                    onClick={() => setEditando({ id: cuenta.id, nombre: cuenta.nombre, alias: cuenta.alias || "" })}
+                  >
+                    <Pencil className="mr-1 h-3.5 w-3.5" />
+                    Editar
+                  </Button>
+                )}
                 {guardando === cuenta.id && (
                   <Loader2 className="h-4 w-4 animate-spin text-[#204983]" />
                 )}

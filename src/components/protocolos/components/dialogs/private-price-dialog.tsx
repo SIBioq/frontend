@@ -47,7 +47,7 @@ export function PrivatePriceDialog({ open, onOpenChange, currentPrice, currentBi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] max-w-md rounded-xl p-5 sm:p-6">
+      <DialogContent className="max-w-md rounded-xl p-5 sm:p-6">
         <form onSubmit={(event) => { event.preventDefault(); void submit() }}>
         <DialogHeader>
           <DialogTitle className="text-base text-[#204983] sm:text-lg">Actualizar precio particular por UB</DialogTitle>
