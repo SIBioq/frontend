@@ -239,7 +239,7 @@ export const EditAnalysisCatalogDialog: React.FC<EditAnalysisCatalogDialogProps>
     />
 
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[500px] max-h-[90dvh] overflow-y-auto">
         <DialogHeading icon={TestTube} title="Editar análisis" description={analysis.name} />
         <div className="space-y-6 py-4">
           {errors.form && (
@@ -276,18 +276,18 @@ export const EditAnalysisCatalogDialog: React.FC<EditAnalysisCatalogDialogProps>
             disabled={isLoading}
           />
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="edit-isUrgent" className="font-medium">
                 Análisis Urgente
               </Label>
               <p className="text-sm text-gray-500">Marcar si este análisis es de carácter urgente</p>
             </div>
-            <Switch id="edit-isUrgent" checked={isUrgent} onCheckedChange={setIsUrgent} />
+            <Switch className="shrink-0" id="edit-isUrgent" checked={isUrgent} onCheckedChange={setIsUrgent} />
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="edit-requiresDerivacion" className="font-medium">
                 Requiere derivación
               </Label>
@@ -296,14 +296,15 @@ export const EditAnalysisCatalogDialog: React.FC<EditAnalysisCatalogDialogProps>
               </p>
             </div>
             <Switch
+              className="shrink-0"
               id="edit-requiresDerivacion"
               checked={requiresDerivacion}
               onCheckedChange={setRequiresDerivacion}
             />
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="edit-llevaResultado" className="font-medium">
                 Lleva resultado
               </Label>
@@ -312,6 +313,7 @@ export const EditAnalysisCatalogDialog: React.FC<EditAnalysisCatalogDialogProps>
               </p>
             </div>
             <Switch
+              className="shrink-0"
               id="edit-llevaResultado"
               checked={llevaResultado}
               onCheckedChange={setLlevaResultado}
@@ -342,24 +344,24 @@ export const EditAnalysisCatalogDialog: React.FC<EditAnalysisCatalogDialogProps>
             </Select>
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="edit-isObsolete" className="font-medium">
                 En desuso
               </Label>
               <p className="text-sm text-gray-500">Práctica dada de baja del nomenclador (sin UB vigente).</p>
             </div>
-            <Switch id="edit-isObsolete" checked={isObsolete} onCheckedChange={setIsObsolete} />
+            <Switch className="shrink-0" id="edit-isObsolete" checked={isObsolete} onCheckedChange={setIsObsolete} />
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="edit-isRefNormalized" className="font-medium">
                 Normalizado (N)
               </Label>
               <p className="text-sm text-gray-500">Marca "N" del NBU (referencia normalizada).</p>
             </div>
-            <Switch id="edit-isRefNormalized" checked={isRefNormalized} onCheckedChange={setIsRefNormalized} />
+            <Switch className="shrink-0" id="edit-isRefNormalized" checked={isRefNormalized} onCheckedChange={setIsRefNormalized} />
           </div>
         </div>
 

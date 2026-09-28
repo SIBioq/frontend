@@ -29,8 +29,8 @@ export function DialogHeading({ icon: Icon, title, description, tone = "brand" }
           </span>
         )}
         <div className="min-w-0 text-left">
-          <DialogTitle className="text-lg">{title}</DialogTitle>
-          {description && <DialogDescription className="mt-0.5">{description}</DialogDescription>}
+          <DialogTitle className="break-words text-lg">{title}</DialogTitle>
+          {description && <DialogDescription className="mt-0.5 break-words">{description}</DialogDescription>}
         </div>
       </div>
     </DialogHeader>

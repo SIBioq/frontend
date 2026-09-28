@@ -169,7 +169,7 @@ export function ImportarObrasSocialesDialog({ open, onOpenChange, onSuccess }: P
                          border-gray-300 p-8 text-center transition hover:border-[#204983] hover:bg-gray-50"
             >
               <FileSpreadsheet className="h-8 w-8 text-[#204983]" />
-              <span className="text-sm font-medium text-gray-900">
+              <span className="max-w-full text-sm font-medium break-all text-gray-900">
                 {archivo ? archivo.name : "Elegí la planilla (.xlsx)"}
               </span>
               <span className="text-xs text-gray-500">

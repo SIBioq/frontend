@@ -391,8 +391,8 @@ export function AuditManagement() {
         </div>
       ) : (
         <div className="space-y-2">
-          {auditEntries.map((entry, index) => (
-            <AuditCard key={entry.event_id || `${entry.version}-${index}`} entry={entry} />
+          {auditEntries.map((entry) => (
+            <AuditCard key={entry.id} entry={entry} />
           ))}
         </div>
       )}

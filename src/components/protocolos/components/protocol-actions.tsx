@@ -163,7 +163,7 @@ export function ProtocolActions({
                 Descancelar
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="w-[95vw] max-w-md" onClick={(e) => e.stopPropagation()}>
+            <AlertDialogContent className="max-w-md" onClick={(e) => e.stopPropagation()}>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2">
                   <RefreshCw className="h-5 w-5 text-green-600" />
@@ -173,7 +173,7 @@ export function ProtocolActions({
                   ¿Confirmás descancelar el protocolo #{protocolId}? Se restaurará al estado previo a la cancelación.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogFooter className="gap-2">
                 <AlertDialogCancel className="w-full sm:w-auto">Volver</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={onUncancel}
@@ -205,7 +205,7 @@ export function ProtocolActions({
                 Cancelar
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="w-[95vw] max-w-md" onClick={(e) => e.stopPropagation()}>
+            <AlertDialogContent className="max-w-md" onClick={(e) => e.stopPropagation()}>
               <AlertDialogHeader>
                 <AlertDialogTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-red-600" />
@@ -216,7 +216,7 @@ export function ProtocolActions({
                   y podrá ser restaurado más adelante.
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogFooter className="gap-2">
                 <AlertDialogCancel className="w-full sm:w-auto">Cancelar</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={onCancel}

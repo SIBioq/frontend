@@ -157,7 +157,7 @@ export function UnplannedTransactionsDialog({
     .reduce((acc, t) => acc + (Number.parseFloat(t.amount) || 0), 0)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] w-[calc(100vw-1rem)] max-w-[560px] overflow-y-auto p-4 sm:w-[95vw] sm:p-6">
+      <DialogContent className="max-h-[92dvh] max-w-[560px] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex min-w-0 items-start gap-2 text-left">
             <Receipt className="h-5 w-5 text-violet-600" />

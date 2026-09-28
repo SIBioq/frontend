@@ -113,7 +113,7 @@ export function MovimientoDeCajaDialog({ open, onOpenChange, onGuardado }: Props
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-md">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Agregar gasto o ingreso</DialogTitle>
           <DialogDescription>

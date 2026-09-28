@@ -68,11 +68,14 @@ export type AuditCategory =
 export type AuditActionType = "create" | "update" | "delete" | "business" | "auth" | "system"
 
 export interface HistoryEntry {
+  id?: number
   event_id?: string
   version: number
   action: string // "creacion", "actualizacion", "eliminacion", "negocio", "autenticacion", "sistema"
   action_name?: string
+  action_type?: AuditActionType | string
   category?: AuditCategory | string
+  category_label?: string
   state_from?: string | null
   state_to?: string | null
   related_protocol_id?: number | null
@@ -89,6 +92,9 @@ export interface HistoryEntry {
   before_state?: Record<string, unknown>
   after_state?: Record<string, unknown>
   message?: string
+  // Con varios campos: encabezado + un ítem por campo (si no, sólo message).
+  encabezado?: string | null
+  detalle?: string[]
   request?: {
     id: string
     path: string
@@ -98,12 +104,6 @@ export interface HistoryEntry {
   metadata?: Record<string, unknown>
   created_at?: string
   date: string // UTC string
-}
-
-export interface ProtocolAuditTimelineResponse {
-  protocol_id: number
-  count: number
-  events: HistoryEntry[]
 }
 
 // Evento amigable del audit-timeline (HumanAuditEventSerializer): texto legible
@@ -119,15 +119,6 @@ export interface ProtocolAuditEvent {
   state_from?: string | null
   state_to?: string | null
   message?: string
-}
-
-export interface ProtocolAuditTimelineFilters {
-  category?: AuditCategory | string
-  actor?: number
-  action_name?: string
-  from?: string
-  to?: string
-  limit?: number
 }
 
 // ============================================================================
@@ -149,39 +140,24 @@ export interface ActiveTempPermission {
   reason: string
 }
 
+// Fila de "Configuración → Auditoría". La pantalla pide la vista por defecto
+// (`?view=user`), que devuelve `HumanAuditEventSerializer`: sin modelo, versión,
+// before/after ni datos del request. Esos sólo vienen con `?view=admin`, que
+// el backend reserva a superusuarios (403 para el resto).
 export interface AuditEntry {
-  id?: number
-  event_id?: string
-  version: number
+  id: number
+  date: string
+  user: AuditUser | null
+  action_type?: AuditActionType | string
   action: string
-  action_name?: string
   category?: AuditCategory | string
+  category_label?: string
   state_from?: string | null
   state_to?: string | null
-  related_protocol_id?: number | null
-  user: AuditUser | null
-  date: string
-  created_at?: string
-  model: {
-    app: string
-    model: string
-    display: string
-  } | null
-  object_id?: string
-  object?: string
-  object_repr?: string
   message?: string
-  request?: {
-    id: string
-    path: string
-    method: string
-    ip: string
-  }
-  metadata?: Record<string, unknown>
-  before_state?: Record<string, unknown>
-  after_state?: Record<string, unknown>
-  changed_fields?: Record<string, { old: unknown; new: unknown }>
-  changes: string[]
+  encabezado?: string | null
+  detalle?: string[]
+  related_protocol_id?: number | null
 }
 
 export interface Role {
@@ -223,8 +199,10 @@ export interface User {
   permissions: Permission[]
   temporary_permissions?: number
   is_active?: boolean
-  is_staff?: boolean
   is_superuser?: boolean
+  /** Sólo en gestión de usuarios (`user_management`), no en el login. */
+  date_joined?: string
+  last_login?: string | null
   creation?: CreationAudit
   last_change?: LastChangeAudit
   history?: HistoryEntry[]
@@ -287,6 +265,9 @@ export interface Patient {
    * o para anotar cualquier observación.
    */
   observations?: string
+  /** Sólo en el detalle (`retrieve` anota el queryset); en el listado llegan en null. */
+  protocols_count?: number | null
+  last_protocol_at?: string | null
   creation?: CreationAudit
   last_change?: LastChangeAudit
   history?: HistoryEntry[]
@@ -321,6 +302,7 @@ export interface PatientFormData {
   province: string
   city: string
   address: string
+  observations: string
 }
 
 // ============================================================================
@@ -371,6 +353,8 @@ export interface Insurance {
   /** Qué porcentaje del análisis se cobra pasado el tope. "100.00" = no se descuenta. */
   descuento_porcentaje_a_cobrar?: string
   nbu?: Nbu | number | null
+  /** Nombre del NBU asignado, aunque esté inactivo. null = usa el principal. */
+  nbu_name?: string | null
   /** Entidad de facturación a la que se presenta esta OOSS actualmente (null = sin asignar). */
   billing_entity?: { id: number; name: string } | null
   creation?: CreationAudit
@@ -503,7 +487,10 @@ export interface ReferenceRange {
   id?: number
   group: ReferenceValueGroup | string
   sex: "male" | "female" | string
-  age_group: "adult" | "child" | string
+  age_group: "adult" | "child" | "neonate" | string
+  /** Tramo de edad en años. Lo cargan las importaciones NBU; la grilla no lo edita. */
+  age_min_years?: number | null
+  age_max_years?: number | null
   min_value: string
   max_value: string
   /**
@@ -848,7 +835,6 @@ export interface Protocol {
   payment_status: PaymentStatus
   billing_status?: BillingStatus
   is_arca_billed?: boolean
-  arca_billing_status?: "pendiente" | "emitida" | "error" | "anulada" | string
   arca_billed_at?: string | null
   arca_reference?: string
   arca_bill_to?: "patient" | "third_party"
@@ -870,12 +856,13 @@ export interface Protocol {
   is_active: boolean
   created_at?: string
   completed_at?: string | null
+  /** Análisis con resultado cargado sobre los que llevan resultado. */
+  results_summary?: { loaded: number; total: number }
+  is_summary_printed?: boolean
   previous_status?: ProtocolStatus | null
   missing_info?: string[]
   details: ProtocolDetail[]
   unplanned_transactions?: UnplannedTransaction[]
-  unplanned_charges_total?: string
-  unplanned_payments_total?: string
   creation?: CreationAudit
   last_change?: LastChangeAudit
   history?: HistoryEntry[]
@@ -954,7 +941,6 @@ export interface ProtocolListItem {
   missing_info?: string[]
   created_at?: string
   is_arca_billed?: boolean
-  arca_billing_status?: "pendiente" | "emitida" | "error" | "anulada" | string
   arca_billed_at?: string | null
   arca_reference?: string
   arca_bill_to?: "patient" | "third_party"
@@ -1127,22 +1113,8 @@ export interface MergeReportPayload {
   phone_number?: string
 }
 
-export interface ReportSignature {
-  id: number
-  name: string
-  image?: string
-  image_url?: string
-  biochemist_name?: string
-  biochemist_mp?: string
-  is_default: boolean
-  is_active: boolean
-  uploaded_by?: {
-    id: number
-    username: string
-    photo?: string | null
-  } | null
-  created_at?: string
-}
+/** Misma forma que `Signature`: las dos vienen de `/reports/signatures/`. */
+export type ReportSignature = Signature
 
 export interface ProtocolSummary {
   id: number
@@ -1296,193 +1268,6 @@ export interface ProtocolWithLoadedResults {
     id: number
     name: string
   }
-}
-
-// ============================================================================
-// FACTURACION
-// ============================================================================
-
-export interface Invoice {
-  id: number
-  protocol_id: number
-  presentation_id?: number | null
-  insurance_name: string
-  ub_value_at_billing: string
-  total_ub_billed: string
-  total_amount: string
-  amount_paid?: string
-  difference_amount?: string
-  invoice_number: string | null
-  is_paid: boolean
-  paid_date: string | null
-  notes: string
-  is_active: boolean
-  created_at: string
-}
-
-export interface ProtocolToBill {
-  protocol_id: number
-  status: string
-  billing_status?: string
-  patient: {
-    id: number
-    first_name: string
-    last_name: string
-  } | null
-  insurance: {
-    id: number
-    name: string
-    ub_value_at_protocol_creation?: string
-  } | null
-  total_ub_authorized: string
-  estimated_amount?: string
-  expected_amount?: string
-}
-
-export interface BillingSummary {
-  adeudado_total: number | string
-  dinero_facturado_ooss: number | string
-  dinero_cobrado_ooss?: number | string
-  dinero_facturado_particular: number | string
-  facturado_por_particular?: number | string
-  ooss_top_facturacion: Array<{
-    insurance_id?: number
-    insurance_name: string
-    total?: number | string
-    total_facturado?: number | string
-  }>
-  protocolos_por_facturar: number
-}
-
-export interface BillingPresentation {
-  id: number
-  reference: string
-  name: string
-  period_start: string
-  period_end: string
-  invoice_count: number
-  expected_amount: string
-  expected_by_ooss?: Array<{
-    insurance_id: number
-    insurance_name: string
-    protocol_count: number
-    expected_amount: string
-    collected_amount?: string
-    difference_amount?: string
-  }>
-  protocols?: Array<{
-    protocol_id: number
-    invoice_id: number
-    invoice_number: string
-    insurance?: { id: number; name: string } | null
-    patient?: { id: number; first_name: string; last_name: string } | null
-    expected_amount: string
-    paid_amount?: string
-    difference_amount?: string
-  }>
-  collected_amount?: string
-  difference_amount?: string
-  balance_state?: "equilibrada" | "sobrecobro" | "subcobro"
-  status: "cerrada" | "cobrada"
-  collected_at?: string | null
-  notes: string
-  is_active: boolean
-  created_by_id: number | null
-  created_at: string
-}
-
-export interface BillingPresentationSummaryResponse {
-  count: number
-  results: BillingPresentation[]
-  chart: Array<{
-    id: number
-    reference: string
-    period_start: string
-    period_end: string
-    expected_amount: string
-    collected_amount: string
-    difference_amount: string
-    balance_state: "equilibrada" | "sobrecobro" | "subcobro"
-  }>
-}
-
-export interface BillingPresentationDetailResponse {
-  count: number
-  presentation: BillingPresentation & {
-    expected_by_ooss?: Array<{
-      insurance_id: number
-      insurance_name: string
-      expected_amount: string
-      collected_amount: string
-      difference_amount: string
-    }>
-    protocols?: Array<{
-      protocol_id: number
-      patient_name?: string
-      insurance_name?: string
-      expected_amount?: string
-      paid_amount?: string
-    }>
-  }
-  results: Array<{
-    id: number
-    protocol_id: number
-    presentation_id?: number | null
-    insurance_name: string
-    invoice_number: string | null
-    total_amount: string
-    amount_paid: string
-    is_paid: boolean
-    paid_date: string | null
-    notes: string
-    created_at: string
-  }>
-}
-
-export interface ProtocolBillingStatus {
-  protocol_id: number
-  is_billed: boolean
-  billed_at: string | null
-  status: string
-  billing_status?: string
-  insurance: {
-    id: number
-    name: string
-  }
-  patient: {
-    id: number
-    first_name: string
-    last_name: string
-  }
-}
-
-export interface BillingOossControlItem {
-  invoice_id: number
-  protocol_id: number
-  date: string
-  insurance: {
-    id: number
-    name: string
-  }
-  patient: {
-    id: number
-    first_name: string
-    last_name: string
-  } | null
-  total_facturado: string
-  total_cobrado: string
-  diferencia: string
-  is_paid: boolean
-  paid_date: string | null
-}
-
-export interface BillingOossControlResponse {
-  count: number
-  total_facturado_ooss: string
-  total_cobrado_ooss: string
-  diferencia_total_ooss: string
-  facturado_por_particular: string
-  results: BillingOossControlItem[]
 }
 
 /**
@@ -1764,7 +1549,10 @@ export interface RequestLogEntry {
 }
 
 export interface RequestLogResponse {
+  /** Las que vinieron (el backend corta en `limit`). */
   count: number
+  /** Cuántas coinciden con el filtro en total. */
+  total?: number
   results: RequestLogEntry[]
 }
 
@@ -1784,6 +1572,7 @@ export interface TwoFactorRequiredResponse {
   expires_in: number
   two_factor_method?: TwoFactorMethod
   two_factor_methods?: TwoFactorMethod[]
+  trust_hours?: number
 }
 
 export type TwoFactorMethod = "totp" | "email"
@@ -1817,6 +1606,14 @@ export interface TwoFactorStatus {
   method: TwoFactorMethod | null
   methods: TwoFactorMethod[]
   email: string | null
+  /** El kill switch del sistema: apagado, el segundo factor no se pide. */
+  system_enabled: boolean
+  /** Horas que dura la confianza en un equipo. */
+  trust_hours: number
+  /** Está obligado a tener segundo factor: no puede desactivarlo. */
+  required: boolean
+  /** Se le pide el código en cada ingreso, sin ventana de confianza. */
+  always_prompt: boolean
 }
 
 export interface TwoFactorSetupResponse {
@@ -1855,6 +1652,8 @@ export interface TwoFactorEnrollmentConfirmResponse extends TwoFactorConfirmResp
 export interface UserTwoFactorStatus {
   enabled: boolean
   method: TwoFactorMethod | null
+  /** Métodos confirmados; puede tener TOTP y correo a la vez. */
+  methods: TwoFactorMethod[]
   confirmed_at: string | null
   required: boolean
   recovery_codes_left: number

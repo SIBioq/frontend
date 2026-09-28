@@ -104,6 +104,8 @@ interface ProtocolDetailResponse {
   /** A qué entidad se le presenta ESTE protocolo. */
   billing_entity?: { id: number; name: string } | null
   affiliate_number?: string
+  /** Análisis con resultado cargado sobre los que llevan resultado. */
+  results_summary?: { loaded: number; total: number }
   status: ProtocolStatus
   send_method: {
     id: number
@@ -128,8 +130,6 @@ interface ProtocolDetailResponse {
   derivacion_amount?: string
   extras_total?: string
   unplanned_transactions?: import("@/types").UnplannedTransaction[]
-  unplanned_charges_total?: string
-  unplanned_payments_total?: string
   private_amount_due?: string
   billing_breakdown?: ProtocolBillingBreakdown | null
   nbu?: { id: number; name: string } | null
@@ -1764,8 +1764,8 @@ export function ProtocolCard({
                   showCoseguroButton={showCoseguroAction}
                   coseguroDisabledReason={coseguroDisabledReason}
                   unplannedTransactions={protocolDetail?.unplanned_transactions}
-                  unplannedChargesTotal={protocolDetail?.unplanned_charges_total}
-                  unplannedPaymentsTotal={protocolDetail?.unplanned_payments_total}
+                  unplannedChargesTotal={protocolDetail?.billing_breakdown?.charges.unplanned.total}
+                  unplannedPaymentsTotal={protocolDetail?.billing_breakdown?.payments.unplanned.total}
                   onOpenUnplanned={handleOpenUnplanned}
                   onOpenHistoryDialog={() => setHistoryDialogOpen(true)}
                   onSetOrder={handleOpenOrderStatusDialog}

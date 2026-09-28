@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils"
 import { useProtocolQuote } from "@/hooks/use-protocol-quote"
 import { useLoDeLaUltimaVez } from "@/hooks/use-lo-de-la-ultima-vez"
 import { useBorradorDeIngreso } from "@/hooks/use-borrador-de-ingreso"
-import type { InstantaneaDeIngreso } from "@/lib/borrador-de-ingreso"
+import type { InstantaneaDeIngreso, PacienteNuevoDelBorrador } from "@/lib/borrador-de-ingreso"
 import { useAuth } from "@/contexts/auth-context"
 import { parseMonto } from "@/lib/montos"
 import { RoundingConfirmDialog } from "@/components/protocolos/components/dialogs/rounding-confirm-dialog"
@@ -102,6 +102,12 @@ export default function IngresoPage() {
   const [searchedDni, setSearchedDni] = useState("")
   const [searchedSex, setSearchedSex] = useState<"M" | "F" | "">("")
   const [creatingAnonymous, setCreatingAnonymous] = useState(false)
+  // Lo que se va tipeando en el alta del paciente no encontrado, para el
+  // borrador. `datosDelAltaRestaurados` es lo que el borrador le devuelve al
+  // formulario, y `altasRestauradas` lo vuelve a montar para que lo tome.
+  const [altaDePaciente, setAltaDePaciente] = useState<Pick<PacienteNuevoDelBorrador, "anonimo" | "datos"> | null>(null)
+  const [datosDelAltaRestaurados, setDatosDelAltaRestaurados] = useState<Record<string, string> | undefined>(undefined)
+  const [altasRestauradas, setAltasRestauradas] = useState(0)
   const [selectedAnalyses, setSelectedAnalyses] = useState<SelectedAnalysis[]>([])
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null)
   const [selectedInsurance, setSelectedInsurance] = useState<Insurance | null>(null)
@@ -187,8 +193,8 @@ export default function IngresoPage() {
   // guardar nada nuevo: se pisaría lo que se está trayendo.
   const [restaurandoBorrador, setRestaurandoBorrador] = useState(false)
 
-  /** Foto del formulario ahora, para el borrador. Sólo ids y montos: ver PHI
-   *  en `src/lib/borrador-de-ingreso.ts`. */
+  /** Foto del formulario ahora, para el borrador. Ids y montos, más el alta
+   *  de paciente a medias: ver PHI en `src/lib/borrador-de-ingreso.ts`. */
   const instantanea = useMemo<InstantaneaDeIngreso>(
     () => ({
       pacienteId: currentPatient?.id ?? null,
@@ -203,13 +209,29 @@ export default function IngresoPage() {
       cuentaDeCobroId,
       trajoOrden,
       preauthStatus,
-      materialDescartable: extraAmounts.material_descartable_amount,
-      derivacion: extraAmounts.derivacion_amount,
+      // Vacíos mientras sigan en el monto de la configuración: si no, el
+      // formulario recién abierto ya contaría como borrador.
+      materialDescartable:
+        extraAmounts.material_descartable_amount === (pricingConfig?.material_descartable_amount || "0.00")
+          ? ""
+          : extraAmounts.material_descartable_amount,
+      derivacion:
+        extraAmounts.derivacion_amount === (pricingConfig?.derivacion_amount || "0.00")
+          ? ""
+          : extraAmounts.derivacion_amount,
       coseguro: coseguroAmount,
       transaccionesNoPlanificadas: unplannedTransactions,
+      pacienteNuevo:
+        patientNotFound && !currentPatient
+          ? {
+              dni: searchedDni,
+              sexo: searchedSex,
+              anonimo: altaDePaciente?.anonimo ?? creatingAnonymous,
+              datos: altaDePaciente?.datos ?? {},
+            }
+          : null,
     }),
     [
-      currentPatient?.id,
       selectedDoctor?.id,
       selectedInsurance?.id,
       selectedSendMethod?.id,
@@ -224,6 +246,13 @@ export default function IngresoPage() {
       extraAmounts,
       coseguroAmount,
       unplannedTransactions,
+      pricingConfig,
+      patientNotFound,
+      currentPatient,
+      searchedDni,
+      searchedSex,
+      creatingAnonymous,
+      altaDePaciente,
     ],
   )
 
@@ -441,7 +470,14 @@ export default function IngresoPage() {
     setEditingResource(null)
   }
 
+  /** El alta a medias deja de existir: no hay que reponerla ni guardarla. */
+  const olvidarAltaDePaciente = () => {
+    setAltaDePaciente(null)
+    setDatosDelAltaRestaurados(undefined)
+  }
+
   const handlePatientFound = (patient: Patient) => {
+    olvidarAltaDePaciente()
     setCurrentPatient(patient)
     setPatientNotFound(false)
     setSearchedDni("")
@@ -449,6 +485,8 @@ export default function IngresoPage() {
   }
 
   const handlePatientNotFound = (dni: string, sex: "M" | "F") => {
+    olvidarAltaDePaciente()
+    setAltasRestauradas((n) => n + 1)
     setCurrentPatient(null)
     setPatientNotFound(true)
     setSearchedDni(dni)
@@ -456,6 +494,7 @@ export default function IngresoPage() {
   }
 
   const handlePatientCreated = (patient: Patient) => {
+    olvidarAltaDePaciente()
     setCurrentPatient(patient)
     setPatientNotFound(false)
     setSearchedDni("")
@@ -464,6 +503,8 @@ export default function IngresoPage() {
   }
 
   const handleCreateAnonymous = () => {
+    olvidarAltaDePaciente()
+    setAltasRestauradas((n) => n + 1)
     setCurrentPatient(null)
     setSearchedDni("")
     setSearchedSex("")
@@ -589,6 +630,7 @@ export default function IngresoPage() {
   }
 
   const handleReset = () => {
+    olvidarAltaDePaciente()
     setCurrentPatient(null)
     setPatientNotFound(false)
     setSearchedDni("")
@@ -754,17 +796,27 @@ export default function IngresoPage() {
       setCuentaDeCobroId(pendiente.cuentaDeCobroId)
       setTrajoOrden(pendiente.trajoOrden)
       setPreauthStatus(pendiente.preauthStatus)
+      // Vacío = no se había tocado: vuelve el monto de la configuración.
       setExtraAmounts({
-        material_descartable_amount: pendiente.materialDescartable,
-        derivacion_amount: pendiente.derivacion,
+        material_descartable_amount:
+          pendiente.materialDescartable || pricingConfig?.material_descartable_amount || "0.00",
+        derivacion_amount: pendiente.derivacion || pricingConfig?.derivacion_amount || "0.00",
       })
       setCoseguroAmount(pendiente.coseguro)
       setUnplannedTransactions(pendiente.transaccionesNoPlanificadas)
       setPagoEfectivo(pendiente.pagoEfectivo)
       setPagoTransferencia(pendiente.pagoTransferencia)
       setSelectedSendMethod(metodoDeEnvioTraido)
-      setPatientNotFound(false)
-      setCreatingAnonymous(false)
+      // El alta de paciente que había quedado a medias vuelve a abrirse con
+      // lo tipeado. Si hay paciente elegido, gana ese.
+      const altaPendiente = pacienteTraido ? null : pendiente.pacienteNuevo
+      setPatientNotFound(altaPendiente != null)
+      setSearchedDni(altaPendiente?.dni ?? "")
+      setSearchedSex(altaPendiente?.sexo ?? "")
+      setCreatingAnonymous(altaPendiente?.anonimo ?? false)
+      setAltaDePaciente(altaPendiente ? { anonimo: altaPendiente.anonimo, datos: altaPendiente.datos } : null)
+      setDatosDelAltaRestaurados(altaPendiente?.datos)
+      setAltasRestauradas((n) => n + 1)
 
       const faltantes: string[] = []
       if (pendiente.pacienteId != null && !pacienteTraido) {
@@ -1258,13 +1310,17 @@ export default function IngresoPage() {
 
               {patientNotFound && (
                 <CreatePatientForm
+                  key={altasRestauradas}
                   initialDni={searchedDni}
                   initialSex={searchedSex}
                   defaultAnonymous={creatingAnonymous}
+                  datosIniciales={datosDelAltaRestaurados}
+                  onCambio={setAltaDePaciente}
                   onPatientCreated={handlePatientCreated}
                   onCancel={() => {
                     setPatientNotFound(false)
                     setCreatingAnonymous(false)
+                    olvidarAltaDePaciente()
                   }}
                 />
               )}

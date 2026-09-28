@@ -123,13 +123,13 @@ export function ObraSocialCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between border-gray-300 focus:border-[#204983] focus:ring-[#204983] bg-transparent"
+          className="w-full min-w-0 justify-between overflow-hidden border-gray-300 focus:border-[#204983] focus:ring-[#204983] bg-transparent"
         >
           {selectedObraSocial ? (
-            <div className="flex items-center gap-2">
-              <Building className="h-4 w-4 text-[#204983]" />
-              <span>{selectedObraSocial.name}</span>
-              <span className="text-xs text-gray-500 ml-1">(UB: ${selectedObraSocial.ub_value})</span>
+            <div className="flex min-w-0 items-center gap-2">
+              <Building className="h-4 w-4 shrink-0 text-[#204983]" />
+              <span className="truncate">{selectedObraSocial.name}</span>
+              <span className="ml-1 shrink-0 text-xs text-gray-500">(UB: ${selectedObraSocial.ub_value})</span>
             </div>
           ) : (
             <span className="text-gray-500">Seleccionar obra social...</span>
@@ -138,7 +138,7 @@ export function ObraSocialCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] p-0"
+        className="max-h-(--radix-popover-content-available-height) w-[var(--radix-popover-trigger-width)] overflow-y-auto p-0"
         onCloseAutoFocus={(event) => {
           if (!pidioCrear.current) return
           pidioCrear.current = false

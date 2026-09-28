@@ -178,7 +178,7 @@ export function TwoFactorSection() {
                 </div>
                 <p className="mt-1 text-sm text-gray-600">
                   {status?.enabled
-                    ? `${activeMethods.length > 1 ? "Al iniciar sesión podés elegir entre la app y el correo" : activeMethods[0] === "email" ? "Al iniciar sesión se te pide el código enviado por correo" : "Al iniciar sesión en un equipo nuevo se te pide el código de la app"}. En un equipo de confianza no se vuelve a pedir hasta que venza la ventana de 8 horas.`
+                    ? `${activeMethods.length > 1 ? "Al iniciar sesión podés elegir entre la app y el correo" : activeMethods[0] === "email" ? "Al iniciar sesión se te pide el código enviado por correo" : "Al iniciar sesión en un equipo nuevo se te pide el código de la app"}. En un equipo de confianza no se vuelve a pedir hasta que venza la ventana de ${status?.trust_hours ?? 8} horas.`
                     : "Sumá un código de 6 dígitos desde tu celular al iniciar sesión."}
                 </p>
               </div>
@@ -193,7 +193,7 @@ export function TwoFactorSection() {
                   {status?.enabled ? "Agregar método" : "Activar"}
                 </Button>
               )}
-              {status?.enabled && (
+              {status?.enabled && !status.required && (
                 <Button
                   type="button"
                   variant="outline"

@@ -167,10 +167,10 @@ export function useFacturacionApi(entityId: number | null) {
     queryClient.invalidateQueries({ queryKey: ["insurances", "detail", insuranceId] })
   }
 
-  const saveCollected = async (presentationId: number, insuranceId: number, amount: number) => {
+  const saveCollected = async (presentationId: number, insuranceId: number, amount: number, reason = "") => {
     const res = await apiRequest(BILLING_ENDPOINTS.SET_COLLECTED_FOR_INSURANCE(presentationId), {
       method: "POST",
-      body: { insurance_id: insuranceId, collected_amount: amount.toFixed(2) },
+      body: { insurance_id: insuranceId, collected_amount: amount.toFixed(2), difference_reason: reason },
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
@@ -181,10 +181,10 @@ export function useFacturacionApi(entityId: number | null) {
     queryClient.invalidateQueries({ queryKey: ["billing", "presentations-summary", entityId] })
   }
 
-  const saveCollectedTotal = async (presentationId: number, amount: number) => {
+  const saveCollectedTotal = async (presentationId: number, amount: number, reason = "") => {
     const res = await apiRequest(BILLING_ENDPOINTS.SET_COLLECTED_TOTAL(presentationId), {
       method: "POST",
-      body: { collected_amount: amount.toFixed(2) },
+      body: { collected_amount: amount.toFixed(2), difference_reason: reason },
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
@@ -195,11 +195,11 @@ export function useFacturacionApi(entityId: number | null) {
     queryClient.invalidateQueries({ queryKey: ["billing", "presentations-summary", entityId] })
   }
 
-  const closePresentation = async (nextCloseDate: string | null) => {
+  const closePresentation = async (nextCloseDate: string | null, name = "", notes = "") => {
     if (entityId == null) return false
     const res = await apiRequest(BILLING_ENDPOINTS.CLOSE_PRESENTATION, {
       method: "POST",
-      body: { entity_id: entityId, next_close_date: nextCloseDate },
+      body: { entity_id: entityId, next_close_date: nextCloseDate, name, notes },
     })
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))

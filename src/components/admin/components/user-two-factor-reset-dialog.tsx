@@ -49,7 +49,7 @@ export function UserTwoFactorResetDialog({ open, onOpenChange, user, onConfirm }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeading
           icon={ShieldOff}
           tone="danger"
@@ -78,7 +78,7 @@ export function UserTwoFactorResetDialog({ open, onOpenChange, user, onConfirm }
           </label>
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter className="gap-2">
           <Button
             type="button"
             variant="outline"

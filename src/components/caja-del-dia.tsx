@@ -112,6 +112,13 @@ export default function CajaDelDia({
             </div>
 
             <div className="py-1">
+              {/* Lo que se le facturó al paciente en el día: cobrado más lo
+                  que falta. La API lo mandaba y no se mostraba. */}
+              <Renglon
+                titulo="Total del día"
+                valor={plata(caja.total_due)}
+                nota="Lo que tenían que pagar los protocolos del día"
+              />
               <Renglon
                 titulo="Queda por cobrar"
                 valor={plata(caja.pending_to_collect)}

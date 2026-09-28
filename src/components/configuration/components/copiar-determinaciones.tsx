@@ -1,10 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Copy, Loader2, Plus, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CATALOG_ENDPOINTS } from "@/config/api"
 import { useApi } from "@/hooks/use-api"
 import { useDebounce } from "@/hooks/use-debounce"
@@ -50,7 +51,6 @@ export function CopiarDeterminaciones({ analysis, onCopiadas }: Props) {
   const [buscando, setBuscando] = useState(false)
   const [copiandoId, setCopiandoId] = useState<number | null>(null)
   const busquedaDebounced = useDebounce(busqueda, 300)
-  const cajaRef = useRef<HTMLDivElement>(null)
 
   const buscar = useCallback(
     async (texto: string) => {
@@ -81,16 +81,6 @@ export function CopiarDeterminaciones({ analysis, onCopiadas }: Props) {
     if (!abierto) return
     void buscar(busquedaDebounced)
   }, [busquedaDebounced, abierto, buscar])
-
-  // Cerrar al hacer clic afuera: es un panel que tapa la lista de abajo.
-  useEffect(() => {
-    if (!abierto) return
-    const alClickear = (evento: MouseEvent) => {
-      if (cajaRef.current && !cajaRef.current.contains(evento.target as Node)) setAbierto(false)
-    }
-    document.addEventListener("mousedown", alClickear)
-    return () => document.removeEventListener("mousedown", alClickear)
-  }, [abierto])
 
   const copiarDe = async (origen: Analysis) => {
     setCopiandoId(origen.id)
@@ -138,62 +128,62 @@ export function CopiarDeterminaciones({ analysis, onCopiadas }: Props) {
   }
 
   return (
-    <div className="relative" ref={cajaRef}>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="h-8 text-xs"
-        onClick={() => setAbierto((previo) => !previo)}
+    // En un Popover de Radix y no en un div absoluto: se monta fuera del modal,
+    // así que el modal ya no lo recorta ni hay que cerrarlo a mano al clickear
+    // afuera.
+    <Popover open={abierto} onOpenChange={setAbierto}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" size="sm" className="h-8 text-xs">
+          <Copy className="mr-1.5 h-3.5 w-3.5" />
+          Copiar de otro análisis
+        </Button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        align="end"
+        className="max-h-(--radix-popover-content-available-height) w-[min(22rem,calc(100vw-2rem))] overflow-y-auto p-2"
       >
-        <Copy className="mr-1.5 h-3.5 w-3.5" />
-        Copiar de otro análisis
-      </Button>
-
-      {abierto && (
-        <div className="absolute right-0 z-30 mt-1 w-[min(22rem,80vw)] rounded-md border border-gray-200 bg-white p-2 shadow-lg">
-          <p className="px-1 pb-2 text-xs text-gray-500">
-            Se copian las determinaciones con sus valores de referencia. Quedan como propias de{" "}
-            <span className="font-medium text-gray-700">{analysis.name}</span>: editarlas o darlas de
-            baja acá no toca las del otro análisis.
-          </p>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <Input
-              autoFocus
-              className="h-9 pl-8"
-              placeholder="Buscar análisis por código o nombre…"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-            />
-          </div>
-
-          <div className="mt-1 max-h-56 overflow-y-auto">
-            {buscando && <p className="px-3 py-2 text-sm text-gray-400">Buscando…</p>}
-            {!buscando && busqueda.trim() && resultados.length === 0 && (
-              <p className="px-3 py-2 text-sm text-gray-400">No se encontró ningún análisis.</p>
-            )}
-            {!buscando &&
-              resultados.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  disabled={copiandoId != null}
-                  onClick={() => copiarDe(a)}
-                  className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50"
-                >
-                  {copiandoId === a.id ? (
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#204983]" />
-                  ) : (
-                    <Plus className="h-3.5 w-3.5 shrink-0 text-[#204983]" />
-                  )}
-                  <span className="font-mono text-[10px] text-gray-500">{a.code}</span>
-                  <span className="truncate">{a.name}</span>
-                </button>
-              ))}
-          </div>
+        <p className="px-1 pb-2 text-xs text-gray-500">
+          Se copian las determinaciones con sus valores de referencia. Quedan como propias de{" "}
+          <span className="font-medium text-gray-700">{analysis.name}</span>: editarlas o darlas de
+          baja acá no toca las del otro análisis.
+        </p>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Input
+            autoFocus
+            className="h-9 pl-8"
+            placeholder="Buscar análisis por código o nombre…"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
         </div>
-      )}
-    </div>
+
+        <div className="mt-1 max-h-56 overflow-y-auto">
+          {buscando && <p className="px-3 py-2 text-sm text-gray-400">Buscando…</p>}
+          {!buscando && busqueda.trim() && resultados.length === 0 && (
+            <p className="px-3 py-2 text-sm text-gray-400">No se encontró ningún análisis.</p>
+          )}
+          {!buscando &&
+            resultados.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                disabled={copiandoId != null}
+                onClick={() => copiarDe(a)}
+                className="flex w-full items-center gap-2 rounded px-3 py-2 text-left text-sm hover:bg-gray-50 disabled:opacity-50"
+              >
+                {copiandoId === a.id ? (
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-[#204983]" />
+                ) : (
+                  <Plus className="h-3.5 w-3.5 shrink-0 text-[#204983]" />
+                )}
+                <span className="font-mono text-[10px] text-gray-500">{a.code}</span>
+                <span className="truncate">{a.name}</span>
+              </button>
+            ))}
+        </div>
+      </PopoverContent>
+    </Popover>
   )
 }

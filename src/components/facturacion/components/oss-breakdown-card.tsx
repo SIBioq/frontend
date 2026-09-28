@@ -19,19 +19,25 @@ interface EditableAmountProps {
   label: string
   value: number | null
   placeholder: string
-  onSave: (value: number) => Promise<void>
+  /** Si se pide, abajo del monto aparece "Motivo de la diferencia" (opcional),
+   * pre-cargado con el que ya estaba: el backend lo pisa en cada guardado. */
+  reason?: string
+  withReason?: boolean
+  onSave: (value: number, reason: string) => Promise<void>
 }
 
 /** Un valor con edición inline: se muestra como texto + lápiz; al tocar el
  * lápiz aparece el input pre-cargado con el valor actual (o vacío). Se puede
  * volver a editar las veces que haga falta, no es de carga única. */
-function EditableAmount({ label, value, placeholder, onSave }: EditableAmountProps) {
+function EditableAmount({ label, value, placeholder, reason = "", withReason = false, onSave }: EditableAmountProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
+  const [reasonDraft, setReasonDraft] = useState("")
   const [saving, setSaving] = useState(false)
 
   const startEditing = () => {
     setDraft(value != null ? String(value) : "")
+    setReasonDraft(reason)
     setEditing(true)
   }
 
@@ -40,7 +46,7 @@ function EditableAmount({ label, value, placeholder, onSave }: EditableAmountPro
     if (Number.isNaN(parsed) || parsed < 0) return
     setSaving(true)
     try {
-      await onSave(parsed)
+      await onSave(parsed, reasonDraft.trim())
       setEditing(false)
     } finally {
       setSaving(false)
@@ -69,6 +75,16 @@ function EditableAmount({ label, value, placeholder, onSave }: EditableAmountPro
             <X className="h-3.5 w-3.5" />
           </Button>
         </div>
+        {withReason && (
+          <Input
+            placeholder="Motivo de la diferencia (opcional)"
+            aria-label="Motivo de la diferencia"
+            maxLength={500}
+            className="mt-1 h-7 text-xs"
+            value={reasonDraft}
+            onChange={(e) => setReasonDraft(e.target.value)}
+          />
+        )}
       </div>
     )
   }
@@ -90,7 +106,7 @@ interface OssBreakdownCardProps {
    * (ej. el Centro), el cobro se carga a nivel de presentación completa. */
   showCollectedInput: boolean
   onSaveUbValue: (insuranceId: number, ubValue: number) => Promise<void>
-  onSaveCollected?: (insuranceId: number, value: number) => Promise<void>
+  onSaveCollected?: (insuranceId: number, value: number, reason: string) => Promise<void>
 }
 
 /**
@@ -156,8 +172,15 @@ export function OssBreakdownCard({ entry, showCollectedInput, onSaveUbValue, onS
             label="Cobrado"
             value={collected}
             placeholder="Monto cobrado de esta OOSS"
-            onSave={(value) => onSaveCollected(entry.insurance_id, value)}
+            withReason
+            reason={entry.difference_reason ?? ""}
+            onSave={(value, reason) => onSaveCollected(entry.insurance_id, value, reason)}
           />
+          {entry.difference_reason && (
+            <p className="mt-1 text-amber-800">
+              <strong>Motivo:</strong> {entry.difference_reason}
+            </p>
+          )}
         </div>
       )}
     </div>

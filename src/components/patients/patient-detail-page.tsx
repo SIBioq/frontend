@@ -18,6 +18,8 @@ import {
   Plus,
   StickyNote,
   Contact,
+  Cake,
+  IdCard,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -48,6 +50,20 @@ function formatDate(value?: string | null) {
   if (!value) return "—"
   const d = new Date(value)
   return Number.isNaN(d.getTime()) ? "—" : d.toLocaleDateString("es-AR")
+}
+
+/** "1990-05-12" → "12/05/1990" sin pasar por Date: un `new Date` de una fecha
+ * sola la toma en UTC y en Argentina muestra el día anterior. */
+function formatFechaCivil(value?: string | null) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value || "")
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : null
+}
+
+interface Afiliacion {
+  insurance_id: number
+  insurance_name: string
+  affiliate_number: string
+  usado_at: string
 }
 
 function InfoRow({ icon: Icon, label, value }: { icon: typeof Phone; label: string; value?: string | null }) {
@@ -96,6 +112,14 @@ export default function PatientDetailPage() {
     enabled: Boolean(id),
   })
   const auditEvents = auditQuery.data?.events ?? []
+
+  // Números de afiliado que ya se le conocen, por obra social (sólo las activas).
+  const afiliacionesQuery = useApiQuery<{ afiliaciones: Afiliacion[] }>({
+    queryKey: ["patients", "afiliaciones", id],
+    url: PATIENT_ENDPOINTS.PATIENT_AFILIACIONES(Number(id)),
+    enabled: Boolean(id),
+  })
+  const afiliaciones = afiliacionesQuery.data?.afiliaciones ?? []
 
   const refetchPatient = () => {
     queryClient.invalidateQueries({ queryKey: ["patients", "detail", id] })
@@ -153,6 +177,7 @@ export default function PatientDetailPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl font-bold text-gray-800 md:text-2xl">{name}</h1>
                 {!patient.is_active && <Badge className="bg-gray-200 text-gray-600">Inactivo</Badge>}
+                {patient.is_anonymous && <Badge className="bg-amber-100 text-amber-800">Anónimo</Badge>}
               </div>
               <p className="text-sm text-gray-500">
                 DNI {formatDni(patient.dni)}
@@ -186,7 +211,10 @@ export default function PatientDetailPage() {
               <h2 className="flex items-center gap-2 text-base font-bold text-gray-800">
                 <FileText className="h-5 w-5 text-[#204983]" />
                 Protocolos
-                <span className="text-sm font-normal text-gray-500">{protocolsQuery.data?.count ?? protocols.length}</span>
+                <span className="text-sm font-normal text-gray-500">
+                  {patient.protocols_count ?? protocolsQuery.data?.count ?? protocols.length}
+                  {patient.last_protocol_at && ` · último: ${formatDate(patient.last_protocol_at)}`}
+                </span>
               </h2>
               <Button size="sm" variant="outline" onClick={() => navigate("/ingreso", { state: { patient } })}>
                 <Plus className="mr-1.5 h-4 w-4" />
@@ -239,6 +267,7 @@ export default function PatientDetailPage() {
               <Contact className="h-4 w-4 text-gray-400" />
               Contacto
             </h3>
+            <InfoRow icon={Cake} label="Fecha de nacimiento" value={formatFechaCivil(patient.birth_date)} />
             <InfoRow icon={Phone} label="Teléfono" value={patient.phone_mobile} />
             <InfoRow icon={Smartphone} label="Teléfono alternativo" value={patient.alt_phone} />
             <InfoRow icon={Mail} label="Email" value={patient.email} />
@@ -247,6 +276,24 @@ export default function PatientDetailPage() {
               <p className="py-2 text-sm text-gray-400">Sin datos de contacto</p>
             )}
           </section>
+
+          {afiliaciones.length > 0 && (
+            <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                <IdCard className="h-4 w-4 text-gray-400" />
+                Afiliaciones
+              </h3>
+              <ul className="divide-y divide-gray-100">
+                {afiliaciones.map((a) => (
+                  <li key={a.insurance_id} className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
+                    <span className="min-w-0 break-words text-gray-800">{a.insurance_name}</span>
+                    <span className="shrink-0 font-mono text-gray-600">{a.affiliate_number}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-gray-400">El último número usado con cada obra social.</p>
+            </section>
+          )}
 
           {patient.observations && (
             <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">

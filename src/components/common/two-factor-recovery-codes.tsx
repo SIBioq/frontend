@@ -53,9 +53,9 @@ export function TwoFactorRecoveryCodes({ codes, acknowledged, onAcknowledgedChan
         <strong>no se van a volver a mostrar</strong>.
       </div>
 
-      <div className="grid grid-cols-2 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+      <div className="grid grid-cols-1 gap-2 rounded-lg min-[360px]:grid-cols-2 border border-gray-200 bg-gray-50 p-3">
         {codes.map((recoveryCode) => (
-          <code key={recoveryCode} className="font-mono text-sm tracking-wider text-gray-800">
+          <code key={recoveryCode} className="break-all font-mono text-sm tracking-wider text-gray-800">
             {recoveryCode}
           </code>
         ))}

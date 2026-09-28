@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock, User, ArrowRight } from "lucide-react"
 import type { HistoryEntry } from "@/types"
+import { MensajeDeAuditoria } from "@/components/common/mensaje-de-auditoria"
 import { formatUtcDateTime } from "@/lib/format-utils"
 import { getProtocolStatusBadgeClassByName } from "@/lib/status-styles"
 
@@ -250,11 +251,14 @@ export function HistoryList({ history, emptyMessage = "No hay historial disponib
                     </div>
                   )}
 
-                  {entry.message && (
-                    <p className="text-xs sm:text-sm text-slate-700 break-words whitespace-pre-wrap">{entry.message}</p>
-                  )}
+                  <MensajeDeAuditoria
+                    message={entry.message}
+                    encabezado={entry.encabezado}
+                    detalle={entry.detalle}
+                    className="text-xs sm:text-sm"
+                  />
 
-                  {entry.changes && entry.changes.length > 0 && (
+                  {!entry.detalle?.length && entry.changes && entry.changes.length > 0 && (
                     <div className="text-xs sm:text-sm text-muted-foreground space-y-0.5 min-w-0">
                       {entry.changes.map((change, idx) => (
                         <div key={idx} className="leading-snug break-words whitespace-pre-wrap">

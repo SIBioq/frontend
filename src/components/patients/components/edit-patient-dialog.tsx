@@ -307,8 +307,10 @@ export function EditPatientDialog({ isOpen, onClose, patient, setPatients, apiRe
 
       const dataToSend = {
         ...formData,
-        dni: normalizeDni(formData.dni),
-        birth_date: formData.birth_date,
+        // Vacíos van como null: un anónimo puede no tenerlos, y "" no es una
+        // fecha válida para la API.
+        dni: normalizeDni(formData.dni) || null,
+        birth_date: formData.birth_date || null,
       }
 
       const response = await apiRequest(PATIENT_ENDPOINTS.PATIENT_DETAIL(patient.id), {
@@ -362,7 +364,7 @@ export function EditPatientDialog({ isOpen, onClose, patient, setPatients, apiRe
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Editar Paciente

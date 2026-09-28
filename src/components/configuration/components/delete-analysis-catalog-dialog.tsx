@@ -93,8 +93,8 @@ export const DeleteAnalysisCatalogDialog: React.FC<DeleteAnalysisCatalogDialogPr
               <div className="flex items-start gap-3">
                 <TestTube className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h4 className="font-medium text-red-900">{analysis.name || "Sin nombre"}</h4>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <h4 className="min-w-0 break-words font-medium text-red-900">{analysis.name || "Sin nombre"}</h4>
                     {analysis.is_urgent && (
                       <Badge variant="destructive" className="text-xs">
                         Urgente

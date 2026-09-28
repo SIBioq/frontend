@@ -143,7 +143,7 @@ export function ImportDataDialog({ open, onOpenChange, onSuccess }: ImportDataDi
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[600px] max-h-[90dvh] overflow-y-auto">
         <DialogHeading
           icon={FileSpreadsheet}
           title="Importar catálogo"
@@ -310,7 +310,7 @@ export function ImportDataDialog({ open, onOpenChange, onSuccess }: ImportDataDi
           )}
         </div>
 
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+        <DialogFooter className="gap-2">
           <Button
             variant="outline"
             onClick={handleClose}

@@ -39,7 +39,7 @@ export function EditDialog({
 }: EditDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[500px] max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Edit className="h-5 w-5 text-[#204983]" />
@@ -54,7 +54,7 @@ export function EditDialog({
               value={formData.send_method}
               onValueChange={(value) => onFormDataChange({ ...formData, send_method: value })}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full min-w-0">
                 <SelectValue placeholder="Seleccionar método" />
               </SelectTrigger>
               <SelectContent>
@@ -76,7 +76,7 @@ export function EditDialog({
             />
           </div>
         </div>
-        <DialogFooter className="flex-col sm:flex-row gap-2">
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancelar
           </Button>

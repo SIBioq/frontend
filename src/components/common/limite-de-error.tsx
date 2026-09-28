@@ -36,7 +36,7 @@ export class LimiteDeError extends Component<Props, Estado> {
     if (!this.state.error) return this.props.children
 
     return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
+      <div className="flex min-h-[60dvh] items-center justify-center px-4">
         <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white p-6 text-center shadow-sm">
           <h2 className="text-lg font-semibold text-gray-900">
             No se pudo mostrar esta pantalla

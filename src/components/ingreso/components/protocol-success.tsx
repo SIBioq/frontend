@@ -310,7 +310,7 @@ export function ProtocolSuccess({ protocol, patient, doctor, insurance, sendMeth
                       <Badge 
                         key={detail.id} 
                         variant="outline" 
-                        className={`text-xs ${
+                        className={`max-w-full whitespace-normal break-words text-left text-xs ${
                           detail.is_authorized 
                             ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                             : "bg-gray-50 text-gray-700 border-gray-200"

@@ -146,12 +146,13 @@ export function SecurityBlocksPanel({ onManualRefresh }: SecurityBlocksPanelProp
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-[800px] text-sm">
             <thead className="bg-gray-50">
               <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
                 <th className="px-3 py-2 font-medium">Tipo</th>
                 <th className="px-3 py-2 font-medium">Bloqueado</th>
                 <th className="px-3 py-2 font-medium">Motivo</th>
+                <th className="px-3 py-2 text-right font-medium">Intentos</th>
                 <th className="px-3 py-2 font-medium">Desde</th>
                 <th className="px-3 py-2 font-medium">Cooldown</th>
                 <th className="px-3 py-2 text-right font-medium">Acción</th>
@@ -164,7 +165,7 @@ export function SecurityBlocksPanel({ onManualRefresh }: SecurityBlocksPanelProp
                   <tr key={block.id} className="align-middle">
                     <td className="px-3 py-3">
                       <Badge variant={block.kind === "ip" ? "destructive" : "secondary"}>
-                        {block.kind === "ip" ? "IP" : "Cuenta"}
+                        {block.kind_display || (block.kind === "ip" ? "Dirección IP" : "Cuenta de usuario")}
                       </Badge>
                     </td>
                     <td className="px-3 py-3 font-mono text-xs text-gray-900">
@@ -174,6 +175,9 @@ export function SecurityBlocksPanel({ onManualRefresh }: SecurityBlocksPanelProp
                       )}
                     </td>
                     <td className="px-3 py-3 text-gray-600">{block.reason}</td>
+                    <td className="px-3 py-3 text-right tabular-nums text-gray-900">
+                      {block.failure_count}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-3 text-gray-600">
                       {formatUtcDateTime(block.created_at)}
                     </td>
@@ -220,13 +224,13 @@ export function SecurityBlocksPanel({ onManualRefresh }: SecurityBlocksPanelProp
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Desbloquear {pendingRelease?.identifier}?</AlertDialogTitle>
+            <AlertDialogTitle className="break-all">¿Desbloquear {pendingRelease?.identifier}?</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingRelease?.kind === "ip"
                 ? "Esa dirección va a poder volver a intentar iniciar sesión inmediatamente. Hacelo solo si estás seguro de que el bloqueo fue un falso positivo."
                 : "Esa cuenta va a poder volver a intentar iniciar sesión inmediatamente. Hacelo solo si estás seguro de que el bloqueo fue un falso positivo."}
               {pendingRelease && (
-                <span className="mt-2 block text-xs text-gray-500">
+                <span className="mt-2 block break-words text-xs text-gray-500">
                   Motivo del bloqueo: {pendingRelease.reason} · Queda registrado en la
                   auditoría a tu nombre.
                 </span>

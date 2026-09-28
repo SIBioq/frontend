@@ -114,7 +114,7 @@ function ReportCustomizationDrawer({
         }`}
       >
         <div className="flex h-full flex-col pl-6 pr-12">
-          <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-4">
             <div>
               <p className="text-sm font-semibold text-slate-800">Personalizar reporte</p>
               <p className="text-xs text-slate-500">
@@ -530,7 +530,9 @@ export function ReportDialog({
   // los mueve juntos y la proporción se mantiene. Los `min()` son topes: en
   // una pantalla grande dan exactamente los valores de antes.
   const geometria = {
-    "--ancho-tarjeta": "min(620px, 94vw)",
+    // El tercer tope evita que entre 1024 y 1125px tarjeta y panel se pisen:
+    // la tarjeta cede lo que el panel necesita.
+    "--ancho-tarjeta": "min(620px, 94vw, calc(100vw - var(--ancho-panel) - 2rem))",
     "--ancho-panel": "min(540px, 46vw)",
     // El panel arranca 12px antes del borde derecho de la tarjeta, para que se
     // vea pegado y no flotando al lado.
@@ -564,7 +566,7 @@ export function ReportDialog({
             en una baja la tarjeta se achica en vez de pasarse de la ventana. El
             que scrollea es el cuerpo, no el diálogo, así que los botones de
             abajo quedan siempre a la vista. */}
-        <div className="relative hidden max-h-[88vh] min-h-[min(640px,86vh)] w-full flex-col overflow-visible lg:flex">
+        <div className="relative hidden max-h-[88dvh] min-h-[min(640px,86dvh)] w-full flex-col overflow-visible lg:flex">
           <div
             className={`relative z-20 flex flex-1 flex-col overflow-hidden rounded-xl border bg-white shadow-2xl transition-colors duration-300 ease-out ${
               customizationOpen ? "border-slate-200 border-r-0" : "border-slate-200"
@@ -799,7 +801,7 @@ export function ReportDialog({
                         />
 
                         <div className="flex flex-col gap-1.5">
-                          <Label htmlFor="report_date_mobile" className="text-sm font-medium">Fecha del reporte (opcional, por defecto la de creación del protocolo)</Label>
+                          <Label htmlFor="report_date_mobile" className="text-sm font-medium leading-snug">Fecha del reporte (opcional, por defecto la de creación del protocolo)</Label>
                           <Input
                             id="report_date_mobile"
                             name="report_date"
@@ -808,7 +810,7 @@ export function ReportDialog({
                             onChange={(e) => onReportDateChange(e.target.value)}
                           />
 
-                          <Label htmlFor="report_time_mobile" className="mt-2 text-sm font-medium">Horario del reporte (opcional, no se imprime si se deja vacío)</Label>
+                          <Label htmlFor="report_time_mobile" className="mt-2 text-sm font-medium leading-snug">Horario del reporte (opcional, no se imprime si se deja vacío)</Label>
                           <Input
                             id="report_time_mobile"
                             name="report_time"
@@ -866,7 +868,7 @@ export function ReportDialog({
                       <p className="text-xs text-slate-500">
                         {selectedCount} de {selectableCount} análisis seleccionados
                       </p>
-                      <div className="mt-3 grid grid-cols-2 gap-2">
+                      <div className="mt-3 flex flex-wrap gap-2 [&>button]:min-w-0 [&>button]:flex-1">
                         <Button type="button" variant="outline" size="sm" onClick={onSelectAllAnalyses}>
                           Seleccionar todos
                         </Button>

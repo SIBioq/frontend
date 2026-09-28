@@ -194,7 +194,7 @@ export function CreateObraSocialDialog({ open, onOpenChange, onSuccess }: Create
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[480px] max-h-[90dvh] overflow-y-auto">
         <DialogHeading
           icon={Building2}
           title="Nueva obra social"
@@ -289,6 +289,7 @@ export function CreateObraSocialDialog({ open, onOpenChange, onSuccess }: Create
                   </p>
                 </div>
                 <Switch
+                  className="shrink-0"
                   id="chooses_billing_entity"
                   checked={formData.chooses_billing_entity}
                   onCheckedChange={(checked) => {
@@ -308,55 +309,59 @@ export function CreateObraSocialDialog({ open, onOpenChange, onSuccess }: Create
             <div className="space-y-3 rounded-lg border border-gray-200 p-4">
               <p className="text-sm font-semibold text-gray-700">Conceptos que cobra</p>
 
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <Label htmlFor="charges_coseguro" className="cursor-pointer">Coseguro</Label>
                   <p className="text-xs text-gray-500">Permite cargar coseguro al protocolo.</p>
                 </div>
                 <Switch
+                  className="shrink-0"
                   id="charges_coseguro"
                   checked={formData.charges_coseguro}
                   onCheckedChange={(checked) => handleSwitchChange("charges_coseguro", checked)}
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <Label htmlFor="charges_material_descartable" className="cursor-pointer">Material descartable</Label>
                   <p className="text-xs text-gray-500">Suma el monto fijo por material descartable.</p>
                 </div>
                 <Switch
+                  className="shrink-0"
                   id="charges_material_descartable"
                   checked={formData.charges_material_descartable}
                   onCheckedChange={(checked) => handleSwitchChange("charges_material_descartable", checked)}
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <Label htmlFor="charges_derivacion" className="cursor-pointer">Derivación</Label>
                   <p className="text-xs text-gray-500">Cobra derivación si hay análisis con esa marca.</p>
                 </div>
                 <Switch
+                  className="shrink-0"
                   id="charges_derivacion"
                   checked={formData.charges_derivacion}
                   onCheckedChange={(checked) => handleSwitchChange("charges_derivacion", checked)}
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <Label htmlFor="requires_preauthorization" className="cursor-pointer">Requiere preautorización</Label>
                   <p className="text-xs text-gray-500">Los análisis deben preautorizarse antes de procesar.</p>
                 </div>
                 <Switch
+                  className="shrink-0"
                   id="requires_preauthorization"
                   checked={formData.requires_preauthorization}
                   onCheckedChange={(checked) => handleSwitchChange("requires_preauthorization", checked)}
                 />
               </div>
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
                   <Label htmlFor="a_reintegro" className="cursor-pointer">Es a reintegro</Label>
                   <p className="text-xs text-gray-500">
                     El paciente paga como particular y la obra social le reintegra
@@ -365,6 +370,7 @@ export function CreateObraSocialDialog({ open, onOpenChange, onSuccess }: Create
                   </p>
                 </div>
                 <Switch
+                  className="shrink-0"
                   id="a_reintegro"
                   checked={formData.a_reintegro}
                   onCheckedChange={(checked) => handleSwitchChange("a_reintegro", checked)}

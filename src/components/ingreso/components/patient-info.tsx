@@ -153,7 +153,7 @@ export function PatientInfo({ patient, onEdit }: PatientInfoProps) {
                 <User className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
                 <div>
                   <p className="font-medium">Sexo</p>
-                  <p className="text-gray-600">{patient.sex === "M" ? "Masculino" : "Femenino"}</p>
+                  <p className="text-gray-600">{patient.sex === "M" ? "Masculino" : patient.sex === "F" ? "Femenino" : "Sin dato"}</p>
                 </div>
               </div>
             </div>

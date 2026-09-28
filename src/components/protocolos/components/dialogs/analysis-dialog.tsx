@@ -68,7 +68,7 @@ export function AnalysisDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* // Mejor responsive sin scroll horizontal */}
-      <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <TestTube className="h-5 w-5 text-[#204983]" />
@@ -151,8 +151,9 @@ export function AnalysisDialog({
                       <td className="px-2 lg:px-3 py-2.5 text-xs lg:text-sm font-mono truncate">{detail.code}</td>
                       <td className="px-2 lg:px-3 py-2.5 text-xs lg:text-sm">
                         <div className="break-words leading-tight">{detail.name}</div>
+                        <AnalysisPriceSummary detail={detail} />
                       </td>
-                      <td className="px-2 lg:px-3 py-2.5 text-xs lg:text-sm"><div>{detail.ub}</div><AnalysisPriceSummary detail={detail} /></td>
+                      <td className="px-2 lg:px-3 py-2.5 text-xs lg:text-sm tabular-nums">{detail.ub}</td>
                       {!isPrivateProtocol && (
                         <td className="px-2 lg:px-3 py-2.5 text-center">
                           <div className="flex items-center justify-center gap-1">

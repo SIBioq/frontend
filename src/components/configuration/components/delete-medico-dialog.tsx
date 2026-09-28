@@ -67,7 +67,7 @@ export function DeleteMedicoDialog({ isOpen, onOpenChange, medico, onSuccess }: 
           <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
           <AlertDialogDescription>
             Esta acción eliminará permanentemente al médico{" "}
-            <strong>{`${medico.first_name} ${medico.last_name}`}</strong> (MP {medico.license}). Esta acción no se puede
+            <strong className="break-words">{`${medico.first_name} ${medico.last_name}`}</strong> (MP {medico.license}). Esta acción no se puede
             deshacer.
           </AlertDialogDescription>
         </AlertDialogHeader>

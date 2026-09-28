@@ -190,7 +190,7 @@ export const CreateAnalysisCatalogDialog: React.FC<CreateAnalysisCatalogDialogPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[560px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[560px] max-h-[90dvh] overflow-y-auto">
         <DialogHeading icon={TestTube} title="Nuevo análisis" description="Completá los datos para el nuevo análisis." />
         <div className="space-y-6 py-4">
           {errors.form && (
@@ -227,18 +227,18 @@ export const CreateAnalysisCatalogDialog: React.FC<CreateAnalysisCatalogDialogPr
             disabled={isLoading}
           />
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="isUrgent" className="font-medium">
                 Análisis Urgente
               </Label>
               <p className="text-sm text-gray-500">Marcar si este análisis es de carácter urgente</p>
             </div>
-            <Switch id="isUrgent" checked={isUrgent} onCheckedChange={setIsUrgent} />
+            <Switch className="shrink-0" id="isUrgent" checked={isUrgent} onCheckedChange={setIsUrgent} />
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="requiresDerivacion" className="font-medium">
                 Requiere derivación
               </Label>
@@ -247,14 +247,15 @@ export const CreateAnalysisCatalogDialog: React.FC<CreateAnalysisCatalogDialogPr
               </p>
             </div>
             <Switch
+              className="shrink-0"
               id="requiresDerivacion"
               checked={requiresDerivacion}
               onCheckedChange={setRequiresDerivacion}
             />
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="llevaResultado" className="font-medium">
                 Lleva resultado
               </Label>
@@ -262,7 +263,7 @@ export const CreateAnalysisCatalogDialog: React.FC<CreateAnalysisCatalogDialogPr
                 Si se desactiva, la práctica aparece en el protocolo, pero no se carga, valida ni incluye en el informe clínico.
               </p>
             </div>
-            <Switch id="llevaResultado" checked={llevaResultado} onCheckedChange={setLlevaResultado} />
+            <Switch className="shrink-0" id="llevaResultado" checked={llevaResultado} onCheckedChange={setLlevaResultado} />
           </div>
 
           <CampoPrecioFijo
@@ -289,24 +290,24 @@ export const CreateAnalysisCatalogDialog: React.FC<CreateAnalysisCatalogDialogPr
             </Select>
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="isObsolete" className="font-medium">
                 En desuso
               </Label>
               <p className="text-sm text-gray-500">Práctica dada de baja del nomenclador (sin UB vigente).</p>
             </div>
-            <Switch id="isObsolete" checked={isObsolete} onCheckedChange={setIsObsolete} />
+            <Switch className="shrink-0" id="isObsolete" checked={isObsolete} onCheckedChange={setIsObsolete} />
           </div>
 
-          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-            <div>
+          <div className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+            <div className="min-w-0">
               <Label htmlFor="isRefNormalized" className="font-medium">
                 Normalizado (N)
               </Label>
               <p className="text-sm text-gray-500">Marca "N" del NBU (referencia normalizada).</p>
             </div>
-            <Switch id="isRefNormalized" checked={isRefNormalized} onCheckedChange={setIsRefNormalized} />
+            <Switch className="shrink-0" id="isRefNormalized" checked={isRefNormalized} onCheckedChange={setIsRefNormalized} />
           </div>
 
           <div className="space-y-4 rounded-lg border border-[#204983]/20 bg-[#204983]/5 p-3">
@@ -321,6 +322,7 @@ export const CreateAnalysisCatalogDialog: React.FC<CreateAnalysisCatalogDialogPr
                 </p>
               </div>
               <Switch
+                className="shrink-0"
                 id="esModulo"
                 checked={esModulo}
                 onCheckedChange={(valor) => {
