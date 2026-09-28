@@ -287,6 +287,8 @@ export const RESULTS_ENDPOINTS = {
   VALIDATE: (id: number) => buildApiUrl(`/results/results/${id}/validate/`),
   /** "No corresponde": la determinación no aplica en ESTE protocolo. Reversible. */
   EXCLUSION: (id: number) => buildApiUrl(`/results/results/${id}/exclusion/`),
+  /** Deja fuera, de una, las filas vacías de un protocolo. Nunca saca un dato. */
+  EXCLUIR_SIN_RESULTADO: buildApiUrl("/results/results/excluir-sin-resultado/"),
   /** Validar varios de una: "Validar todos" mandaba una request por resultado. */
   VALIDATE_BATCH: buildApiUrl("/results/results/validate-batch/"),
   PREVIOUS_RESULTS: (patientId: number, determinationId: number) =>

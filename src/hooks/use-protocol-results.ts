@@ -499,6 +499,88 @@ export function useProtocolResults(protocolId: number) {
   )
 
   /**
+   * Deja fuera del protocolo, en UNA request, las filas que la pantalla ve
+   * vacías.
+   *
+   * Los ids los elige quien llama, contando lo tipeado y sin guardar: si el
+   * backend buscara "lo vacío" por su cuenta, una fila recién tipeada quedaría
+   * afuera. Igual el backend vuelve a mirar cada una y no excluye la que tenga
+   * datos o un cálculo con valor que dependa de ella: esas vuelven en
+   * `omitidos` y se avisan en el mismo toast.
+   */
+  const excluirSinResultado = useCallback(
+    async (resultIds: number[]): Promise<boolean> => {
+      if (!canEditResults) {
+        toast.error(PERMISSION_MESSAGES.MANAGE_RESULTS)
+        return false
+      }
+      if (canceladoRef.current) {
+        toast.error(AVISO_PROTOCOLO_CANCELADO)
+        return false
+      }
+      if (resultIds.length === 0) return true
+      const marcarGuardando = (valor: boolean) =>
+        setSaving((prev) => {
+          const siguiente = { ...prev }
+          resultIds.forEach((id) => {
+            siguiente[id] = valor
+          })
+          return siguiente
+        })
+      marcarGuardando(true)
+      try {
+        const res = await apiRequest(RESULTS_ENDPOINTS.EXCLUIR_SIN_RESULTADO, {
+          method: "POST",
+          body: { result_ids: resultIds },
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(formatApiError(err, "No se pudieron dejar fuera las determinaciones"))
+        }
+        const data = (await res.json()) as {
+          results: Result[]
+          omitidos: { id: number; motivo: string }[]
+          protocol_status: Result["protocol_status"]
+        }
+        const porId = new Map<number, Result>(data.results.map((r) => [r.id, r]))
+        const siguientes = resultsRef.current.map((r) => porId.get(r.id) ?? r)
+        resultsRef.current = siguientes
+        setResults(siguientes)
+        // Las filas eran vacías, pero se recalcula igual: una fórmula que las
+        // tenía como componente pasa a no resolver, y así se ve.
+        const siguientesValores = applyFormulaCalculations(siguientes, { ...valuesRef.current })
+        valuesRef.current = siguientesValores
+        setValues(siguientesValores)
+        if (data.protocol_status !== undefined) {
+          setProtocol((prev) => (prev ? { ...prev, status: data.protocol_status ?? null } : prev))
+        }
+
+        const excluidas = data.results.length
+        const omitidas = data.omitidos.length
+        const texto =
+          excluidas === 1
+            ? "Se dejó fuera 1 determinación sin resultado"
+            : `Se dejaron fuera ${excluidas} determinaciones sin resultado`
+        if (omitidas > 0) {
+          toast.warning(
+            `${texto}. ${omitidas === 1 ? "Quedó 1" : `Quedaron ${omitidas}`} sin excluir: ` +
+              "tenían datos o cálculos que dependen de ellas.",
+          )
+        } else {
+          toast.success(texto)
+        }
+        return true
+      } catch (e) {
+        toast.error(getErrorMessage(e, "No se pudieron dejar fuera las determinaciones"))
+        return false
+      } finally {
+        marcarGuardando(false)
+      }
+    },
+    [apiRequest, canEditResults],
+  )
+
+  /**
    * Borra el valor cargado: lo vacía en pantalla y en la base.
    *
    * Va aparte de `onSave` porque no puede depender de que el estado ya se haya
@@ -729,6 +811,7 @@ export function useProtocolResults(protocolId: number) {
     onValidateMany,
     alternarCargaManual,
     alternarExclusion,
+    excluirSinResultado,
     borrarValor,
     previousResults,
     loadingPrevious,

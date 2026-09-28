@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { FlaskConical, AlertCircle, ChevronDown, Keyboard, Search, Sigma, X, Lock } from "lucide-react"
+import { FlaskConical, AlertCircle, ChevronDown, CircleMinus, Keyboard, Search, Sigma, X, Lock } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -14,6 +14,7 @@ import { calculateFormulaValue, describirFormula } from "@/lib/result-formulas"
 import type { Result } from "@/types"
 import { ResultDeterminationRow } from "./result-determination-row"
 import { ExclusionConfirmDialog } from "./exclusion-confirm-dialog"
+import { ExcluirSinResultadoDialog } from "./excluir-sin-resultado-dialog"
 import { ResumenDeResultados } from "@/components/common/resumen-de-resultados"
 import { cn } from "@/lib/utils"
 import { ENTRADA_ABAJO } from "@/lib/entrada"
@@ -30,7 +31,7 @@ interface ProtocolResultsLoaderProps {
  * useProtocolResults en la página).
  */
 export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps) {
-  const { loading, error, protocol, results, groups, submodulos, orderedIds, values, saving, onChange, onSave, alternarCargaManual, alternarExclusion, borrarValor, previousResults, loadingPrevious, loadPrevious } =
+  const { loading, error, protocol, results, groups, submodulos, orderedIds, values, saving, onChange, onSave, alternarCargaManual, alternarExclusion, excluirSinResultado, borrarValor, previousResults, loadingPrevious, loadPrevious } =
     controller
   const { hasPermission } = useAuth()
   // Sin `gestionar_resultados` la pantalla no desaparece: se sigue viendo todo
@@ -106,6 +107,33 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
     // Se cierra en los dos casos: si falló, el aviso ya lo dijo y dejar el
     // diálogo abierto invita a volver a apretar lo mismo.
     setPendienteDeConfirmar(null)
+  }
+
+  // DEJAR FUERA LAS VACÍAS, DE UNA
+  // Vacía es lo que la pantalla ve vacío: `values` incluye lo tipeado sin
+  // guardar y el resultado de las fórmulas, así que una fila recién escrita no
+  // se va. Con validación tampoco, aunque no tenga valor. El backend vuelve a
+  // mirar cada id y omite lo que no esté vacío de verdad.
+  const sinResultado = (determinaciones: Result[]) =>
+    determinaciones.filter((d) => {
+      if (d.excluido || d.is_valid || d.is_wrong) return false
+      const local = values[d.id]
+      const valor = local ? local.value : (d.value ?? "")
+      const notas = local ? local.notes : (d.notes ?? "")
+      return !valor.trim() && !notas.trim()
+    })
+  const [vaciasPorExcluir, setVaciasPorExcluir] = useState<{
+    nombreAnalisis: string
+    ids: number[]
+  } | null>(null)
+  const [excluyendoVacias, setExcluyendoVacias] = useState(false)
+
+  const confirmarExcluirVacias = async () => {
+    if (!vaciasPorExcluir) return
+    setExcluyendoVacias(true)
+    await excluirSinResultado(vaciasPorExcluir.ids)
+    setExcluyendoVacias(false)
+    setVaciasPorExcluir(null)
   }
 
   // El diálogo tiene que ser honesto: ahora también aparece con la fila vacía,
@@ -304,12 +332,17 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
           const activas = group.determinations.filter((d) => !d.excluido)
           const loaded = activas.filter((d) => !!d.value).length
           const excluidas = group.determinations.length - activas.length
+          const vacias = canEdit && !isCancelled ? sinResultado(group.determinations) : []
           return (
             <section key={group.analysis.id}>
+              {/* El botón de dejar fuera va AL LADO del de colapsar y no
+                  adentro: un botón dentro de otro no es HTML válido, y el clic
+                  colapsaría el grupo además de abrir el diálogo. */}
+              <div className="mb-2 flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => toggleCollapse(group.analysis.id)}
-                className="mb-2 flex w-full items-center justify-between gap-2 text-left"
+                className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
               >
                 <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
                   <ChevronDown
@@ -332,6 +365,24 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
                   )}
                 </span>
               </button>
+              {vacias.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setVaciasPorExcluir({
+                      nombreAnalisis: group.analysis.name,
+                      ids: vacias.map((d) => d.id),
+                    })
+                  }
+                  disabled={vacias.some((d) => saving[d.id])}
+                  title="Dejar fuera del protocolo las determinaciones sin resultado"
+                  className="flex shrink-0 items-center gap-1 rounded-md border border-[#cbd8ea] bg-white px-2 py-0.5 text-xs font-medium text-[#204983] transition-colors hover:bg-[#f4f7fb] disabled:opacity-50"
+                >
+                  <CircleMinus className="h-3.5 w-3.5" />
+                  Dejar fuera {vacias.length} {vacias.length === 1 ? "vacía" : "vacías"}
+                </button>
+              )}
+              </div>
               {!collapsedIds.has(group.analysis.id) && (
               <div className="space-y-2">
                 {group.determinations.map((result) => {
@@ -449,6 +500,16 @@ export function ProtocolResultsLoader({ controller }: ProtocolResultsLoaderProps
         dependientes={pendienteDeConfirmar?.dependientes ?? []}
         onConfirmar={confirmarExclusion}
         confirmando={confirmando}
+      />
+      <ExcluirSinResultadoDialog
+        open={vaciasPorExcluir !== null}
+        onOpenChange={(abierto) => {
+          if (!abierto) setVaciasPorExcluir(null)
+        }}
+        nombreAnalisis={vaciasPorExcluir?.nombreAnalisis ?? ""}
+        cantidad={vaciasPorExcluir?.ids.length ?? 0}
+        onConfirmar={confirmarExcluirVacias}
+        confirmando={excluyendoVacias}
       />
     </div>
   )
