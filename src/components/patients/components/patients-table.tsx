@@ -26,9 +26,17 @@ function formatDni(dni?: string | null) {
   return dni || "—"
 }
 
+// Un anónimo muestra lo que tenga cargado: el nombre (o apodo) si lo hay, y
+// el DNI si lo hay. Sólo lo que falta se reemplaza por el rótulo de anónimo.
 function fullName(p: Patient) {
-  if (p.is_anonymous) return "Paciente anónimo"
-  return p.full_name || `${p.first_name} ${p.last_name}`.trim() || "—"
+  const nombre = p.full_name || `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim()
+  if (nombre) return nombre
+  return p.is_anonymous ? "Paciente anónimo" : "—"
+}
+
+function dniCell(p: Patient) {
+  if (p.dni) return formatDni(p.dni)
+  return p.is_anonymous ? "ANÓNIMO" : "—"
 }
 
 function IconAction({ icon: Icon, label, onClick, className }: { icon: typeof Trash2; label: string; onClick: () => void; className?: string }) {
@@ -77,7 +85,7 @@ export function PatientsTable({ patients, onRowClick, onMerge, onDelete, sort, o
       skeleton: <Skeleton className="h-4 w-20 rounded" />,
       cell: (p) => (
         <span className="font-mono text-sm font-semibold text-[#204983]">
-          {p.is_anonymous ? "ANÓNIMO" : formatDni(p.dni)}
+          {dniCell(p)}
         </span>
       ),
     },

@@ -126,6 +126,28 @@ export default function PatientDetailPage() {
     queryClient.invalidateQueries({ queryKey: ["patients", "list"] })
   }
 
+  // Al volver, el listado se pide de nuevo igual (la baja lo dejó marcado como
+  // viejo), pero mientras llega se muestra lo cacheado: sin esto el paciente
+  // recién eliminado aparece ahí hasta que contesta el servidor.
+  const quitarDelListado = (eliminado: Patient) => {
+    queryClient.setQueriesData<{ pages: Array<{ results: Patient[]; count?: number }> }>(
+      { queryKey: ["patients", "list"] },
+      (data) =>
+        data && {
+          ...data,
+          pages: data.pages.map((page) => {
+            const results = page.results.filter((p) => p.id !== eliminado.id)
+            const quitados = page.results.length - results.length
+            return {
+              ...page,
+              results,
+              ...(page.count !== undefined ? { count: page.count - quitados } : {}),
+            }
+          }),
+        },
+    )
+  }
+
   const Breadcrumb = (
     <nav className="mb-4 flex items-center gap-1.5 text-sm">
       <Link to="/pacientes" className="flex items-center gap-1 text-gray-500 transition-colors hover:text-[#204983]">
@@ -333,7 +355,10 @@ export default function PatientDetailPage() {
         isOpen={deleting}
         onClose={() => setDeleting(false)}
         patient={patient}
-        setPatients={() => navigate("/pacientes")}
+        setPatients={(eliminado) => {
+          quitarDelListado(eliminado)
+          navigate("/pacientes")
+        }}
         apiRequest={apiRequest}
       />
       <MergePatientDialog

@@ -1,6 +1,7 @@
 import { Suspense, useEffect } from "react"
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
+import { QueryClientProvider } from "@tanstack/react-query"
+import { queryClient } from "./lib/query-client"
 
 import ConfirmarEnvio from "./components/contingencia/confirmar-envio"
 import { AuthProvider } from "./contexts/auth-context"
@@ -38,23 +39,6 @@ const SearchResultsPage = paginaLazy("SearchResultsPage", () => import("./compon
 const SuperadminPage = paginaLazy("SuperadminPage", () => import("./components/superadmin/superadmin-page"))
 const ContingenciaPage = paginaLazy("ContingenciaPage", () => import("./components/contingencia/contingencia-page"))
 const LibroDiarioPage = paginaLazy("LibroDiarioPage", () => import("./components/caja/libro-diario-page"))
-
-// React Query client compartido. Cache de 1 min para listados pesados (protocolos, pacientes).
-// Reintentos en mutaciones desactivados (errores 4xx no son
-// retryables — el helper de api-error se encarga del manejo de 401 con refresh).
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60 * 1000,
-      gcTime: 5 * 60 * 1000,
-      refetchOnWindowFocus: false,
-      retry: false,
-    },
-    mutations: {
-      retry: 0,
-    },
-  },
-})
 
 // Skeleton mientras se descarga el chunk de cada ruta.
 function RouteFallback() {
