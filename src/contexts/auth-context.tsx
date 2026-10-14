@@ -15,6 +15,7 @@ import {
   resolveWarningTimeMs,
 } from "@/lib/idle-config"
 import { SESSION_EXPIRED_EVENT, type SessionExpiredDetail } from "@/lib/session-events"
+import { queryClient } from "@/lib/query-client"
 import type {
   TwoFactorEnrollmentConfirmResponse,
   TwoFactorEnrollmentRequiredResponse,
@@ -245,6 +246,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // que hay que mandarle. No se espera: la pantalla cierra igual.
       void cerrarSesionEnElServidor()
       clearSession()
+      // Lo cacheado es de esta persona: quien entre después en la misma
+      // pestaña no tiene que ver sus listados, ni siquiera un instante, ni
+      // datos que su rol no le deja pedir.
+      queryClient.clear()
       setToken(null)
       setUser(null)
       setIsAuthenticated(false)
@@ -269,6 +274,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // llamada no hace nada: el backend contesta 205 igual.
       void cerrarSesionEnElServidor()
       clearSession()
+      // Ver `logout`: sobre todo acá, que es el mostrador que quedó solo.
+      queryClient.clear()
       setToken(null)
       setUser(null)
       setIsAuthenticated(false)
