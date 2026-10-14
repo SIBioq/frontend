@@ -136,6 +136,12 @@ export default function ProtocolosPage() {
 
   // Debounce para la búsqueda
   const debouncedSearchTerm = useDebounce(searchTerm, 300)
+  // BUSCAR IGNORA LOS FILTROS. Pedido del laboratorio: quien busca un número
+  // o un paciente quiere encontrarlo, y los filtros quedan guardados de una
+  // sesión a otra — es fácil no acordarse de que hay uno puesto y concluir que
+  // el protocolo no existe. Mientras haya búsqueda no se mandan; al borrarla
+  // vuelven solos, porque no se tocan.
+  const buscando = debouncedSearchTerm.trim() !== ""
 
   // Estadísticas por estado vía React Query — cache 30s, refetch en window focus.
   const stateStatsQuery = useApiQuery<ProtocolsByStatusResponse>({
@@ -225,6 +231,8 @@ export default function ProtocolosPage() {
         params.append("ordering", `${sort.dir === "desc" ? "-" : ""}${sort.field}`)
       }
 
+      if (buscando) return `${PROTOCOL_ENDPOINTS.PROTOCOLS}?${params.toString()}`
+
       if (statusFilter.include.length > 0) {
         params.append("status", statusFilter.include.join(","))
       }
@@ -251,23 +259,25 @@ export default function ProtocolosPage() {
 
       return `${PROTOCOL_ENDPOINTS.PROTOCOLS}?${params.toString()}`
     },
-    [debouncedSearchTerm, statusFilter, isPrintedFilter, paymentStatusFilter, sort, fechaDesde, fechaHasta],
+    [debouncedSearchTerm, buscando, statusFilter, isPrintedFilter, paymentStatusFilter, sort, fechaDesde, fechaHasta],
   )
 
   // queryKey estable por combinación de filtros: cachea cada vista (ej. volver
   // de un detalle a la misma búsqueda/filtro) sin pedirle todo de nuevo al
   // backend. `keepPrevious` evita el blanco+skeleton al cambiar de filtro.
+  // Buscando, los filtros no viajan: tampoco entran en la key, así la misma
+  // búsqueda con distintos filtros puestos comparte el cache.
   const protocolsQueryKey = [
     "protocols",
     "list",
     debouncedSearchTerm.trim(),
-    statusFilter.include.slice().sort((a, b) => a - b).join(","),
-    statusFilter.exclude.slice().sort((a, b) => a - b).join(","),
-    isPrintedFilter,
-    paymentStatusFilter,
+    buscando ? "" : statusFilter.include.slice().sort((a, b) => a - b).join(","),
+    buscando ? "" : statusFilter.exclude.slice().sort((a, b) => a - b).join(","),
+    buscando ? "all" : isPrintedFilter,
+    buscando ? "all" : paymentStatusFilter,
     sort ? `${sort.dir}:${sort.field}` : "",
-    fechaDesde,
-    fechaHasta,
+    buscando ? "" : fechaDesde,
+    buscando ? "" : fechaHasta,
   ] as const
 
   const protocolsQuery = useApiInfiniteQuery<ProtocolListItem>({
@@ -811,7 +821,7 @@ export default function ProtocolosPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input
               ref={searchInputRef}
-              placeholder="Buscar por ID, paciente o estado..."
+              placeholder="Buscar por N° de protocolo, DNI o paciente..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="h-11 pl-11 pr-10"
@@ -984,20 +994,33 @@ export default function ProtocolosPage() {
             )}
         </div>
 
+        {/* Los filtros siguen marcados arriba: sin este aviso parecería que la
+            lista está filtrada y no lo está. */}
+        {buscando &&
+          (hasAnyStatusFilter || isPrintedFilter !== "all" || paymentStatusFilter !== "all" || fechaDesde || fechaHasta) && (
+            <p className="mt-3 text-sm text-gray-500">
+              Buscando en todos los protocolos: los filtros no se aplican mientras haya una búsqueda.
+            </p>
+          )}
+
         {/* Tabla */}
         <div className="mt-4 space-y-4">
         {allProtocols.length === 0 && !isInitialLoading && !isSearching ? (
           <div className="p-8 sm:p-12 text-center">
             <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
-              {dia
+              {buscando
+                ? "No se encontraron protocolos"
+                : dia
                 ? `Sin protocolos el ${comoFechaCorta(dia)}`
                 : fechaDesde || fechaHasta
                   ? "Sin protocolos en ese rango"
                   : "No se encontraron protocolos"}
             </h3>
             <p className="text-sm sm:text-base text-gray-600 mb-6">
-              {dia
+              {buscando
+                ? "Ningún protocolo coincide con la búsqueda. Un número busca ese N° de protocolo para abajo; el DNI, sólo completo."
+                : dia
                 ? "Probá con otra fecha o limpiá el filtro para ver todos."
                 : fechaDesde || fechaHasta
                   ? "Probá con otro rango de fechas o limpiá el filtro."
