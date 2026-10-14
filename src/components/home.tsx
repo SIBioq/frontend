@@ -12,6 +12,7 @@ import {
   Clock3,
   FileWarning,
   FlaskConical,
+  MapPin,
   Receipt,
   ShieldCheck,
   TrendingUp,
@@ -163,6 +164,9 @@ interface EstadisticasDelMes {
   tiempo_de_resolucion: string
   listos_para_facturar: number
   top_urgentes: Array<{ code: string; name: string; protocols: number }>
+  /** Pacientes únicos del mes por ciudad, agrupada sin distinguir mayúsculas ni tildes.
+   *  `lugar` en `null` son los que no tienen ciudad cargada; vienen al final. */
+  pacientes_por_lugar: Array<{ lugar: string | null; pacientes: number }>
 }
 
 /**
@@ -200,6 +204,9 @@ interface Comparacion {
  * días es si venimos mejor o peor que el mes pasado, y contra un total que
  * crece para siempre eso no se contesta.
  */
+// Los lugares con más pacientes; el resto queda detrás de "Ver los restantes".
+const LUGARES_A_LA_VISTA = 10
+
 const ALCANCES = [
   { clave: "mes-anterior", etiqueta: "el mes anterior" },
   { clave: "3", etiqueta: "últimos 3 meses" },
@@ -574,6 +581,7 @@ export default function Home() {
 
   // El día abierto en el detalle de caja. null = ninguno.
   const [cajaDelDia, setCajaDelDia] = useState<string | null>(null)
+  const [verTodosLosLugares, setVerTodosLosLugares] = useState(false)
 
   // LAS BARRAS CRECEN DESDE ABAJO.
   //
@@ -598,6 +606,9 @@ export default function Home() {
   // Del mes que se está mirando, no de toda la historia: antes, con un mes
   // cerrado elegido, se mostraba el top histórico con el rótulo de ese mes.
   const topUrgent = mesData?.top_urgentes || []
+  const pacientesPorLugar = mesData?.pacientes_por_lugar || []
+  const totalPorLugar = pacientesPorLugar.reduce((suma, fila) => suma + fila.pacientes, 0)
+  const lugaresVisibles = verTodosLosLugares ? pacientesPorLugar : pacientesPorLugar.slice(0, LUGARES_A_LA_VISTA)
   const missingInfo = dashboard?.missing_info
   const preauth = dashboard?.preauth_breakdown
   const arca = viendoOtroMes ? mesData?.arca : dashboard?.arca_month
@@ -1477,6 +1488,54 @@ export default function Home() {
         )}
       </section>
 
+
+      {/* De dónde vinieron los pacientes del mes, por la ciudad de su ficha. */}
+      <section
+        style={retraso(13)}
+        className={`mt-5 rounded-lg border border-slate-200 bg-white/70 p-4 shadow-sm backdrop-blur-sm sm:p-5 ${ENTRADA_ABAJO}`}
+      >
+        <div className="mb-4 flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-indigo-600" />
+          <h2 className="text-base font-semibold text-slate-900">Pacientes por lugar</h2>
+          <span className="text-xs text-slate-500">del mes, según la ciudad de la ficha</span>
+        </div>
+        {loading ? (
+          <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton key={index} className="h-7 w-full rounded-md" />
+            ))}
+          </div>
+        ) : pacientesPorLugar.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 md:grid-cols-2">
+              {lugaresVisibles.map((fila) => (
+                <PreauthBar
+                  key={fila.lugar ?? ""}
+                  label={fila.lugar ?? "Sin ciudad cargada"}
+                  value={fila.pacientes}
+                  total={totalPorLugar}
+                  className={fila.lugar ? "bg-indigo-500" : "bg-slate-300"}
+                />
+              ))}
+            </div>
+            {pacientesPorLugar.length > LUGARES_A_LA_VISTA && (
+              <button
+                type="button"
+                onClick={() => setVerTodosLosLugares((v) => !v)}
+                className="mt-4 text-sm font-medium text-indigo-700 hover:underline"
+              >
+                {verTodosLosLugares
+                  ? "Ver menos"
+                  : `Ver los ${pacientesPorLugar.length - LUGARES_A_LA_VISTA} lugares restantes`}
+              </button>
+            )}
+          </>
+        ) : (
+          <p className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+            Sin pacientes atendidos este mes.
+          </p>
+        )}
+      </section>
 
       {/* El detalle de un día, al tocar su barra en el gráfico de caja. */}
       <CajaDelDia fecha={cajaDelDia} onClose={() => setCajaDelDia(null)} />

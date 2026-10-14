@@ -4,6 +4,7 @@ import { useCallback } from "react"
 import { useLoading } from "@/hooks/use-loading"
 import { API_CONFIG } from "@/config/api"
 import { clearSession, getAccessToken } from "@/lib/auth-storage"
+import { marcarTodoComoViejo } from "@/lib/query-client"
 import { refrescarSesion } from "@/lib/refresh-de-sesion"
 import { dispatchSessionExpiredEvent } from "@/lib/session-events"
 
@@ -171,6 +172,12 @@ export const useApi = () => {
               throw new Error("Sesión expirada")
             }
           }
+
+          // Algo cambió en el servidor: lo que otras pantallas tengan
+          // cacheado puede estar mostrando el dato de antes. Va acá adentro
+          // y no afuera para que dos escrituras idénticas deduplicadas
+          // marquen una sola vez.
+          if (method !== "GET" && response.ok) marcarTodoComoViejo()
 
           return response
         }
