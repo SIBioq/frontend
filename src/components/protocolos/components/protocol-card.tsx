@@ -7,7 +7,7 @@ import { Card, CardContent } from "../../ui/card"
 import { Skeleton } from "../../ui/skeleton"
 import { useApi } from "../../../hooks/use-api"
 import { toast } from "sonner"
-import { abrirVistaPrevia, paginasDelPdf } from "@/lib/ventana-de-vista-previa"
+import { abrirVentanaDeVistaPrevia, paginasDelPdf, avisoDeVentanaBloqueada } from "@/lib/ventana-de-vista-previa"
 import { PROTOCOL_ENDPOINTS, TOAST_DURATION } from "@/config/api"
 import { PERMISSIONS, PERMISSION_MESSAGES } from "@/config/permissions"
 import { ACTO_BIOQUIMICO_CODES } from "@/lib/codigos-analisis"
@@ -727,6 +727,13 @@ export function ProtocolCard({
    */
   const handlePreviewReport = async () => {
     if (!ensureCanPrintReports()) return
+    // Antes de cualquier await: Safari sólo deja abrir la ventana como
+    // respuesta directa al toque. Ver `ventana-de-vista-previa`.
+    const ventana = abrirVentanaDeVistaPrevia(`Vista previa · Protocolo #${protocol.id}`)
+    if (!ventana) {
+      toast.error(avisoDeVentanaBloqueada(), { duration: TOAST_DURATION })
+      return
+    }
     setIsPreviewingReport(true)
 
     try {
@@ -736,17 +743,9 @@ export function ProtocolCard({
         throw new Error(extractErrorMessage(errorData, "No se pudo generar la vista previa"))
       }
 
-      const abrio = abrirVistaPrevia(
-        await response.blob(),
-        `Vista previa · Protocolo #${protocol.id}`,
-        paginasDelPdf(response),
-      )
-      if (!abrio) {
-        toast.error("El navegador bloqueó la ventana. Permití pop-ups para ver la vista previa.", {
-          duration: TOAST_DURATION,
-        })
-      }
+      await ventana.mostrar(await response.blob(), paginasDelPdf(response))
     } catch (error) {
+      ventana.cerrar()
       toast.error(getErrorMessage(error, "No se pudo generar la vista previa"), {
         duration: TOAST_DURATION,
       })
