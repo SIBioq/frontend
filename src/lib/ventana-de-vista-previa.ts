@@ -284,7 +284,12 @@ async function dibujarComoImagenes(pdf: Blob, ventana: Window, urls: string[]) {
       canvas.height = Math.floor(vista.height)
       contexto.fillStyle = "#fff"
       contexto.fillRect(0, 0, canvas.width, canvas.height)
-      await pagina.render({ canvas, canvasContext: contexto, viewport: vista }).promise
+      // `intent: "print"` no es para imprimir: es lo que hace que pdf.js dibuje
+      // sin `requestAnimationFrame`. Esto corre en la pestaña de Labsalud, que
+      // queda OCULTA detrás de la ventana recién abierta, y una pestaña oculta
+      // no recibe animation frames: con el intent de pantalla el dibujo se
+      // quedaba esperando para siempre y la vista previa salía en blanco.
+      await pagina.render({ canvas, canvasContext: contexto, viewport: vista, intent: "print" }).promise
       pagina.cleanup()
 
       const imagen = await new Promise<Blob | null>((listo) => canvas.toBlob(listo, "image/jpeg", 0.9))
