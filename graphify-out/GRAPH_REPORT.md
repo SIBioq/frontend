@@ -1,7 +1,7 @@
 # Graph Report - frontend  (2026-10-15)
 
 ## Corpus Check
-- 386 files · ~290,940 words
+- 386 files · ~291,069 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `1b6c96c4`
+- Built from commit: `b3b23326`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -401,8 +401,8 @@ Cohesion: 0.29
 Nodes (9): CampoNotacionCientifica(), Props, conSeparadores(), esExponenteValido(), expandirNumero(), superindice(), unidadCompleta(), aSupraindice() (+1 more)
 
 ### Community 54 - "Componentes UI Base (3)"
-Cohesion: 0.24
-Nodes (7): ProtocolCard(), ProtocolCardProps, ProtocolDetailSkeleton(), PROTOCOL_ENDPOINTS, REPORTING_ENDPOINTS, ProtocolListItem, ReportSignature
+Cohesion: 0.28
+Nodes (6): ProtocolCard(), ProtocolCardProps, ProtocolDetailSkeleton(), PROTOCOL_ENDPOINTS, ProtocolListItem, ReportSignature
 
 ### Community 55 - "Utilidades (5)"
 Cohesion: 0.10
@@ -433,8 +433,8 @@ Cohesion: 0.20
 Nodes (9): name, private, scripts, build, dev, lint, preview, type (+1 more)
 
 ### Community 62 - "Hooks de Datos (2)"
-Cohesion: 0.28
-Nodes (8): enSeguimiento, esperar(), ESPERAS_MS, MensajeDelProtocolo, motivoDeLaFalla(), Peticion, SeguimientoDeWhatsApp, seguirElWhatsApp()
+Cohesion: 0.24
+Nodes (9): REPORTING_ENDPOINTS, enSeguimiento, esperar(), ESPERAS_MS, MensajeDelProtocolo, motivoDeLaFalla(), Peticion, SeguimientoDeWhatsApp (+1 more)
 
 ### Community 63 - "Community 63"
 Cohesion: 0.24

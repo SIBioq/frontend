@@ -47,6 +47,13 @@ Tiene que seguir abriéndose en una ventana aparte.
 - **pdf.js se carga a demanda**: queda en sus propios chunks y no suma a la
   carga de la app.
 
+- **pdf.js dibuja con `intent: "print"`** (corrección posterior, misma fecha).
+  En el iPhone la vista previa salía en blanco: el dibujo corre en la pestaña
+  de Labsalud, que queda oculta detrás de la ventana nueva, y una pestaña
+  oculta no recibe `requestAnimationFrame`, que pdf.js usa con el intent de
+  pantalla. Con `print` avanza sin eso. Reproducido y verificado anulando
+  `requestAnimationFrame` en el navegador integrado.
+
 ## Archivos tocados
 
 - `src/lib/ventana-de-vista-previa.ts`
