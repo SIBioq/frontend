@@ -2,6 +2,7 @@
 
 | Documento | Tema |
 |---|---|
+| [2026-10-15-vista-previa-en-celulares.md](2026-10-15-vista-previa-en-celulares.md) | Vista previa del informe: abrir la ventana en el toque (Safari) y páginas como imágenes en celulares |
 | [2026-10-13-anonimos-lugares-refresco-y-busqueda.md](2026-10-13-anonimos-lugares-refresco-y-busqueda.md) | Anónimos en el listado, pacientes por lugar en el inicio, listados que se refrescan tras cada cambio y buscador de protocolos por número |
 | [2026-09-24-simbolos-unidad-de-medida.md](2026-09-24-simbolos-unidad-de-medida.md) | Botones para insertar µ, °, Δ, ·, × y ‰ en la unidad de medida |
 | [2026-09-24-correcciones-carga-e-informe.md](2026-09-24-correcciones-carga-e-informe.md) | Fórmulas preservan decimales, textarea que crece, navegación por teclado, fecha de informe y campo `decimales` |
