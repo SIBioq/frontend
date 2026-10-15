@@ -13022,7 +13022,7 @@
       "source_location": "L305",
       "_origin": "ast",
       "id": "config_api_reporting_endpoints",
-      "community": 54,
+      "community": 62,
       "norm_label": "reporting_endpoints"
     },
     {
@@ -23399,7 +23399,7 @@
       "label": "Archivos tocados",
       "file_type": "document",
       "source_file": "docs/2026-10-15-vista-previa-en-celulares.md",
-      "source_location": "L50",
+      "source_location": "L57",
       "_origin": "ast",
       "id": "docs_2026_10_15_vista_previa_en_celulares_archivos_tocados",
       "community": 112,
@@ -23409,7 +23409,7 @@
       "label": "C\u00f3mo se prob\u00f3",
       "file_type": "document",
       "source_file": "docs/2026-10-15-vista-previa-en-celulares.md",
-      "source_location": "L57",
+      "source_location": "L64",
       "_origin": "ast",
       "id": "docs_2026_10_15_vista_previa_en_celulares_c\u00f3mo_se_prob\u00f3",
       "community": 112,
@@ -23419,7 +23419,7 @@
       "label": "Pendiente",
       "file_type": "document",
       "source_file": "docs/2026-10-15-vista-previa-en-celulares.md",
-      "source_location": "L69",
+      "source_location": "L76",
       "_origin": "ast",
       "id": "docs_2026_10_15_vista_previa_en_celulares_pendiente",
       "community": 112,
@@ -26299,9 +26299,9 @@
       "source_file": "package.json",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "package",
-      "target": "package_dependencies",
-      "confidence_score": 1.0
+      "target": "package_dependencies"
     },
     {
       "relation": "contains",
@@ -26309,9 +26309,9 @@
       "source_file": "package.json",
       "source_location": "L50",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "package",
-      "target": "package_devdependencies",
-      "confidence_score": 1.0
+      "target": "package_devdependencies"
     },
     {
       "relation": "contains",
@@ -26319,9 +26319,9 @@
       "source_file": "package.json",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "package",
-      "target": "package_name",
-      "confidence_score": 1.0
+      "target": "package_name"
     },
     {
       "relation": "contains",
@@ -26329,9 +26329,9 @@
       "source_file": "package.json",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "package",
-      "target": "package_private",
-      "confidence_score": 1.0
+      "target": "package_private"
     },
     {
       "relation": "contains",
@@ -26339,9 +26339,9 @@
       "source_file": "package.json",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "package",
-      "target": "package_scripts",
-      "confidence_score": 1.0
+      "target": "package_scripts"
     },
     {
       "relation": "contains",
@@ -26349,9 +26349,9 @@
       "source_file": "package.json",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "package",
-      "target": "package_type",
-      "confidence_score": 1.0
+      "target": "package_type"
     },
     {
       "relation": "contains",
@@ -26359,9 +26359,9 @@
       "source_file": "package.json",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "package",
-      "target": "package_version",
-      "confidence_score": 1.0
+      "target": "package_version"
     },
     {
       "relation": "contains",
@@ -26499,9 +26499,9 @@
       "source_file": "package.json",
       "source_location": "L40",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "package_dependencies",
-      "target": "package_dependencies_pdfjs_dist",
-      "confidence_score": 1.0
+      "target": "package_dependencies_pdfjs_dist"
     },
     {
       "relation": "contains",
@@ -75237,9 +75237,9 @@
       "source_file": "src/components/protocolos/components/protocol-card.tsx",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_protocol_card",
-      "target": "lib_ventana_de_vista_previa_abrirventanadevistaprevia",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_abrirventanadevistaprevia"
     },
     {
       "relation": "imports",
@@ -75248,9 +75248,9 @@
       "source_file": "src/components/protocolos/components/protocol-card.tsx",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "components_protocol_card",
-      "target": "lib_ventana_de_vista_previa_avisodeventanabloqueada",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_avisodeventanabloqueada"
     },
     {
       "relation": "imports",
@@ -78303,9 +78303,9 @@
       "source_file": "src/components/protocolos/protocolos-page.tsx",
       "source_location": "L51",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "protocolos_protocolos_page",
-      "target": "lib_ventana_de_vista_previa_abrirventanadevistaprevia",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_abrirventanadevistaprevia"
     },
     {
       "relation": "imports",
@@ -78314,9 +78314,9 @@
       "source_file": "src/components/protocolos/protocolos-page.tsx",
       "source_location": "L51",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "protocolos_protocolos_page",
-      "target": "lib_ventana_de_vista_previa_avisodeventanabloqueada",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_avisodeventanabloqueada"
     },
     {
       "relation": "imports",
@@ -95980,9 +95980,9 @@
       "source_file": "src/lib/ventana-de-vista-previa.ts",
       "source_location": "L173",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_ventana_de_vista_previa",
-      "target": "lib_ventana_de_vista_previa_abrirventanadevistaprevia",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_abrirventanadevistaprevia"
     },
     {
       "relation": "contains",
@@ -95990,9 +95990,9 @@
       "source_file": "src/lib/ventana-de-vista-previa.ts",
       "source_location": "L66",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_ventana_de_vista_previa",
-      "target": "lib_ventana_de_vista_previa_avisodeventanabloqueada",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_avisodeventanabloqueada"
     },
     {
       "relation": "contains",
@@ -96000,9 +96000,9 @@
       "source_file": "src/lib/ventana-de-vista-previa.ts",
       "source_location": "L247",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_ventana_de_vista_previa",
-      "target": "lib_ventana_de_vista_previa_dibujarcomoimagenes",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_dibujarcomoimagenes"
     },
     {
       "relation": "contains",
@@ -96010,9 +96010,9 @@
       "source_file": "src/lib/ventana-de-vista-previa.ts",
       "source_location": "L105",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_ventana_de_vista_previa",
-      "target": "lib_ventana_de_vista_previa_escapar",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_escapar"
     },
     {
       "relation": "contains",
@@ -96020,9 +96020,9 @@
       "source_file": "src/lib/ventana-de-vista-previa.ts",
       "source_location": "L100",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_ventana_de_vista_previa",
-      "target": "lib_ventana_de_vista_previa_escelularotablet",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_escelularotablet"
     },
     {
       "relation": "contains",
@@ -96030,9 +96030,9 @@
       "source_file": "src/lib/ventana-de-vista-previa.ts",
       "source_location": "L108",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_ventana_de_vista_previa",
-      "target": "lib_ventana_de_vista_previa_pagina",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_pagina"
     },
     {
       "relation": "contains",
@@ -96060,9 +96060,9 @@
       "source_file": "src/lib/ventana-de-vista-previa.ts",
       "source_location": "L160",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_ventana_de_vista_previa",
-      "target": "lib_ventana_de_vista_previa_ventanadevistaprevia",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_ventanadevistaprevia"
     },
     {
       "relation": "calls",
@@ -96071,9 +96071,9 @@
       "source_file": "src/lib/ventana-de-vista-previa.ts",
       "source_location": "L113",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_ventana_de_vista_previa_pagina",
-      "target": "lib_ventana_de_vista_previa_escapar",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_escapar"
     },
     {
       "relation": "calls",
@@ -96082,9 +96082,9 @@
       "source_file": "src/lib/ventana-de-vista-previa.ts",
       "source_location": "L180",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "lib_ventana_de_vista_previa_abrirventanadevistaprevia",
-      "target": "lib_ventana_de_vista_previa_pagina",
-      "confidence_score": 1.0
+      "target": "lib_ventana_de_vista_previa_pagina"
     },
     {
       "relation": "contains",
@@ -101790,9 +101790,9 @@
       "source_file": "docs/2026-10-15-vista-previa-en-celulares.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_10_15_vista_previa_en_celulares",
-      "target": "docs_2026_10_15_vista_previa_en_celulares_vista_previa_del_informe_en_celulares_y_en_safari",
-      "confidence_score": 1.0
+      "target": "docs_2026_10_15_vista_previa_en_celulares_vista_previa_del_informe_en_celulares_y_en_safari"
     },
     {
       "relation": "references",
@@ -101800,9 +101800,9 @@
       "source_file": "docs/INDICE.md",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_indice",
-      "target": "docs_2026_10_15_vista_previa_en_celulares",
-      "confidence_score": 1.0
+      "target": "docs_2026_10_15_vista_previa_en_celulares"
     },
     {
       "relation": "contains",
@@ -101810,9 +101810,9 @@
       "source_file": "docs/2026-10-15-vista-previa-en-celulares.md",
       "source_location": "L50",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_10_15_vista_previa_en_celulares_vista_previa_del_informe_en_celulares_y_en_safari",
-      "target": "docs_2026_10_15_vista_previa_en_celulares_archivos_tocados",
-      "confidence_score": 1.0
+      "target": "docs_2026_10_15_vista_previa_en_celulares_archivos_tocados"
     },
     {
       "relation": "contains",
@@ -101820,9 +101820,9 @@
       "source_file": "docs/2026-10-15-vista-previa-en-celulares.md",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_10_15_vista_previa_en_celulares_vista_previa_del_informe_en_celulares_y_en_safari",
-      "target": "docs_2026_10_15_vista_previa_en_celulares_c\u00f3mo_se_prob\u00f3",
-      "confidence_score": 1.0
+      "target": "docs_2026_10_15_vista_previa_en_celulares_c\u00f3mo_se_prob\u00f3"
     },
     {
       "relation": "contains",
@@ -101830,9 +101830,9 @@
       "source_file": "docs/2026-10-15-vista-previa-en-celulares.md",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_10_15_vista_previa_en_celulares_vista_previa_del_informe_en_celulares_y_en_safari",
-      "target": "docs_2026_10_15_vista_previa_en_celulares_decisiones",
-      "confidence_score": 1.0
+      "target": "docs_2026_10_15_vista_previa_en_celulares_decisiones"
     },
     {
       "relation": "contains",
@@ -101840,9 +101840,9 @@
       "source_file": "docs/2026-10-15-vista-previa-en-celulares.md",
       "source_location": "L69",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_10_15_vista_previa_en_celulares_vista_previa_del_informe_en_celulares_y_en_safari",
-      "target": "docs_2026_10_15_vista_previa_en_celulares_pendiente",
-      "confidence_score": 1.0
+      "target": "docs_2026_10_15_vista_previa_en_celulares_pendiente"
     },
     {
       "relation": "contains",
@@ -101850,9 +101850,9 @@
       "source_file": "docs/2026-10-15-vista-previa-en-celulares.md",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_10_15_vista_previa_en_celulares_vista_previa_del_informe_en_celulares_y_en_safari",
-      "target": "docs_2026_10_15_vista_previa_en_celulares_qu\u00e9_se_hizo",
-      "confidence_score": 1.0
+      "target": "docs_2026_10_15_vista_previa_en_celulares_qu\u00e9_se_hizo"
     },
     {
       "relation": "contains",
@@ -101860,9 +101860,9 @@
       "source_file": "docs/2026-10-15-vista-previa-en-celulares.md",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "docs_2026_10_15_vista_previa_en_celulares_vista_previa_del_informe_en_celulares_y_en_safari",
-      "target": "docs_2026_10_15_vista_previa_en_celulares_qu\u00e9_se_pidi\u00f3",
-      "confidence_score": 1.0
+      "target": "docs_2026_10_15_vista_previa_en_celulares_qu\u00e9_se_pidi\u00f3"
     },
     {
       "relation": "contains",
@@ -103656,5 +103656,5 @@
       "source_file": "/Users/givecab/labsalud/frontend/doc/endpoint-cola-resultados.md"
     }
   ],
-  "built_at_commit": "1b6c96c4f99e1eb9d2754e147f1963b5cf4338c9"
+  "built_at_commit": "b3b23326174b6e9a23e72c6f04b3d729330b5cc2"
 }
