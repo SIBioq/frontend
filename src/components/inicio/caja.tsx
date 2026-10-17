@@ -139,7 +139,7 @@ function SemanaDeCaja({
               )}
               <span
                 className={`text-center text-[11px] ${
-                  x.esHoy ? "font-semibold text-tema-plata" : x.d > referencia ? "text-slate-400" : "text-slate-500"
+                  x.esHoy ? "font-semibold text-tema-plata" : x.d > referencia ? "text-slate-500" : "text-slate-600"
                 }`}
               >
                 {x.esHoy ? "hoy" : INICIALES[i]}

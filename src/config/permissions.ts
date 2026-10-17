@@ -97,15 +97,6 @@ export const PERMISSIONS = {
     codename: "gestionar_impresiones",
     name: "Puede imprimir y enviar protocolos",
   },
-
-  // Subir al servidor lo que el laboratorio hizo en la PC mientras el servidor
-  // estuvo caído. Es aparte de todos los demás porque no se parece a ninguno:
-  // quien lo tiene hace que el servidor ejecute escrituras a nombre de otras
-  // personas. Va para quien administra el sistema, no para el mostrador.
-  UPLOAD_CONTINGENCY: {
-    codename: "subir_contingencia",
-    name: "Puede subir el trabajo hecho en contingencia",
-  },
 } as const
 
 /**

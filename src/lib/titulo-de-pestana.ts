@@ -39,7 +39,6 @@ const SECCIONES_FIJAS: Record<string, string> = {
   "/pacientes": "Pacientes",
   "/configuracion": "Configuración",
   "/superconfiguracion": "Superconfiguración",
-  "/contingencia": "Contingencia",
   "/ingreso": "Ingreso",
   "/protocolos": "Protocolos",
   "/resultados": "Resultado",

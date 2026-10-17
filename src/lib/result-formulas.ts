@@ -15,9 +15,8 @@
  * vecina. La fórmula seguía calculando —sin error, sin aviso— con el valor
  * equivocado.
  *
- * `inferredCodeForIndex` quedó SOLO como red para un backend viejo (las PC de
- * contingencia corren el suyo y pueden estar atrasadas). Si el código viene,
- * manda el código.
+ * `inferredCodeForIndex` quedó SOLO como red para un backend viejo. Si el
+ * código viene, manda el código.
  */
 
 type FormulaDetermination = {

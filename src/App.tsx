@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { QueryClientProvider } from "@tanstack/react-query"
 import { queryClient } from "./lib/query-client"
 
-import ConfirmarEnvio from "./components/contingencia/confirmar-envio"
 import { AuthProvider } from "./contexts/auth-context"
 import { RouteChangeListener } from "./components/route-change-listener"
 import { TituloDePestana } from "./components/titulo-de-pestana"
@@ -37,7 +36,6 @@ const ProtocolValidationPage = paginaLazy("ProtocolValidationPage", () => import
 const FacturacionPage = paginaLazy("FacturacionPage", () => import("./components/facturacion/facturacion-page"))
 const SearchResultsPage = paginaLazy("SearchResultsPage", () => import("./components/search/search-results-page"))
 const SuperadminPage = paginaLazy("SuperadminPage", () => import("./components/superadmin/superadmin-page"))
-const ContingenciaPage = paginaLazy("ContingenciaPage", () => import("./components/contingencia/contingencia-page"))
 const LibroDiarioPage = paginaLazy("LibroDiarioPage", () => import("./components/caja/libro-diario-page"))
 
 // Skeleton mientras se descarga el chunk de cada ruta.
@@ -60,9 +58,6 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Una sola vez, arriba de todo: cualquier pantalla que mande un
-          informe lo puede levantar sin montar su propio diálogo. */}
-      <ConfirmarEnvio />
       <AuthProvider>
         <div className="min-h-screen bg-[#adadad] relative">
           <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
@@ -154,19 +149,6 @@ function App() {
                     }
                   >
                     <Route index element={<SuperadminPage />} />
-                  </Route>
-                  {/* Contingencia: la atiende el backend LOCAL de la PC. En el
-                      servidor la ruta existe igual y muestra un diario vacío,
-                      que es la respuesta correcta ahí. */}
-                  <Route
-                    path="/contingencia"
-                    element={
-                      <ProtectedRoute requiredPermission={PERMISSIONS.UPLOAD_CONTINGENCY.codename}>
-                        <Layout />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route index element={<ContingenciaPage />} />
                   </Route>
                   <Route
                     path="/ingreso"

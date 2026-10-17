@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { pedirInforme } from "@/components/contingencia/enviar-informe"
 import { seguirElWhatsApp } from "@/lib/seguimiento-de-whatsapp"
 import { useQueryClient } from "@tanstack/react-query"
 import {
@@ -540,8 +539,9 @@ export default function ProtocolosPage() {
     setIsBatchProcessing(true)
     try {
       const endpointAction: ReportAction = action === "print" ? "download" : action
-      const { res: response, cancelado, quedoEnCola } = await pedirInforme(
-        apiRequest, PROTOCOL_ENDPOINTS.MERGE_REPORT, {
+      const response = await apiRequest(PROTOCOL_ENDPOINTS.MERGE_REPORT, {
+        method: "POST",
+        body: {
           protocol_ids: ids,
           // A dónde: el paciente, su alternativo u otro destino. Ver `cuerpoDelDestino`.
           ...destino,
@@ -551,18 +551,8 @@ export default function ProtocolosPage() {
           ...(batchDate ? { protocol_date: batchDate } : {}),
           ...(batchTime ? { protocol_time: batchTime } : {}),
           ...getBatchSignaturePayload(),
-        })
-
-      // Un lote también puede quedar en cola: son los mismos envíos, muchos de
-      // una vez. Cancelar acá no deja nada esperando.
-      if (cancelado) {
-        toast.info("El envío se canceló.")
-        return
-      }
-      if (quedoEnCola) {
-        toast.success("Queda esperando: se manda solo cuando vuelva la conexión.")
-        return
-      }
+        },
+      })
 
       if (response.ok) {
         if (action === "print" || action === "download") {
@@ -625,9 +615,8 @@ export default function ProtocolosPage() {
 
   /**
    * La vista previa del lote: el mismo PDF que se imprimiría, pero sin marcar
-   * nada, igual que la del informe de un protocolo. No se lo manda por
-   * `pedirInforme`: mirar no es un envío, no tiene sentido dejarlo en cola.
-   * Tampoco limpia la selección: después de mirar, lo que sigue es sacarlo.
+   * nada, igual que la del informe de un protocolo. No limpia la selección:
+   * después de mirar, lo que sigue es sacarlo.
    */
   const handleBatchPreview = async () => {
     if (!canPrintReports) {
@@ -680,8 +669,9 @@ export default function ProtocolosPage() {
     setIsBatchProcessing(true)
     try {
       const endpointAction: ReportAction = action === "print" ? "download" : action
-      const { res: response, cancelado, quedoEnCola } = await pedirInforme(
-        apiRequest, PROTOCOL_ENDPOINTS.REPORT_BATCH, {
+      const response = await apiRequest(PROTOCOL_ENDPOINTS.REPORT_BATCH, {
+        method: "POST",
+        body: {
           protocol_ids: Array.from(selectedProtocols),
           // A dónde: cada paciente, el alternativo de cada uno, o todos a otro destino.
           ...destino,
@@ -691,18 +681,8 @@ export default function ProtocolosPage() {
           ...(batchDate ? { protocol_date: batchDate } : {}),
           ...(batchTime ? { protocol_time: batchTime } : {}),
           ...getBatchSignaturePayload(),
-        })
-
-      // Un lote también puede quedar en cola: son los mismos envíos, muchos de
-      // una vez. Cancelar acá no deja nada esperando.
-      if (cancelado) {
-        toast.info("El envío se canceló.")
-        return
-      }
-      if (quedoEnCola) {
-        toast.success("Queda esperando: se manda solo cuando vuelva la conexión.")
-        return
-      }
+        },
+      })
 
       if (response.ok) {
         if (action === "print" || action === "download") {
