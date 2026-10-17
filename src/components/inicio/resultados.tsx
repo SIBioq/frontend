@@ -83,7 +83,7 @@ export default function Resultados({ datos, posicion }: { datos: Inicio; posicio
         </span>
         Resultados
       </h2>
-      <p className="col-span-full -mt-1 mb-0 text-xs text-slate-500">
+      <p className="col-span-full -mt-1 mb-0 text-xs text-slate-800">
         Todo lo pendiente ahora, de cualquier fecha. La flecha compara con hace una semana a esta hora.
       </p>
       <Tarjeta

@@ -92,10 +92,14 @@ function SemanaPorSemana({
 }) {
   const completas = semanas.slice(0, SEMANAS)
   const actual = semanas[SEMANAS]
-  const valores = [...semanas.map((s) => s.total), ...completas.map((s) => s.anioAnterior)].filter((v) => v > 0)
-  const { bajo, alto, marcas } = escala(Math.min(...valores, actual.total), Math.max(...valores, 1))
+  // La escala sale de todo lo que se dibuja. Las semanas de este año entran
+  // aunque estén en cero (si no, una semana sin pacientes caía por debajo del
+  // gráfico, encima de lo que sigue); las del año anterior en cero no se
+  // dibujan, así que no cuentan.
+  const valores = [...semanas.map((s) => s.total), ...completas.map((s) => s.anioAnterior).filter((v) => v > 0)]
+  const { bajo, alto, marcas } = escala(Math.min(...valores), Math.max(...valores, 1))
   const ALTO = 180
-  const y = (v: number) => 8 + (1 - (v - bajo) / (alto - bajo)) * (ALTO - 16)
+  const y = (v: number) => 8 + (1 - (Math.min(alto, Math.max(bajo, v)) - bajo) / (alto - bajo)) * (ALTO - 16)
   const x = (i: number) => (i / SEMANAS) * 100
   const promedio = completas.reduce((a, s) => a + s.total, 0) / Math.max(1, completas.length)
 
@@ -127,8 +131,11 @@ function SemanaPorSemana({
     onElegir(Math.round(proporcion * SEMANAS))
   }
 
+  // El rótulo de la semana en curso va del lado contrario al de la última
+  // semana completa, que está pegada: si no, se pisan.
+  const actualMasAlta = y(actual.total) < y(completas[ultima].total)
   const rotulos = [
-    { i: mayor, texto: numero(completas[mayor].total), arriba: true, tono: "text-slate-900" },
+    { i: mayor, texto: numero(completas[mayor].total), arriba: !(mayor === ultima && actualMasAlta), tono: "text-slate-900" },
     ...(conFeriado && conFeriado.i !== mayor
       ? [{
           i: conFeriado.i,
@@ -138,7 +145,7 @@ function SemanaPorSemana({
         }]
       : []),
     ...(ultima !== mayor && ultima !== conFeriado?.i
-      ? [{ i: ultima, texto: numero(completas[ultima].total), arriba: true, tono: "text-slate-900" }]
+      ? [{ i: ultima, texto: numero(completas[ultima].total), arriba: !actualMasAlta, tono: "text-slate-900" }]
       : []),
   ]
 
@@ -163,7 +170,7 @@ function SemanaPorSemana({
         </ItemDeLeyenda>
       </Leyenda>
 
-      <div className="relative ml-8 mt-2" style={{ height: ALTO + 22 }}>
+      <div className="relative ml-8 mr-1.5 mt-2" style={{ height: ALTO + 22 }}>
         {/* Eje Y: las marcas, afuera a la izquierda. */}
         {marcas.map((m) => (
           <span
@@ -237,8 +244,9 @@ function SemanaPorSemana({
           />
           {rotulos.map((r) => {
             const punto = y(completas[r.i].total)
-            // Si abajo no entra (el punto está contra el piso), va arriba.
-            const arriba = r.arriba || punto + 22 > ALTO
+            // Si abajo no entra (el punto está contra el piso), va arriba; y
+            // si arriba no entra (contra el techo), abajo.
+            const arriba = r.arriba ? punto - 22 >= -14 : punto + 22 > ALTO
             // Contra los bordes no se centra: se cortaría.
             const corrimiento = r.i < 3 ? "translate-x-0" : r.i > SEMANAS - 4 ? "-translate-x-full" : "-translate-x-1/2"
             return (
@@ -253,7 +261,7 @@ function SemanaPorSemana({
           })}
           <span
             className="absolute -translate-x-full whitespace-nowrap bg-white/85 px-0.5 text-right text-[11px] font-semibold tabular-nums text-tema-pacientes"
-            style={{ left: "100%", top: Math.min(ALTO - 14, y(actual.total) + 8) }}
+            style={{ left: "100%", top: actualMasAlta ? Math.max(-14, y(actual.total) - 22) : Math.min(ALTO - 14, y(actual.total) + 8) }}
           >
             {numero(actual.total)} {esActual ? "a la fecha" : `hasta el ${referencia.getDate()}`}
           </span>
@@ -263,7 +271,7 @@ function SemanaPorSemana({
           i % 4 === 0 || i === SEMANAS ? (
             <span
               key={iso(s.lunes)}
-              className={`absolute -translate-x-1/2 text-[11px] text-slate-500 ${i % 8 === 4 || i === SEMANAS - 2 ? "@max-[600px]:hidden" : ""}`}
+              className={`absolute ${i === SEMANAS ? "-translate-x-full" : "-translate-x-1/2"} whitespace-nowrap text-[11px] text-slate-500 ${i % 8 === 4 || i === SEMANAS - 2 ? "@max-[600px]:hidden" : ""}`}
               style={{ left: `${x(i)}%`, top: ALTO + 4 }}
             >
               {i === SEMANAS && esActual ? "esta" : diaYMes(s.lunes)}
@@ -345,7 +353,7 @@ function SemanaElegida({
         <div className="flex min-w-0 flex-1 items-end gap-[3%]">
           {dias.map((x, i) => (
             <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
-              <span className={`text-xs font-semibold tabular-nums ${x.valor === null ? "font-normal text-slate-300" : x.esHoy ? "text-tema-pacientes" : "text-slate-900"}`}>
+              <span className={`text-xs font-semibold tabular-nums ${x.valor === null ? "font-normal text-slate-400" : x.esHoy ? "text-tema-pacientes" : "text-slate-900"}`}>
                 {x.valor === null ? "–" : numero(x.valor)}
               </span>
               <span
@@ -381,7 +389,7 @@ function SemanaElegida({
               </span>
               <span
                 className={`text-center text-[11px] leading-tight ${
-                  x.esHoy ? "font-semibold text-tema-pacientes" : x.feriado ? "text-tema-papeles" : x.valor === null ? "text-slate-400" : "text-slate-500"
+                  x.esHoy ? "font-semibold text-tema-pacientes" : x.feriado ? "text-tema-papeles" : x.valor === null ? "text-slate-500" : "text-slate-600"
                 }`}
               >
                 {x.esHoy ? "Hoy" : DIAS_CORTOS[i]}
