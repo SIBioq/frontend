@@ -113,9 +113,13 @@ Lo que se vio en producción y cómo se corrigió (rama `fix/inicio-en-produccio
   operativo del laboratorio» en tres renglones.
 - **Poco contraste.** Las tarjetas eran blancas al 70 % sobre el fondo gris
   de la app (`#adadad`, con la marca de agua), así que se veían grises.
-  Ahora son blancas opacas. Los títulos de grupo y la bajada de Resultados,
-  que van directo sobre el gris, pasan a casi negro. Los días futuros pasan
-  de `slate-400` a `slate-500`.
+  Ahora son blancas opacas. Los títulos de grupo, que van directo sobre el
+  gris, pasan a casi negro. Los días futuros pasan de `slate-400` a
+  `slate-500`.
+- **Resultados quedaba suelto sobre el gris y con tarjetas de distinto alto.**
+  Ahora va en su propio bloque, como el resto. Las tres tarjetas miden lo
+  mismo: la cifra tiene el mismo tamaño en las tres, y la comparación con
+  hace una semana queda siempre al pie.
 - **En el celular, la barra mostraba el nombre al lado del avatar.** Va sólo
   el avatar; el nombre está adentro del menú.
 
