@@ -2,6 +2,7 @@
 
 | Documento | Tema |
 |---|---|
+| [2026-10-17-sin-contingencia.md](2026-10-17-sin-contingencia.md) | Fuera la pantalla `/contingencia`, el permiso, el diálogo de envío en cola y la API inyectada por la app de escritorio |
 | [2026-10-17-inicio-propuesto.md](2026-10-17-inicio-propuesto.md) | Inicio nuevo en un solo pedido, enlaces que abren listas filtradas y barra de navegación de tres formas |
 | [2026-10-15-vista-previa-en-celulares.md](2026-10-15-vista-previa-en-celulares.md) | Vista previa del informe: abrir la ventana en el toque (Safari) y páginas como imágenes en celulares |
 | [2026-10-13-anonimos-lugares-refresco-y-busqueda.md](2026-10-13-anonimos-lugares-refresco-y-busqueda.md) | Anónimos en el listado, pacientes por lugar en el inicio, listados que se refrescan tras cada cambio y buscador de protocolos por número |

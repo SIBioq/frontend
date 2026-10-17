@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-import { pedirInforme } from "@/components/contingencia/enviar-informe"
 import { useState, useCallback, useEffect, useRef } from "react"
 import { Card, CardContent } from "../../ui/card"
 import { Skeleton } from "../../ui/skeleton"
@@ -367,18 +366,9 @@ export function ProtocolCard({
     return false
   }
 
-  const executeSingleReportRequest = async (action: ReportAction) => {
-    const { res } = await pedirEnvio(action)
-    return res
-  }
+  const executeSingleReportRequest = (action: ReportAction) => pedirEnvio(action)
 
-  /**
-   * Igual que arriba, pero contando si la persona canceló.
-   *
-   * Un envío que no puede salir porque el servidor está caído se le pregunta a
-   * quien apretó el botón, que es quien sabe si lo quiere mandar. Cancelar no
-   * deja nada esperando.
-   */
+  /** Pide el informe, con el destino elegido al mandar si no es el del paciente. */
   const pedirEnvio = async (action: ReportAction, destino: Record<string, string> = {}) => {
     const reportRequest = getReportRequestOptions()
     const reportPayload = (reportRequest.body ?? {}) as Record<string, unknown>
@@ -386,12 +376,15 @@ export function ProtocolCard({
     // `mark_as_sent` no se manda nunca: el servidor entrega por defecto, que es
     // lo que hace bajar o imprimir el informe. Mirarlo sin entregarlo es la
     // vista previa (`action: "preview"`), que no marca nada.
-    return pedirInforme(apiRequest, PROTOCOL_ENDPOINTS.REPORT(protocol.id), {
-      action,
-      type: reportType,
-      ...reportPayload,
-      // El email o el número elegido al mandar, si no es el del paciente.
-      ...destino,
+    return apiRequest(PROTOCOL_ENDPOINTS.REPORT(protocol.id), {
+      method: "POST",
+      body: {
+        action,
+        type: reportType,
+        ...reportPayload,
+        // El email o el número elegido al mandar, si no es el del paciente.
+        ...destino,
+      },
     })
   }
 
@@ -839,20 +832,7 @@ export function ProtocolCard({
     if (!ensureCanPrintReports()) return
     setIsSendingEmail(true)
     try {
-      const { res: response, cancelado, quedoEnCola } = await pedirEnvio("email", destino)
-
-      // Canceló: no pasó nada y eso no es una falla. Se cierra y listo.
-      if (cancelado) {
-        setReportDialogOpen(false)
-        return
-      }
-
-      if (quedoEnCola) {
-        toast.success("Queda esperando: se manda solo cuando vuelva la conexión.",
-                      { duration: TOAST_DURATION })
-        setReportDialogOpen(false)
-        return
-      }
+      const response = await pedirEnvio("email", destino)
 
       if (response.ok) {
         const data = await response.json()
@@ -880,20 +860,7 @@ export function ProtocolCard({
     if (!ensureCanPrintReports()) return
     setIsSendingWhatsApp(true)
     try {
-      const { res: response, cancelado, quedoEnCola } = await pedirEnvio("whatsapp", destino)
-
-      // Canceló: no pasó nada y eso no es una falla. Se cierra y listo.
-      if (cancelado) {
-        setReportDialogOpen(false)
-        return
-      }
-
-      if (quedoEnCola) {
-        toast.success("Queda esperando: se manda solo cuando vuelva la conexión.",
-                      { duration: TOAST_DURATION })
-        setReportDialogOpen(false)
-        return
-      }
+      const response = await pedirEnvio("whatsapp", destino)
 
       if (response.ok) {
         const data = await response.json()
