@@ -53,6 +53,58 @@
   --font-matematica: "STIX Two Text", "STIX Two Math", Cambria, Georgia, serif;
 }
 
+/* LA PALETA DEL INICIO, POR TEMA.
+   Cada tema usa su color en tres lugares: el cuadrito del ícono (`-suave` de
+   fondo), la franja de arriba de la tarjeta y sus gráficos. Un color es de un
+   solo tema: el turquesa de la caja no es el verde de "mejoró". Rojo y verde
+   quedan sólo para las diferencias (`--color-diferencia-*`), y el ámbar para
+   "mirá esto, tiene una explicación" (feriado, una obra social que bajó, los
+   completados sin papel). Los estados de los protocolos siguen saliendo de
+   `lib/status-styles.ts`. Son utilidades de Tailwind: `border-t-tema-plata`,
+   `bg-tema-papeles-suave`, `fill-tema-pacientes`… */
+@theme {
+  --color-tema-pacientes: #204983;
+  --color-tema-pacientes-suave: #eef3fa;
+  --color-tema-pacientes-claro: #4a6fa8;
+  --color-tema-plata: #0f766e;
+  --color-tema-plata-suave: #f0fdfa;
+  --color-tema-efectivo: #0d9488;
+  --color-tema-transferencia: #99f6e4;
+  --color-tema-papeles: #b45309;
+  --color-tema-papeles-suave: #fffbeb;
+  --color-tema-obras: #6d28d9;
+  --color-tema-obras-barra: #7c3aed;
+  --color-tema-obras-otras: #c4b5fd;
+  --color-tema-obras-suave: #f5f3ff;
+  --color-tema-tiempos: #4338ca;
+  --color-tema-tiempos-suave: #eef2ff;
+  --color-tema-urgente: #be123c;
+  --color-tema-urgente-suave: #fff1f2;
+  --color-diferencia-peor: #b91c1c;
+  --color-diferencia-mejor: #047857;
+  --color-diferencia-neutra: #475569;
+  --color-feriado: #f59e0b;
+}
+
+/* LO NUEVO DEL INICIO, SÓLO AL ENTRAR.
+   Las barras crecen desde la base (500 ms, 15 ms entre una y otra, que pone
+   cada barra con su `animation-delay`) y la línea de las 26 semanas se dibuja
+   (700 ms). Al actualizar los datos los elementos son los mismos y la
+   animación no se repite: cambian en el lugar. Con "reducir movimiento" no
+   se anima nada. */
+@keyframes inicio-crecer-alto { from { transform: scaleY(0) } }
+@keyframes inicio-crecer-ancho { from { transform: scaleX(0) } }
+/* La línea se "dibuja" destapándose de izquierda a derecha y no con
+   `stroke-dasharray`: con `vector-effect: non-scaling-stroke` (para que el
+   trazo no se deforme al estirar el SVG) el largo del guion deja de coincidir
+   con el de la línea y quedaba cortada. */
+@keyframes inicio-dibujar { from { clip-path: inset(0 100% 0 0) } to { clip-path: inset(0 0 0 0) } }
+@media (prefers-reduced-motion: no-preference) {
+  .inicio-crece-alto { transform-origin: bottom; animation: inicio-crecer-alto 500ms ease-out both }
+  .inicio-crece-ancho { transform-origin: left; animation: inicio-crecer-ancho 500ms ease-out both }
+  .inicio-se-dibuja { animation: inicio-dibujar 700ms ease-out both }
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);

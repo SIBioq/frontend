@@ -42,7 +42,7 @@ import { comoFechaCorta, hoy } from "@/lib/dias"
 import { guardarOrdenDeLaLista } from "@/hooks/use-protocol-list-nav"
 import { useInfiniteScroll } from "../../hooks/use-infinite-scroll"
 import { useDebounce } from "../../hooks/use-debounce"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 import { PROTOCOL_ENDPOINTS, ANALYTICS_ENDPOINTS, REPORTING_ENDPOINTS, TOAST_DURATION } from "@/config/api"
 import type { ProtocolListItem, ReportSignature } from "@/types"
@@ -64,6 +64,16 @@ interface ProtocolsByStatusResponse {
 }
 
 const STATUS_FILTER_KEY = "labsalud_protocol_status_filters"
+
+// LOS FILTROS QUE TRAE UN ENLACE.
+// El inicio abre la lista ya filtrada («Ver →» en Información faltante, en los
+// urgentes, en los impresos con pago incompleto). Un enlace así define el
+// filtro entero: lo que no trae vuelve a "todos", porque si quedara puesto un
+// filtro guardado de antes la lista no coincidiría con el número que se tocó.
+const FILTROS_DE_LA_URL = ["status", "exclude_status", "is_printed", "payment_status", "urgente", "falta_papel"]
+const idsDeLaUrl = (valor: string | null) =>
+  (valor ?? "").split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0)
+const siDeLaUrl = (valor: string | null) => valor === "1" || valor === "true"
 const HIDDEN_PROTOCOL_STATUS_NAMES = new Set(["pendiente de facturacion", "facturado"])
 type ReportAction = "download" | "email" | "whatsapp"
 type MergeReportAction = "print" | ReportAction
@@ -103,7 +113,12 @@ export default function ProtocolosPage() {
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState("")
   type StatusFilterState = { include: number[]; exclude: number[] }
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [vieneDeUnEnlace] = useState(() => FILTROS_DE_LA_URL.some((clave) => searchParams.has(clave)))
   const [statusFilter, setStatusFilter] = useState<StatusFilterState>(() => {
+    if (vieneDeUnEnlace) {
+      return { include: idsDeLaUrl(searchParams.get("status")), exclude: idsDeLaUrl(searchParams.get("exclude_status")) }
+    }
     try {
       const saved = localStorage.getItem(STATUS_FILTER_KEY)
       if (!saved) return { include: [], exclude: [] }
@@ -121,6 +136,22 @@ export default function ProtocolosPage() {
   })
   const [isPrintedFilter, setIsPrintedFilter] = usePersistedState<string>("labsalud_protocols_printed_filter", "all")
   const [paymentStatusFilter, setPaymentStatusFilter] = usePersistedState<string>("labsalud_protocols_payment_filter", "all")
+  // Sólo llegan por enlace y no se guardan: son una vista del inicio, no un
+  // filtro que alguien armó. Se ven como un chip que se saca con la cruz.
+  const [soloUrgentes, setSoloUrgentes] = useState(() => siDeLaUrl(searchParams.get("urgente")))
+  const [faltaPapel, setFaltaPapel] = useState(() => siDeLaUrl(searchParams.get("falta_papel")))
+
+  useEffect(() => {
+    if (!vieneDeUnEnlace) return
+    const impreso = searchParams.get("is_printed")
+    const pago = searchParams.get("payment_status")
+    setIsPrintedFilter(impreso === "true" || impreso === "false" ? impreso : "all")
+    setPaymentStatusFilter(pago && /^\d+$/.test(pago) ? pago : "all")
+    // La URL vuelve a quedar limpia: recargar no tiene que volver a pisar lo
+    // que la persona cambie después.
+    setSearchParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [sort, setSort] = useState<SortState>(null)
 
   // Selección batch (el checkbox está siempre visible; el modo se infiere de la selección)
@@ -248,6 +279,9 @@ export default function ProtocolosPage() {
         params.append("payment_status", paymentStatusFilter)
       }
 
+      if (soloUrgentes) params.append("urgente", "true")
+      if (faltaPapel) params.append("falta_papel", "true")
+
       // El corte del día lo hace el backend en la zona del laboratorio. Traer
       // todo y filtrar acá sería pedir miles de filas para tirarlas.
       if (fechaDesde && fechaHasta && fechaDesde === fechaHasta) {
@@ -259,7 +293,18 @@ export default function ProtocolosPage() {
 
       return `${PROTOCOL_ENDPOINTS.PROTOCOLS}?${params.toString()}`
     },
-    [debouncedSearchTerm, buscando, statusFilter, isPrintedFilter, paymentStatusFilter, sort, fechaDesde, fechaHasta],
+    [
+      debouncedSearchTerm,
+      buscando,
+      statusFilter,
+      isPrintedFilter,
+      paymentStatusFilter,
+      soloUrgentes,
+      faltaPapel,
+      sort,
+      fechaDesde,
+      fechaHasta,
+    ],
   )
 
   // queryKey estable por combinación de filtros: cachea cada vista (ej. volver
@@ -275,6 +320,8 @@ export default function ProtocolosPage() {
     buscando ? "" : statusFilter.exclude.slice().sort((a, b) => a - b).join(","),
     buscando ? "all" : isPrintedFilter,
     buscando ? "all" : paymentStatusFilter,
+    !buscando && soloUrgentes ? "urgentes" : "",
+    !buscando && faltaPapel ? "falta-papel" : "",
     sort ? `${sort.dir}:${sort.field}` : "",
     buscando ? "" : fechaDesde,
     buscando ? "" : fechaHasta,
@@ -993,10 +1040,45 @@ export default function ProtocolosPage() {
             )}
         </div>
 
+        {(soloUrgentes || faltaPapel) && (
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            {soloUrgentes && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSoloUrgentes(false)}
+                title="Sacar este filtro"
+                className="h-8 rounded-full border-rose-300 bg-rose-50 px-3 text-xs text-rose-800 hover:bg-rose-100"
+              >
+                Urgentes sin cerrar
+                <X className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            )}
+            {faltaPapel && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFaltaPapel(false)}
+                title="Sacar este filtro"
+                className="h-8 rounded-full border-amber-300 bg-amber-50 px-3 text-xs text-amber-900 hover:bg-amber-100"
+              >
+                Les falta un papel de obra social · últimos 90 días
+                <X className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+        )}
+
         {/* Los filtros siguen marcados arriba: sin este aviso parecería que la
             lista está filtrada y no lo está. */}
         {buscando &&
-          (hasAnyStatusFilter || isPrintedFilter !== "all" || paymentStatusFilter !== "all" || fechaDesde || fechaHasta) && (
+          (hasAnyStatusFilter ||
+            isPrintedFilter !== "all" ||
+            paymentStatusFilter !== "all" ||
+            soloUrgentes ||
+            faltaPapel ||
+            fechaDesde ||
+            fechaHasta) && (
             <p className="mt-3 text-sm text-gray-500">
               Buscando en todos los protocolos: los filtros no se aplican mientras haya una búsqueda.
             </p>

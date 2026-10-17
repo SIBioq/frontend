@@ -8,9 +8,17 @@ import { useSessionNotifications } from "@/hooks/use-session-notifications"
 interface SessionNotificationToggleProps {
   onDone?: () => void
   className?: string
+  style?: React.CSSProperties
+  /** Dentro del menú de usuario: es un ítem más y las flechas pasan por él. */
+  itemDeMenu?: boolean
 }
 
-export const SessionNotificationToggle: React.FC<SessionNotificationToggleProps> = ({ onDone, className = "" }) => {
+export const SessionNotificationToggle: React.FC<SessionNotificationToggleProps> = ({
+  onDone,
+  className = "",
+  style,
+  itemDeMenu = false,
+}) => {
   const { permission, enabled, isSupported, requestPermission, disableNotifications } = useSessionNotifications()
 
   if (!isSupported) {
@@ -46,6 +54,9 @@ export const SessionNotificationToggle: React.FC<SessionNotificationToggleProps>
   return (
     <button
       type="button"
+      role={itemDeMenu ? "menuitem" : undefined}
+      data-item={itemDeMenu ? "" : undefined}
+      style={style}
       onClick={handleClick}
       disabled={isBlocked}
       className={`w-full text-left px-4 py-3 text-sm flex items-center space-x-2 transition-colors duration-150 ${
