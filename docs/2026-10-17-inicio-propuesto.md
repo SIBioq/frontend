@@ -98,6 +98,27 @@ de abierto/cerrado en el menú del usuario.
   desde el menú nuevo y un mes cerrado con su aviso.
 - Cada enlace abre una lista con la misma cantidad que la cifra del inicio.
 
+## Arreglos después del primer despliegue
+
+Lo que se vio en producción y cómo se corrigió (rama `fix/inicio-en-produccion`):
+
+- **El gráfico «Semana por semana» se salía de su tarjeta.** La escala del eje
+  dejaba afuera las semanas en cero. Con semanas parejas (por ejemplo, entre
+  400 y 600) el eje arrancaba en 400, y una semana sin pacientes se dibujaba
+  por debajo del gráfico, encima de lo que sigue. Ahora la escala sale de todo
+  lo que se dibuja y cada punto queda dentro del rango.
+- **Textos que se pisaban o se salían.** El rótulo de la semana en curso va
+  del lado contrario al de la última semana completa. La fecha «esta» del
+  eje se alinea a la derecha, y el encabezado ya no aprieta «Resumen
+  operativo del laboratorio» en tres renglones.
+- **Poco contraste.** Las tarjetas eran blancas al 70 % sobre el fondo gris
+  de la app (`#adadad`, con la marca de agua), así que se veían grises.
+  Ahora son blancas opacas. Los títulos de grupo y la bajada de Resultados,
+  que van directo sobre el gris, pasan a casi negro. Los días futuros pasan
+  de `slate-400` a `slate-500`.
+- **En el celular, la barra mostraba el nombre al lado del avatar.** Va sólo
+  el avatar; el nombre está adentro del menú.
+
 ## Pendiente
 
 - Las comparaciones «contra hace una semana» de papeles, plata y facturación

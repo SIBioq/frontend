@@ -173,7 +173,7 @@ export function Bloque({
   return (
     <section
       style={retraso(posicion)}
-      className={`flex min-w-0 flex-col gap-3 rounded-lg border border-t-[3px] border-slate-200 ${FRANJA[tema]} bg-white/70 p-4 shadow-sm backdrop-blur-sm sm:p-5 ${ENTRADA_ABAJO} ${className}`}
+      className={`flex min-w-0 flex-col gap-3 rounded-lg border border-t-[3px] border-slate-200 ${FRANJA[tema]} bg-white p-4 shadow-sm sm:p-5 ${ENTRADA_ABAJO} ${className}`}
     >
       {children}
     </section>
@@ -185,7 +185,7 @@ export function Grupo({ children, posicion }: { children: ReactNode; posicion: n
   return (
     <p
       style={retraso(posicion)}
-      className={`-mb-2 mt-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-slate-600 ${ENTRADA_ABAJO}`}
+      className={`-mb-2 mt-1.5 text-xs font-semibold uppercase tracking-[0.06em] text-slate-900 ${ENTRADA_ABAJO}`}
     >
       {children}
     </p>

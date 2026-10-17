@@ -146,10 +146,10 @@ export default function Home() {
     <div className="flex w-full flex-col gap-5 py-5 @container">
       <section
         style={retraso(0)}
-        className={`rounded-lg border border-slate-200 bg-white/70 p-4 shadow-sm backdrop-blur-sm sm:p-5 ${ENTRADA_ARRIBA}`}
+        className={`rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 ${ENTRADA_ARRIBA}`}
       >
         <div className="flex flex-col gap-3 @min-[960px]:flex-row @min-[960px]:items-center @min-[960px]:justify-between">
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 flex-shrink-0 items-center gap-3">
             <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md bg-[#204983] text-white">
               <FlaskConical className="h-5 w-5" aria-hidden="true" />
             </div>
@@ -160,7 +160,7 @@ export default function Home() {
               <p className="text-sm text-slate-500">Resumen operativo del laboratorio</p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 @min-[960px]:justify-end">
             <div className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white p-1">
               <button
                 type="button"

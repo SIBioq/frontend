@@ -75,16 +75,17 @@ export const BotonDeUsuario = forwardRef<HTMLButtonElement, BotonDeUsuarioProps>
       aria-label={`Menú de ${nombreVisible(user)}`}
       className={`flex h-10 min-w-0 flex-shrink items-center rounded-[10px] text-sm font-medium text-gray-700 transition-colors duration-150 hover:bg-slate-100 ${
         abierto ? "bg-slate-100" : ""
-      } ${celular ? "max-w-full gap-1.5 pl-0 pr-1.5" : "gap-2 pl-1 pr-2.5"}`}
+      } ${celular ? "w-10 flex-shrink-0 justify-center" : "gap-2 pl-1 pr-2.5"}`}
     >
       <Avatar user={user} />
-      <span
-        className={`overflow-hidden text-ellipsis whitespace-nowrap ${
-          paraMedir ? "w-10" : celular ? "min-w-0" : "min-w-10 max-w-[120px]"
-        }`}
-      >
-        {nombreVisible(user)}
-      </span>
+      {/* En el celular va sólo el avatar: el nombre está adentro del menú. */}
+      {celular ? null : (
+        <span
+          className={`overflow-hidden text-ellipsis whitespace-nowrap ${paraMedir ? "w-10" : "min-w-10 max-w-[120px]"}`}
+        >
+          {nombreVisible(user)}
+        </span>
+      )}
     </button>
   )
 })

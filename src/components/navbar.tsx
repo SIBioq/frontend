@@ -28,7 +28,7 @@ const LOGO_HOVER_GRACE_MS = 250
  * - `completa`: una sola fila, tres accesos a cada lado del logo.
  * - `dos-pisos`: el logo y el usuario arriba; los seis accesos en una segunda
  *   fila, repartidos a los dos lados del eje del logo.
- * - `celular`: el menú ☰, con el nombre al lado del avatar.
+ * - `celular`: el menú ☰ y el avatar solo; el nombre va adentro del menú.
  *
  * No hay cortes fijos: la barra se mide (con una copia invisible, el nombre
  * del usuario en su mínimo) y elige la más completa que entra. Así se resuelve
