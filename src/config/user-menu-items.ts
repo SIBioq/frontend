@@ -1,17 +1,16 @@
 // ============================================================================
 // USER MENU ITEMS - Fuente única de los items del menú de usuario
 // ============================================================================
-// El menú de usuario se renderiza dos veces con estilos distintos: el dropdown
-// de desktop (user-dropdown.tsx) y el panel de mobile (navbar.tsx). Antes cada
-// uno tenía su propia copia del listado, y agregar un item en uno solo (pasó
-// con "Superconfiguración") lo dejaba invisible en el otro.
+// El menú de usuario (user-dropdown.tsx) se dibuja igual en los tres estados
+// de la barra; sólo cambia el alto de los ítems en el celular. Antes había dos
+// copias del listado, y agregar un item en una sola (pasó con
+// "Superconfiguración") lo dejaba invisible en la otra.
 //
 // Acá vive el QUÉ (ruta, etiqueta, ícono, cuándo se muestra); el CÓMO se ve lo
-// sigue decidiendo cada menú. Para sumar un item, agregalo a USER_MENU_ITEMS y
-// aparece en los dos.
+// decide el menú.
 
 import type { LucideIcon } from "lucide-react"
-import { BookOpen, CloudUpload, Receipt, Settings, Shield, ShieldAlert, UserCircle } from "lucide-react"
+import { CloudUpload, Receipt, Settings, Shield, ShieldAlert, UserCircle } from "lucide-react"
 import { PERMISSIONS } from "@/config/permissions"
 import type { User } from "@/types"
 
@@ -32,39 +31,34 @@ export interface UserMenuItem {
   isVisible?: (context: UserMenuContext) => boolean
 }
 
+// En el orden del menú: lo de cada uno (perfil, configuración) primero, y
+// después lo que depende del rol. Libro diario no está: pasó a la barra.
 export const USER_MENU_ITEMS: readonly UserMenuItem[] = [
   {
     id: "profile",
     to: "/profile",
-    label: "Mi Perfil",
+    label: "Mi perfil",
     icon: UserCircle,
+  },
+  {
+    id: "configuracion",
+    to: "/configuracion",
+    label: "Configuración",
+    icon: Settings,
   },
   {
     id: "management",
     to: "/management",
-    label: "Gestion de Usuarios",
+    label: "Gestión de usuarios",
     icon: Shield,
     isVisible: ({ hasPermission }) => hasPermission(PERMISSIONS.MANAGE_USERS.codename),
   },
   {
     id: "facturacion",
     to: "/facturacion",
-    label: "Facturacion",
+    label: "Facturación",
     icon: Receipt,
     isVisible: ({ hasPermission }) => hasPermission(PERMISSIONS.MANAGE_BILLING.codename),
-  },
-  {
-    id: "libro-diario",
-    to: "/libro-diario",
-    label: "Libro diario",
-    icon: BookOpen,
-    isVisible: ({ hasPermission }) => hasPermission(PERMISSIONS.MANAGE_LEDGER.codename),
-  },
-  {
-    id: "configuracion",
-    to: "/configuracion",
-    label: "Configuracion",
-    icon: Settings,
   },
   {
     id: "contingencia",
@@ -79,7 +73,7 @@ export const USER_MENU_ITEMS: readonly UserMenuItem[] = [
   {
     id: "superconfiguracion",
     to: "/superconfiguracion",
-    label: "Superconfiguracion",
+    label: "Superconfiguración",
     icon: ShieldAlert,
     // Superconfiguración es exclusiva de superusuarios: no se resuelve con un
     // permiso para que no se pueda habilitar por accidente desde un rol.

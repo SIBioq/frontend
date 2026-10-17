@@ -44,8 +44,12 @@ export type FormaDeLaNavbar = {
 
 const CLAVE_DE_LA_FORMA = "labsalud:forma-de-la-navbar"
 
-/** El breakpoint `lg` de Tailwind, donde la navbar cambia de forma. */
-const ANCHO_DE_ESCRITORIO = 1024
+/**
+ * Desde dónde la barra deja de ser la del celular, con la letra de siempre.
+ * Es sólo la estimación para cuando nadie la midió todavía: la barra elige su
+ * forma midiéndose (ver `navbar.tsx`) y publica la medida real.
+ */
+const ANCHO_DE_ESCRITORIO = 791
 
 /** Cuánto tarda el menú de usuario en cerrarse. Es su propia transición. */
 export const MS_DEL_MENU = 200
@@ -62,16 +66,16 @@ export function anchoDeLaVentana(): number {
 
 /**
  * Lo que mediría la barra si nadie la midió todavía. Sale de `navbar.tsx`:
- * en escritorio deja 32px a cada lado —16 del `lg:px-4` de su wrapper más 16
- * del `mx-4` de la barra—, mide 68 de alto (36 del logo `h-9` más 16+16 del
- * `py-4`) y redondea 25px; en mobile va de borde a borde, mide 56 (32 del
- * avatar más 12+12 del `py-3`) y redondea 8px (`rounded-b-lg`).
+ * fuera del celular deja 32px a cada lado —16 del `px-4` de su wrapper más 16
+ * del `mx-4` de la barra—, mide 72 de alto en una fila (40 del botón de
+ * usuario más 16+16 del `py-4`) y redondea 25px; en el celular va de borde a
+ * borde, mide 64 (40 del botón más 12+12 del `py-3`) y redondea 8px.
  */
 export function formaEstimadaDeLaNavbar(): FormaDeLaNavbar {
   const ventana = anchoDeLaVentana()
   return ventana >= ANCHO_DE_ESCRITORIO
-    ? { ancho: ventana - 64, alto: 68, radio: 25 }
-    : { ancho: ventana, alto: 56, radio: 8 }
+    ? { ancho: ventana - 64, alto: 72, radio: 25 }
+    : { ancho: ventana, alto: 64, radio: 8 }
 }
 
 /** La navbar publica su tamaño real cada vez que cambia. */

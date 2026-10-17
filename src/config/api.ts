@@ -277,6 +277,12 @@ export const ANALYTICS_ENDPOINTS = {
     buildApiUrl(`/analytics/dashboard/historico/?alcance=${alcance}`),
   // Cuánta plata hay dando vueltas, en las dos direcciones.
   PENDIENTE: buildApiUrl("/analytics/dashboard/pendiente/"),
+  // Todo el inicio en un pedido: cada número con su comparación justa. Ver
+  // `analytics/inicio.py` en el backend. `alcance`: mes-anterior, 3, 6 o 12.
+  INICIO: (anio: number, mes: number, alcance: string) =>
+    buildApiUrl(
+      `/analytics/dashboard/inicio/?mes=${anio}-${String(mes).padStart(2, "0")}&alcance=${alcance}`,
+    ),
   LIBRO_DIARIO: buildApiUrl("/analytics/dashboard/libro-diario/"),
 } as const
 

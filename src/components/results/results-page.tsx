@@ -1,7 +1,7 @@
 "use client"
 
-import { useCallback, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useCallback, useEffect, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { Search, X, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -43,6 +43,19 @@ export default function ResultadosPage() {
     exclude: [],
   })
   const statusFilter = normalizeStatusFilter(rawStatusFilter)
+
+  // El inicio abre esta lista ya filtrada («Ver los 12 protocolos →»): el
+  // estado que trae la URL reemplaza al guardado, y la URL vuelve a quedar
+  // limpia para que recargar no pise lo que la persona cambie después.
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (!searchParams.has("status") && !searchParams.has("exclude_status")) return
+    const ids = (clave: string) =>
+      (searchParams.get(clave) ?? "").split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0)
+    setStatusFilter({ include: ids("status"), exclude: ids("exclude_status") })
+    setSearchParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [sort, setSort] = useState<SortState>(null)
 
   // Cantidad de protocolos por estado, para las chips (mismo dato que Protocolos).
