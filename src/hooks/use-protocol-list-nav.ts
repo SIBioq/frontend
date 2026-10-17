@@ -98,11 +98,9 @@ export function useProtocolListNav(currentId: number): { prevId: number | null; 
  * La URL de la página siguiente, pero apuntando a la API con la que se está
  * hablando ahora.
  *
- * El `next` que manda DRF viene con el host del servidor que respondió. En la
- * PC de contingencia la API se cambia en tiempo de ejecución, así que usarlo
- * tal cual mandaría el pedido a producción justo cuando se está trabajando
- * contra la copia local — o sea, cuando producción no está. De esa URL sirve el
- * camino y los parámetros; el host lo pone la app.
+ * El `next` que manda DRF viene con el host con el que el servidor se ve a sí
+ * mismo, que detrás de un proxy no tiene por qué ser el que usa la app. De esa
+ * URL sirve el camino y los parámetros; el host lo pone la app.
  */
 function mismaApi(next: string | null): string | null {
   if (!next) return null

@@ -71,8 +71,7 @@ export async function seguirElWhatsApp(
   wamid: string | null | undefined,
   opciones: SeguimientoDeWhatsApp = {},
 ): Promise<void> {
-  // Sin wamid no hay nada que seguir: pasa con los envíos que quedaron en cola
-  // de contingencia, que todavía no llegaron a Meta.
+  // Sin wamid no hay nada que seguir: Meta no confirmó el envío.
   if (!wamid || enSeguimiento.has(wamid)) return
   enSeguimiento.add(wamid)
 

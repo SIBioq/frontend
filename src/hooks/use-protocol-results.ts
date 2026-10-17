@@ -435,7 +435,7 @@ export function useProtocolResults(protocolId: number) {
             dependientes?: DependienteAVaciar[]
           }
           if (res.status === 409 && err.requires_confirmation) {
-            // Un backend viejo —una PC de contingencia atrasada— no manda la
+            // Un backend viejo no manda la
             // clave: el diálogo pregunta igual, sin la lista.
             const dependientes = Array.isArray(err.dependientes) ? err.dependientes : []
             return { ok: false, requiereConfirmacion: true, dependientes }

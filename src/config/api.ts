@@ -3,25 +3,9 @@
  * Based on Django REST Framework backend documentation
  */
 
-/**
- * API contra la que se habla, resuelta en tiempo de EJECUCIÓN.
- *
- * La app de escritorio de la PC de contingencia sirve este mismo frontend
- * compilado desde el disco de esa máquina, y necesita cambiar la API sin
- * recompilar: producción mientras el servidor responde, la copia local de esa
- * PC cuando se cayó. Como `VITE_API_BASE_URL` queda horneada en el build, la
- * app inyecta `__LABSALUD_API_BASE__` antes de que arranque la página.
- *
- * En el navegador esa variable no existe y todo funciona igual que siempre.
- */
-const apiBaseInyectada =
-  typeof window !== "undefined"
-    ? (window as unknown as { __LABSALUD_API_BASE__?: string }).__LABSALUD_API_BASE__
-    : undefined
-
 // Base configuration
 export const API_CONFIG = {
-  BASE_URL: apiBaseInyectada || import.meta.env.VITE_API_BASE_URL || "http://192.168.1.88:8001",
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || "http://192.168.1.88:8001",
   API_VERSION: "v1",
   TIMEOUT: 300000,
 } as const
@@ -212,26 +196,6 @@ export const SUPERADMIN_ENDPOINTS = {
     buildApiUrl(`/superadmin/requests/?${new URLSearchParams(params).toString()}`),
   BLOCKS: (all: boolean) => buildApiUrl(`/superadmin/blocks/${all ? "?all=true" : ""}`),
   RELEASE_BLOCK: (id: number) => buildApiUrl(`/superadmin/blocks/${id}/release/`),
-} as const
-
-// Contingencia: lo que quedó anotado en la PC mientras el servidor estuvo
-// caído. Estos endpoints los atiende el backend LOCAL de la PC, no el servidor
-// central — en el servidor existen igual y contestan un diario vacío, que es la
-// respuesta correcta ahí.
-export const CONTINGENCY_ENDPOINTS = {
-  DIARIO: (estado?: string) =>
-    buildApiUrl(`/sync/contingencia/${estado ? `?estado=${encodeURIComponent(estado)}` : ""}`),
-  OPERACION: (id: number, accion: "reintentar" | "descartar" | "confirmar") =>
-    buildApiUrl(`/sync/contingencia/${id}/${accion}/`),
-  // Lo que quedó de una caída y necesita una decisión, EN EL SERVIDOR.
-  //
-  // El diario de arriba vive en la base de la PC, y la app de escritorio solo
-  // da acceso mientras el servidor está caído: esa pantalla quedaba accesible
-  // justo cuando todavía no se puede resolver nada. Esto se ve desde la página.
-  PENDIENTES: (estado?: string) =>
-    buildApiUrl(`/sync/pendientes/lista/${estado ? `?estado=${encodeURIComponent(estado)}` : ""}`),
-  RESOLVER: (id: number, accion: "confirmar" | "descartar") =>
-    buildApiUrl(`/sync/pendientes/${id}/${accion}/`),
 } as const
 
 // Búsqueda global (pacientes + protocolos + resultados + validaciones)
@@ -437,7 +401,6 @@ export const API_ENDPOINTS = {
   PROTOCOL: PROTOCOL_ENDPOINTS,
   AUDIT: AUDIT_ENDPOINTS,
   SUPERADMIN: SUPERADMIN_ENDPOINTS,
-  CONTINGENCY: CONTINGENCY_ENDPOINTS,
   SEARCH: SEARCH_ENDPOINTS,
   ANALYTICS: ANALYTICS_ENDPOINTS,
   RESULTS: RESULTS_ENDPOINTS,

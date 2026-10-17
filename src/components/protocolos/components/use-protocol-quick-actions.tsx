@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { pedirInforme } from "@/components/contingencia/enviar-informe"
 import { toast } from "sonner"
 import { useApi } from "@/hooks/use-api"
 import { useAuth } from "@/contexts/auth-context"
@@ -80,20 +79,10 @@ export function useProtocolQuickActions(
     if (!ensureCanPrintReports()) return
     setBusyId(p.id)
     try {
-      const { res, cancelado, quedoEnCola } = await pedirInforme(
-        apiRequest, PROTOCOL_ENDPOINTS.REPORT(p.id),
-        { action, type: "full", signed: true })
-
-      // Canceló: no pasó nada, y eso no es ni un éxito ni una falla.
-      if (cancelado) {
-        toast.info("El envío se canceló.", { duration: TOAST_DURATION })
-        return
-      }
-      if (quedoEnCola) {
-        toast.success("Queda esperando: se manda solo cuando vuelva la conexión.",
-                      { duration: TOAST_DURATION })
-        return
-      }
+      const res = await apiRequest(PROTOCOL_ENDPOINTS.REPORT(p.id), {
+        method: "POST",
+        body: { action, type: "full", signed: true },
+      })
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
